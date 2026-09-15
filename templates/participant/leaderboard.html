@@ -1,0 +1,136 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Leaderboard · {{ station.name }} (Kelompok {{ group.code }}) · IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="participant-center-container leaderboard-container">
+  <div class="leaderboard-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+
+    <div class="leaderboard-header">
+      <div class="eyebrow">IT QUEST ADVENTURE // OFFICIAL_LEADERBOARD</div>
+      <h1 class="leaderboard-title">KLASEMEN POS: {{ station.name | upper }}</h1>
+      <p class="leaderboard-sub">
+        Hasil resmi peringkat tim untuk <strong>Kelompok {{ group.code }}</strong> pada sesi ini.
+      </p>
+    </div>
+
+    <!-- Station & Session Meta Banner -->
+    <div class="leaderboard-meta-banner nb-card">
+      <div class="meta-item">
+        <span class="meta-lbl">POS LOMBA</span>
+        <span class="meta-val highlight-accent">{{ station.name }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">KELOMPOK</span>
+        <span class="meta-val">KELOMPOK {{ group.code }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">TIM SELESAI</span>
+        <span class="meta-val">{{ leaderboard.completed_count }} / {{ leaderboard.total_teams }} Tim</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">TIM ANDA</span>
+        <span class="nb-badge badge-neon">{{ team.team_name }} ({{ team.team_code }})</span>
+      </div>
+    </div>
+
+    <!-- Ranked Leaderboard Table -->
+    {% if leaderboard.ranked_rows %}
+      <div class="leaderboard-table-wrap nb-card">
+        <table class="nb-table leaderboard-table" aria-label="Tabel Klasemen Kuis Pos">
+          <thead>
+            <tr>
+              <th class="col-rank">RANK</th>
+              <th class="col-team">TIM PESERTA</th>
+              <th class="col-school">SEKOLAH</th>
+              <th class="col-num text-right">NILAI MURNI</th>
+              <th class="col-num text-right">BONUS WAKTU</th>
+              <th class="col-num text-right col-final-score">TOTAL SKOR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in leaderboard.ranked_rows %}
+              {% set is_my_team = (r.team_id == team.id) %}
+              <tr class="{{ 'row-my-team' if is_my_team else '' }} rank-row-{{ r.rank }}">
+                <td class="col-rank">
+                  {% if r.rank == 1 %}
+                    <span class="rank-badge rank-1">🏆 #1</span>
+                  {% elif r.rank == 2 %}
+                    <span class="rank-badge rank-2">🥈 #2</span>
+                  {% elif r.rank == 3 %}
+                    <span class="rank-badge rank-3">🥉 #3</span>
+                  {% else %}
+                    <span class="rank-badge rank-other">#{{ r.rank }}</span>
+                  {% endif %}
+                </td>
+                <td class="col-team">
+                  <div class="team-cell-wrap">
+                    <span class="team-code-tag">{{ r.team_code }}</span>
+                    <strong class="team-name-text">{{ r.team_name }}</strong>
+                    {% if is_my_team %}
+                      <span class="nb-badge badge-neon badge-mini">TIM ANDA</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="col-school">{{ r.school }}</td>
+                <td class="col-num text-right">{{ "%.2f" | format(r.raw_score) }}</td>
+                <td class="col-num text-right">+{{ "%.2f" | format(r.time_bonus) }}</td>
+                <td class="col-num text-right col-final-score">
+                  <span class="final-score-digits">{{ "%.2f" | format(r.final_score) }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-leaderboard-box nb-card text-center">
+        <p class="empty-lead">Belum ada tim yang menyelesaikan kuis pada sesi ini.</p>
+        <p class="empty-sub text-muted">Klasemen akan otomatis diperbarui begitu ada tim yang mengirim jawaban final.</p>
+      </div>
+    {% endif %}
+
+    <!-- Uncompleted Teams Notice -->
+    {% if leaderboard.uncompleted_rows %}
+      <div class="uncompleted-section nb-card">
+        <div class="uncompleted-title">TIM MASIH MENGERJAKAN / BELUM SELESAI:</div>
+        <div class="uncompleted-tags">
+          {% for u in leaderboard.uncompleted_rows %}
+            <span class="uncompleted-chip {{ 'chip-my-team' if u.team_id == team.id else '' }}">
+              {{ u.team_code }} · {{ u.team_name }} (<em>{{ u.status }}</em>)
+            </span>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Anti-Leak Confidentiality Notice -->
+    <div class="result-notice nb-card" style="margin-top: 1.5rem;">
+      <span class="notice-icon">🔒</span>
+      <div class="notice-text">
+        <strong>INTEGRITAS LOMBA:</strong> Skor dihitung secara otomatis oleh sistem server berdasarkan bobot jawaban benar dan kecepatan submit. Rincian kunci jawaban tidak dipublikasikan demi kerahasiaan antar-rotasi.
+      </div>
+    </div>
+
+    <!-- Navigation Actions -->
+    <div class="leaderboard-actions-row">
+      <a href="{{ url_for('participant.result') }}" class="btn btn-secondary">
+        <span>⬅ KEMBALI KE HASIL SAYA</span>
+      </a>
+
+      <a href="{{ url_for('participant.leaderboard') }}" class="btn btn-outline" id="btn-refresh-leaderboard">
+        <span>🔄 REFRESH KLASEMEN</span>
+      </a>
+
+      <form method="post" action="{{ url_for('participant.reset') }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Apakah Anda yakin ingin keluar dan mereset sesi?');">
+          <span>KELUAR DARI SESI</span>
+          <span class="btn-arrow">➔</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

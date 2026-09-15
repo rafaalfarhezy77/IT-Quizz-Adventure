@@ -1,0 +1,222 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sesi #{{ session.id }} · {{ session.station.name }}{% endblock %}
+
+{% block content %}
+<div class="page-container">
+  <div class="page-header-row">
+    <div>
+      <div class="chip-label">// KONTROL SESI AKTIF</div>
+      <h1 class="page-title">SESI #{{ session.id }} · {{ session.station.name }}</h1>
+      <p class="page-subtitle">
+        Kelompok {{ session.group.code }} · Bank Soal Set {{ session.question_set.code }}
+      </p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('admin.sessions_index') }}" class="btn btn-outline">
+        <span>← KEMBALI KE DAFTAR SESI</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="session-detail-layout">
+    <!-- Live Timer Card -->
+    <div class="nb-card timer-showcase-card">
+      <div class="timer-card-header">
+        <span class="timer-title-tag">[SINKRONISASI SERVER]</span>
+        {% if effective_status.value == 'RUNNING' %}
+          <span class="nb-badge badge-neon">
+            <span class="dot-pulse-mini"></span> SESI RUNNING
+          </span>
+        {% elif effective_status.value == 'WAITING' %}
+          <span class="nb-badge badge-dark">MENUNGGU MULAI</span>
+        {% elif effective_status.value == 'FINISHED' %}
+          <span class="nb-badge badge-neutral">SESI FINISHED</span>
+        {% else %}
+          <span class="nb-badge badge-danger">{{ effective_status.value }}</span>
+        {% endif %}
+      </div>
+
+      <div class="timer-display-wrapper">
+        <div class="timer-label">SISA WAKTU RESMI</div>
+        <div id="session-timer"
+             class="nb-timer timer-lg {{ 'timer-normal' if remaining_seconds > 120 else ('timer-warning' if remaining_seconds > 30 else 'timer-critical') }}"
+             data-status="{{ effective_status.value }}"
+             data-remaining="{{ remaining_seconds }}"
+             data-duration="{{ session.duration_seconds }}"
+             data-sync-url="{{ url_for('api.admin_session_status', session_id=session.id) }}">
+          <span class="timer-digits">
+            {{ "%02d:%02d" | format((remaining_seconds // 60), (remaining_seconds % 60)) }}
+          </span>
+        </div>
+        <div class="timer-helper-text">
+          {% if effective_status.value == 'RUNNING' %}
+            Sinkron otomatis dengan waktu server setiap 5 detik.
+          {% elif effective_status.value == 'WAITING' %}
+            Timer akan langsung berjalan serentak saat tombol START ditekan.
+          {% else %}
+            Sesi perlombaan telah berakhir.
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div class="timer-card-actions">
+        {% if session.status.value == 'WAITING' %}
+          <form method="post" action="{{ url_for('admin.sessions_start', session_id=session.id) }}">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('Mulai sesi #{{ session.id }} sekarang? Soal akan dikunci (LOCKED) dan seluruh peserta di ruang tunggu akan otomatis diarahkan ke quiz!');">
+              <span>▶ MULAI SESI SEKARANG (START)</span>
+            </button>
+          </form>
+
+          <a href="{{ url_for('admin.sessions_edit', session_id=session.id) }}" class="btn btn-outline">
+            <span>✎ EDIT SESI</span>
+          </a>
+
+          <form method="post" action="{{ url_for('admin.sessions_cancel', session_id=session.id) }}">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Apakah Anda yakin ingin membatalkan sesi #{{ session.id }}?');">
+              <span>✕ BATALKAN SESI</span>
+            </button>
+          </form>
+
+        {% elif session.status.value == 'RUNNING' and effective_status.value == 'RUNNING' %}
+          <form method="post" action="{{ url_for('admin.sessions_finish', session_id=session.id) }}">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Akhiri sesi #{{ session.id }} sekarang sebelum waktu habis?');">
+              <span>■ SELESAIKAN SESI (FINISH MANUAL)</span>
+            </button>
+          </form>
+        {% elif session.status.value in ['FINISHED', 'CANCELLED'] %}
+          <form method="post" action="{{ url_for('admin.sessions_delete', session_id=session.id) }}">
+            {{ action_form.hidden_tag() }}
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Apakah Anda yakin ingin menghapus histori sesi #{{ session.id }} beserta seluruh data nilai dan jawabannya?');">
+              <span>🗑 HAPUS HISTORI SESI INI</span>
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Metadata & Info Grid -->
+    <div class="session-meta-grid">
+      <div class="nb-card meta-box">
+        <span class="meta-box-label">POS PERLOMBAAN</span>
+        <span class="meta-box-val">{{ session.station.name }}</span>
+        <span class="meta-box-sub">Mode: {{ 'BELUM DIKETAHUI' if session.station.mode.value == 'BELUM_DIKETAHUI' else session.station.mode.value }}</span>
+      </div>
+
+      <div class="nb-card meta-box">
+        <span class="meta-box-label">KELOMPOK PESERTA</span>
+        <span class="meta-box-val">KELOMPOK {{ session.group.code }}</span>
+        <span class="meta-box-sub">{{ session.group.teams | selectattr('is_active') | list | length }} Tim Aktif Terdaftar</span>
+      </div>
+
+      <div class="nb-card meta-box">
+        <span class="meta-box-label">BANK SOAL</span>
+        <span class="meta-box-val">Set {{ session.question_set.code }}</span>
+        <span class="meta-box-sub">{{ session.question_set.name }} ({{ session.question_set.questions | selectattr('is_active') | list | length }} Soal)</span>
+      </div>
+
+      <div class="nb-card meta-box">
+        <span class="meta-box-label">WAKTU MULAI (STARTED AT)</span>
+        <span class="meta-box-val mono-val">
+          {{ session.started_at.strftime('%H:%M:%S UTC') if session.started_at else '-' }}
+        </span>
+        <span class="meta-box-sub">
+          {{ session.started_at.strftime('%d-%m-%Y') if session.started_at else 'Belum dimulai' }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Progress Monitoring Block (Full-width & Spacious) -->
+  {% if monitoring %}
+    <div class="session-monitoring-card nb-card" style="margin-top: 2.25rem;">
+      <div class="card-stripe stripe-neon"></div>
+      <div class="monitoring-header">
+        <div>
+          <h2 class="monitoring-title">MONITORING STATUS TIM PESERTA</h2>
+          <span class="text-muted monitoring-subtitle">Pantauan langsung status pengerjaan kuis tiap tim dalam Kelompok {{ session.group.code }}</span>
+        </div>
+        <div class="monitoring-summary-chips">
+          <span class="nb-badge badge-neutral">Total: {{ monitoring.summary.total_teams }}</span>
+          {% if monitoring.summary.waiting_for_host is defined and monitoring.summary.waiting_for_host > 0 %}
+            <span class="nb-badge badge-waiting"><span class="dot-pulse-mini"></span> Waiting Host: {{ monitoring.summary.waiting_for_host }}</span>
+          {% endif %}
+          <span class="nb-badge badge-neon">Submitted: {{ monitoring.summary.submitted }}</span>
+          <span class="nb-badge badge-warning">In Progress: {{ monitoring.summary.in_progress }}</span>
+          <span class="nb-badge badge-danger">Timeout: {{ monitoring.summary.timed_out }}</span>
+          <span class="nb-badge badge-neutral">Belum Mulai: {{ monitoring.summary.not_started }}</span>
+        </div>
+      </div>
+
+      <div class="monitoring-table-wrapper">
+        <table class="nb-table session-table-monitoring" aria-label="Tabel Pantauan Tim">
+          <thead>
+            <tr>
+              <th style="width: 85px;">KODE</th>
+              <th style="min-width: 170px;">NAMA TIM</th>
+              <th style="min-width: 150px;">ASAL SEKOLAH</th>
+              <th class="text-center" style="min-width: 180px;">STATUS PENGERJAAN</th>
+              <th class="text-right" style="min-width: 110px;">NILAI MURNI</th>
+              <th class="text-right" style="min-width: 95px;">BONUS</th>
+              <th class="text-right" style="min-width: 110px;">SKOR AKHIR</th>
+              <th class="text-center" style="min-width: 125px;">WAKTU SUBMIT</th>
+              <th class="text-center" style="width: 95px;">AKSI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in monitoring.teams %}
+              <tr>
+                <td><code>{{ t.team_code }}</code></td>
+                <td>
+                  <div class="team-name-cell">{{ t.team_name }}</div>
+                </td>
+                <td>
+                  <div class="team-school-cell">{{ t.school }}</div>
+                </td>
+                <td class="text-center">
+                  {% if t.status == 'SUBMITTED' %}
+                    <span class="nb-badge badge-neon">SUBMITTED</span>
+                  {% elif t.status == 'TIMED_OUT' %}
+                    <span class="nb-badge badge-danger">TIMED_OUT</span>
+                  {% elif t.status == 'IN_PROGRESS' %}
+                    <span class="nb-badge badge-warning">IN_PROGRESS</span>
+                  {% elif t.status == 'WAITING_FOR_HOST' %}
+                    <span class="nb-badge badge-waiting">
+                      <span class="dot-pulse-mini"></span> WAITING FOR HOST
+                    </span>
+                  {% else %}
+                    <span class="nb-badge badge-neutral">BELUM MULAI</span>
+                  {% endif %}
+                </td>
+                <td class="text-right font-mono">{{ "%.2f" | format(t.raw_score) if t.status in ('SUBMITTED', 'TIMED_OUT') else '-' }}</td>
+                <td class="text-right font-mono text-accent">{{ "+%.2f" | format(t.time_bonus) if t.status in ('SUBMITTED', 'TIMED_OUT') else '-' }}</td>
+                <td class="text-right font-mono">
+                  <strong style="color: var(--accent-neon);">{{ "%.2f" | format(t.final_score) if t.status in ('SUBMITTED', 'TIMED_OUT') else '-' }}</strong>
+                </td>
+                <td class="text-center font-mono text-muted" style="font-size: 0.8rem;">
+                  {{ t.submitted_at.strftime('%H:%M:%S') if t.submitted_at and t.submitted_at.strftime is defined else (t.submitted_at or '-') }}
+                </td>
+                <td class="text-center">
+                  {% if t.submission_id %}
+                    <a href="{{ url_for('admin.results_detail', submission_id=t.submission_id) }}" class="btn btn-outline btn-xs">
+                      <span>AUDIT</span>
+                    </a>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
+{% endblock %}

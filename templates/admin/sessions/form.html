@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit Sesi #' ~ session.id if is_edit else 'Buat Sesi Baru' }}{% endblock %}
+
+{% block content %}
+<div class="page-container form-page-container">
+  <div class="page-header-row">
+    <div>
+      <div class="chip-label">// {{ 'EDIT SESI KOMPETISI' if is_edit else 'FORM PENYIAPAN SESI' }}</div>
+      <h1 class="page-title">{{ 'EDIT SESI #' ~ session.id if is_edit else 'BUAT SESI BARU' }}</h1>
+      <p class="page-subtitle">
+        Tentukan pos perlombaan, kelompok peserta (A-D), bank soal siap uji (READY), dan batas waktu pengerjaan.
+      </p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('admin.sessions_index') }}" class="btn btn-outline">
+        <span>← KEMBALI KE DAFTAR SESI</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="nb-card form-card">
+    <form method="post" action="{{ url_for('admin.sessions_edit', session_id=session.id) if is_edit else url_for('admin.sessions_create') }}" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-grid-two">
+        <!-- Pos Perlombaan -->
+        <div class="nb-form-group">
+          <label for="station_id" class="nb-label">
+            POS PERLOMBAAN <span class="text-danger">*</span>
+          </label>
+          {{ form.station_id(class="nb-input select-input " + ("input-error" if form.station_id.errors else ""), id="session_station_id") }}
+          {% for error in form.station_id.errors %}
+            <div class="field-error-text">{{ error }}</div>
+          {% endfor %}
+          <span class="field-helper-text">Pilih stasiun pos yang akan menjalankan sesi ini.</span>
+        </div>
+
+        <!-- Kelompok Peserta -->
+        <div class="nb-form-group">
+          <label for="group_id" class="nb-label">
+            KELOMPOK PESERTA <span class="text-danger">*</span>
+          </label>
+          {{ form.group_id(class="nb-input select-input " + ("input-error" if form.group_id.errors else "")) }}
+          {% for error in form.group_id.errors %}
+            <div class="field-error-text">{{ error }}</div>
+          {% endfor %}
+          <span class="field-helper-text">Sesi berlaku untuk seluruh tim aktif dalam kelompok ini.</span>
+        </div>
+      </div>
+
+      <div class="form-grid-two">
+        <!-- Bank Soal -->
+        <div class="nb-form-group">
+          <label for="question_set_id" class="nb-label">
+            BANK SOAL (STATUS READY) <span class="text-danger">*</span>
+          </label>
+          {{ form.question_set_id(class="nb-input select-input " + ("input-error" if form.question_set_id.errors else ""), id="session_question_set_id") }}
+          {% for error in form.question_set_id.errors %}
+            <div class="field-error-text">{{ error }}</div>
+          {% endfor %}
+          <span class="field-helper-text">Hanya bank soal dengan status READY yang dapat digunakan.</span>
+        </div>
+
+        <!-- Durasi -->
+        <div class="nb-form-group">
+          <label for="duration_minutes" class="nb-label">
+            DURASI SESI (MENIT) <span class="text-danger">*</span>
+          </label>
+          {{ form.duration_minutes(class="nb-input " + ("input-error" if form.duration_minutes.errors else ""), type="number", min="1", max="180") }}
+          {% for error in form.duration_minutes.errors %}
+            <div class="field-error-text">{{ error }}</div>
+          {% endfor %}
+          <span class="field-helper-text">Waktu pengerjaan resmi (contoh: 10 menit = 600 detik).</span>
+        </div>
+      </div>
+
+      <div class="form-actions-cluster">
+        {{ form.submit(class="btn btn-primary btn-lg") }}
+        <a href="{{ url_for('admin.sessions_index') }}" class="btn btn-outline">
+          <span>BATAL</span>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

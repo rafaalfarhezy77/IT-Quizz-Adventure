@@ -1,0 +1,53 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Sesi Berakhir · IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="participant-center-container">
+  <div class="session-ended-card nb-card">
+    <div class="ended-header">
+      <div class="chip-label">// PEMBERITAHUAN RESMI SERVER</div>
+      <h1 class="ended-title">WAKTU PENGERJAAN TELAH HABIS</h1>
+      <p class="ended-subtitle">
+        Sesi perlombaan pada pos ini telah resmi ditutup oleh sistem.
+      </p>
+    </div>
+
+    <div class="ended-identity-box nb-card">
+      <div class="summary-row">
+        <span class="summary-key">POS PERLOMBAAN:</span>
+        <span class="summary-val-bold">{{ station.name }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">KELOMPOK:</span>
+        <span class="summary-val-bold">KELOMPOK {{ group.code }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">TIM:</span>
+        <span class="summary-val-highlight">{{ team.team_name }} ({{ team.team_code }})</span>
+      </div>
+      <div class="summary-row">
+        <span class="summary-key">ASAL SEKOLAH:</span>
+        <span class="summary-val-school">{{ team.school }}</span>
+      </div>
+    </div>
+
+    <div class="ended-instruction-box nb-card">
+      <span class="instruction-icon">📢</span>
+      <div class="instruction-text">
+        <strong>INSTRUKSI PANITIA POS:</strong> Harap melepaskan mouse dan keyboard. Tunggu juri/panitia pos merekapitulasi sesi dan memberikan aba-aba untuk rotasi kelompok selanjutnya.
+      </div>
+    </div>
+
+    <div class="ended-actions">
+      <form method="post" action="{{ url_for('participant.reset') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary btn-lg btn-block" onclick="return confirm('Apakah Anda yakin ingin keluar dan kembali ke halaman utama?');">
+          <span>KELUAR / RESET KE BERANDA</span>
+          <span class="btn-arrow">➔</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

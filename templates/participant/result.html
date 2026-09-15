@@ -1,0 +1,96 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Hasil Penilaian · {{ station.name }}{% endblock %}
+
+{% block content %}
+<div class="participant-center-container result-container">
+  <div class="result-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+
+    <div class="result-header">
+      <div class="eyebrow">IT QUEST ADVENTURE // OFFICIAL_RESULT</div>
+      <h1 class="result-title">HASIL PENILAIAN POS</h1>
+      <p class="result-sub">
+        Sesi kuis telah resmi diselesaikan. Seluruh lembar jawaban telah dinilai otomatis oleh server.
+      </p>
+    </div>
+
+    <!-- Team & Station Meta -->
+    <div class="result-meta-banner nb-card">
+      <div class="meta-item">
+        <span class="meta-lbl">TIM PESERTA</span>
+        <span class="meta-val highlight-accent">{{ summary.team_name }} ({{ summary.team_code }})</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">ASAL SEKOLAH</span>
+        <span class="meta-val">{{ summary.school }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">POS & KELOMPOK</span>
+        <span class="meta-val">{{ summary.station_name }} · KELOMPOK {{ summary.group_code }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-lbl">STATUS AKHIR</span>
+        <span class="nb-badge {{ 'badge-neon' if summary.status == 'SUBMITTED' else 'badge-neutral' }}">
+          {{ 'SELESAI TEPAT WAKTU' if summary.status == 'SUBMITTED' else 'WAKTU HABIS (TIMEOUT)' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Score Showcase Card -->
+    <div class="score-showcase-box nb-card">
+      <div class="score-breakdown-row">
+        <div class="score-col">
+          <span class="score-lbl">JAWABAN BENAR</span>
+          <span class="score-num text-white">{{ summary.correct_count }} / {{ summary.total_questions }}</span>
+          <span class="score-sub">{{ summary.unanswered_count }} Soal Kosong</span>
+        </div>
+
+        <div class="score-col">
+          <span class="score-lbl">NILAI MURNI (RAW)</span>
+          <span class="score-num text-accent">{{ summary.raw_score }}</span>
+          <span class="score-sub">Total Bobot Soal Benar</span>
+        </div>
+
+        <div class="score-col">
+          <span class="score-lbl">BONUS SISA WAKTU</span>
+          <span class="score-num text-accent">+{{ summary.time_bonus }}</span>
+          <span class="score-sub">{{ 'Waktu Tersisa' if summary.time_bonus > 0 else 'Tidak Ada Bonus' }}</span>
+        </div>
+      </div>
+
+      <div class="final-score-row">
+        <div class="final-score-label">TOTAL SKOR AKHIR:</div>
+        <div class="final-score-val-wrap">
+          <span class="final-score-digits">{{ summary.final_score }}</span>
+          <span class="score-pts-tag">POIN</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confidentiality Notice -->
+    <div class="result-notice nb-card">
+      <span class="notice-icon">🔒</span>
+      <div class="notice-text">
+        <strong>INTEGRITAS LOMBA:</strong> Untuk menjaga kerahasiaan soal bagi kelompok peserta pada jadwal rotasi berikutnya, rincian kunci jawaban dan pembahasan soal tidak ditampilkan pada layar ini.
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="result-actions-row">
+      <a href="{{ url_for('participant.leaderboard') }}" class="btn btn-secondary btn-block" style="margin-bottom: 0.75rem;">
+        <span>🏆 LIHAT LEADERBOARD POS</span>
+        <span class="btn-arrow">➔</span>
+      </a>
+
+      <form method="post" action="{{ url_for('participant.reset') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>SELESAI & KELUAR DARI SESI POS</span>
+          <span class="btn-arrow">➔</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

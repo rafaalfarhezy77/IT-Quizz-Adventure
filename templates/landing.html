@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IT Quest Adventure · Mythic 3.0</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
+</head>
+<body class="landing-body">
+  <div class="landing-container">
+    <!-- Top Meta Strip -->
+    <header class="landing-header">
+      <div class="landing-chip-row">
+        <span class="nb-badge badge-neon">MYTHIC 3.0</span>
+        <span class="nb-badge badge-dark">STATION QUIZ PLATFORM</span>
+        <span class="nb-badge badge-neutral">OFFLINE LAN</span>
+      </div>
+    </header>
+
+    <!-- Hero Title -->
+    <section class="landing-hero">
+      <div class="hero-badge-container">
+        <span class="hero-subheading">// SELECT YOUR ROLE TO CONTINUE</span>
+      </div>
+      <h1 class="landing-title">
+        IT QUEST <span class="text-neon-block">ADVENTURE</span>
+      </h1>
+      <p class="landing-desc">
+        Sistem kompetisi cerdas cermat berbasis stasiun pos. Akses langsung portal peserta atau masuk ke konsol kendali panitia.
+      </p>
+    </section>
+
+    <!-- Flash Messages -->
+    <div class="flash-stack" aria-live="polite">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="nb-alert alert-{{ category }}" role="alert">
+            <span class="alert-icon">✦</span>
+            <span class="alert-text">{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+
+    <!-- Role Selection Grid -->
+    <main class="role-grid">
+      <!-- Peserta Card -->
+      <article class="role-card role-card-participant">
+        <div class="role-card-header">
+          <span class="role-tag role-tag-participant">[ROLE: 01]</span>
+          <span class="role-status-dot"></span>
+        </div>
+        <div class="role-card-body">
+          <div class="role-icon">⚡</div>
+          <h2 class="role-title">PESERTA LOMBA</h2>
+          <p class="role-summary">
+            Akses gerbang peserta dengan kode akses bersama, pilih pos perlombaan, tentukan kelompok dan tim, lalu masuki ruang tunggu.
+          </p>
+          <ul class="role-feature-list">
+            <li>✔ Verifikasi kode akses peserta</li>
+            <li>✔ Pemilihan Pos & Kelompok (A-D)</li>
+            <li>✔ Konfirmasi identitas tim & aturan pos</li>
+            <li>✔ Sinkronisasi ruang tunggu sesi</li>
+          </ul>
+        </div>
+        <div class="role-card-footer">
+          <a href="{{ url_for('participant.access') }}" class="btn btn-primary btn-role-action">
+            <span>MASUK SEBAGAI PESERTA</span>
+            <span class="btn-arrow">➔</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- Panitia Card -->
+      <article class="role-card role-card-admin">
+        <div class="role-card-header">
+          <span class="role-tag role-tag-admin">[ROLE: 02]</span>
+          <span class="role-status-dot admin-dot"></span>
+        </div>
+        <div class="role-card-body">
+          <div class="role-icon">🛡️</div>
+          <h2 class="role-title">PANITIA / ADMIN</h2>
+          <p class="role-summary">
+            Masuk ke panel kontrol panitia untuk mengelola bank soal, master data tim dan kelompok, aktivasi pos, serta memulai sesi.
+          </p>
+          <ul class="role-feature-list">
+            <li>✔ Manajemen bank soal (Draft, Ready, Locked)</li>
+            <li>✔ Import CSV peserta & kelompok</li>
+            <li>✔ Pengawasan & kontrol sesi perlombaan</li>
+            <li>✔ Rekap skor & leaderboard stasiun</li>
+          </ul>
+        </div>
+        <div class="role-card-footer">
+          <a href="{{ url_for('admin.login') }}" class="btn btn-secondary btn-role-action">
+            <span>LOGIN PANEL PANITIA</span>
+            <span class="btn-arrow">➔</span>
+          </a>
+        </div>
+      </article>
+    </main>
+
+    <!-- Bottom Specs Footer -->
+    <footer class="landing-footer">
+      <div class="footer-block">
+        <span class="mono-label">VERSION:</span>
+        <span class="mono-value">v3.0.0-PROD</span>
+      </div>
+      <div class="footer-block">
+        <span class="mono-label">SERVER STATUS:</span>
+        <span class="mono-value text-green">ONLINE · READY</span>
+      </div>
+      <div class="footer-block">
+        <span class="mono-label">ARCHITECTURE:</span>
+        <span class="mono-value">FLASK + SQLITE ACID</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

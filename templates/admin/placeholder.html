@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">SEGERA HADIR // MODUL_PREVIEW</div>
+    <h1>{{ title }}</h1>
+    <p class="welcome-text">Area manajemen sistem IT Quest Adventure tahap berikutnya.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary btn-sm">← KEMBALI KE DASHBOARD</a>
+  </div>
+</div>
+
+<section class="nb-panel placeholder-panel">
+  <div class="placeholder-icon-wrap">
+    <span class="placeholder-mark">⚡</span>
+  </div>
+  <div class="placeholder-content">
+    <div class="placeholder-badge-row">
+      <span class="status-chip">STATUS: TERPROTEKSI</span>
+      <span class="status-chip-neon">STEP 2 COMPLETE</span>
+    </div>
+    <h2>Fondasi halaman sudah siap</h2>
+    <p class="placeholder-desc">{{ message }}</p>
+    <div class="placeholder-meta-box">
+      <code>ROUTE: {{ request.path }} · METHOD: {{ request.method }} · ACCESS: ADMIN_ONLY</code>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit Soal #' ~ question.order_number if is_edit else 'Tambah Soal Baru' }} · {{ question_set.name }}{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">POS: {{ question_set.station.name }} // SET {{ question_set.code }}</div>
+    <h1>{{ 'Edit Soal #' ~ question.order_number if is_edit else 'Tambah Soal Baru' }}</h1>
+    <p class="welcome-text">
+      {{ 'Perbarui isi butir pertanyaan, opsi, kunci jawaban, dan bobot skor.' if is_edit else 'Masukkan butir pertanyaan baru untuk paket ' ~ question_set.name ~ '.' }}
+    </p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id) }}" class="btn btn-secondary btn-sm">
+      ← KEMBALI KE SET {{ question_set.code }}
+    </a>
+  </div>
+</div>
+
+<div class="form-container">
+  <section class="nb-panel question-form-card">
+    <div class="card-stripe"></div>
+    <form method="post" novalidate class="question-form">
+      {{ form.hidden_tag() }}
+
+      <!-- FIELD 1: TEKS PERTANYAAN -->
+      <div class="form-group">
+        <div class="form-label-row">
+          {{ form.text.label(class="control-label") }}
+          <span class="field-tag">MARKDOWN / TEKS</span>
+        </div>
+        {{ form.text(class="nb-input nb-textarea", rows="4", placeholder="Ketik teks pertanyaan atau studi kasus kode di sini...") }}
+        {% for error in form.text.errors %}
+          <span class="field-error">⚠ {{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <!-- FIELD 2: PILIHAN JAWABAN (A, B, C, D) -->
+      <div class="options-form-section">
+        <div class="options-section-label">PILIHAN JAWABAN (A - D):</div>
+        
+        <div class="options-grid">
+          <div class="option-field-group">
+            <div class="option-input-wrapper">
+              <span class="opt-indicator">A</span>
+              {{ form.option_a(class="nb-input opt-input", placeholder="Isi pilihan jawaban A...") }}
+            </div>
+            {% for error in form.option_a.errors %}
+              <span class="field-error">⚠ {{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="option-field-group">
+            <div class="option-input-wrapper">
+              <span class="opt-indicator">B</span>
+              {{ form.option_b(class="nb-input opt-input", placeholder="Isi pilihan jawaban B...") }}
+            </div>
+            {% for error in form.option_b.errors %}
+              <span class="field-error">⚠ {{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="option-field-group">
+            <div class="option-input-wrapper">
+              <span class="opt-indicator">C</span>
+              {{ form.option_c(class="nb-input opt-input", placeholder="Isi pilihan jawaban C...") }}
+            </div>
+            {% for error in form.option_c.errors %}
+              <span class="field-error">⚠ {{ error }}</span>
+            {% endfor %}
+          </div>
+
+          <div class="option-field-group">
+            <div class="option-input-wrapper">
+              <span class="opt-indicator">D</span>
+              {{ form.option_d(class="nb-input opt-input", placeholder="Isi pilihan jawaban D...") }}
+            </div>
+            {% for error in form.option_d.errors %}
+              <span class="field-error">⚠ {{ error }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- FIELD 3: KUNCI, BOBOT, URUTAN -->
+      <div class="form-meta-row">
+        <div class="form-group meta-field">
+          <div class="form-label-row">
+            {{ form.correct_answer.label(class="control-label") }}
+            <span class="field-tag-neon">KUNCI</span>
+          </div>
+          {{ form.correct_answer(class="nb-select") }}
+          {% for error in form.correct_answer.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="form-group meta-field">
+          <div class="form-label-row">
+            {{ form.weight.label(class="control-label") }}
+            <span class="field-tag">SKOR</span>
+          </div>
+          {{ form.weight(class="nb-input", type="number", step="any", min="1") }}
+          {% for error in form.weight.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="form-group meta-field">
+          <div class="form-label-row">
+            {{ form.order_number.label(class="control-label") }}
+            <span class="field-tag">URUTAN</span>
+          </div>
+          {{ form.order_number(class="nb-input", type="number", min="1") }}
+          {% for error in form.order_number.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- FORM ACTIONS -->
+      <div class="form-actions-bar">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id) }}" class="btn btn-secondary">
+          BATAL
+        </a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

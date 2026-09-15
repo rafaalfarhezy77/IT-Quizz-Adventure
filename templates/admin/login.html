@@ -1,0 +1,42 @@
+{% extends "admin/base.html" %}
+{% block title %}Login Admin{% endblock %}
+{% block content %}
+<section class="login-card nb-panel" aria-labelledby="login-title">
+  <div class="card-stripe"></div>
+  <div class="login-header">
+    <div class="eyebrow">IT QUEST ADVENTURE // AUTH_PORTAL</div>
+    <h1 id="login-title">Admin Panel</h1>
+    <p class="muted">Masuk untuk mengelola dan memantau jalannya kompetisi.</p>
+  </div>
+  <form method="post" novalidate class="login-form">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+      <div class="form-label-row">
+        {{ form.username.label }}
+        <span class="field-tag">REQUIRED</span>
+      </div>
+      {{ form.username(class="nb-input", autocomplete="username", autofocus=true, placeholder="Masukkan username admin...") }}
+      {% for error in form.username.errors %}
+        <span class="field-error">⚠ {{ error }}</span>
+      {% endfor %}
+    </div>
+    <div class="form-group">
+      <div class="form-label-row">
+        {{ form.password.label }}
+        <span class="field-tag">SECURITY_KEY</span>
+      </div>
+      {{ form.password(class="nb-input", autocomplete="current-password", placeholder="••••••••") }}
+      {% for error in form.password.errors %}
+        <span class="field-error">⚠ {{ error }}</span>
+      {% endfor %}
+    </div>
+    <div class="form-actions">
+      {{ form.submit(class="btn btn-primary btn-block", value="MASUK KE DASHBOARD →") }}
+    </div>
+  </form>
+  <div class="login-footer">
+    <span class="secure-badge">ENCRYPTED SESSION</span>
+    <span class="footer-system">LOCAL NODE · v3.0</span>
+  </div>
+</section>
+{% endblock %}

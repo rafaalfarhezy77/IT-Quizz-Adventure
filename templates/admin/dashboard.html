@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">PUSAT KENDALI // LIVE TELEMETRY</div>
+    <h1>Dashboard</h1>
+    <p class="welcome-text">Selamat datang, <strong>{{ g.current_admin.username }}</strong>. Berikut status dan kondisi data lomba saat ini.</p>
+  </div>
+  <div class="heading-actions">
+    <span class="event-badge"><span class="pulse-light"></span>LOCAL SERVER · ONLINE</span>
+  </div>
+</div>
+
+<section class="stats-grid" aria-label="Ringkasan data">
+  {% for key, title, subtitle, color, icon in [
+    ('stations','Total Station','Pos arena lomba','yellow','⬡'),
+    ('groups','Total Group','Kelompok peserta','blue','◈'),
+    ('teams','Total Team','Tim terdaftar aktif','pink','⬢'),
+    ('questions','Total Question','Bank soal siap saji','green','◆'),
+    ('active_sessions','Session Aktif','Status running saat ini','white','◎')
+  ] %}
+  <article class="nb-card card-{{ color }}">
+    <div class="card-meta">
+      <h2>{{ title }}</h2>
+      <span class="card-icon">{{ icon }}</span>
+    </div>
+    <strong>{{ statistics[key] }}</strong>
+    <span class="card-sub">{{ subtitle }}</span>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="quick-section">
+  <div class="section-title">
+    <div class="title-with-badge">
+      <h2>Navigasi cepat</h2>
+      <span class="count-badge">4 MODUL KERJA</span>
+    </div>
+    <span class="section-hint">Pilih area kerja untuk mengelola sistem IT Quest Adventure</span>
+  </div>
+  <div class="quick-grid">
+    {% for key, number, title, detail in [
+      ('questions','01','Kelola Soal','Bank pertanyaan, opsi jawaban, dan kunci skor'),
+      ('teams','02','Kelola Tim','Data peserta, registrasi kelompok, dan profil tim'),
+      ('sessions','03','Kelola Sesi','Kontrol perlombaan, timer live, dan aktivasi pos'),
+      ('results','04','Lihat Hasil','Kalkulasi nilai, riwayat jawaban, dan leaderboard live')
+    ] %}
+    <a class="quick-link" href="{{ url_for('admin.questions_index') if key == 'questions' else (url_for('admin.teams_index') if key == 'teams' else (url_for('admin.sessions_index') if key == 'sessions' else url_for('admin.placeholder', page=key))) }}">
+      <div class="quick-num-box">
+        <b>{{ number }}</b>
+      </div>
+      <div class="quick-info">
+        <span class="quick-name">{{ title }}</span>
+        <small>{{ detail }}</small>
+      </div>
+      <div class="quick-arrow-box">
+        <i class="quick-arrow">→</i>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

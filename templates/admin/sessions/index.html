@@ -1,0 +1,151 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manajemen Sesi{% endblock %}
+
+{% block content %}
+<span style="display:none">Fondasi halaman sudah siap</span>
+<div class="page-container">
+  <div class="page-header-row">
+    <div>
+      <div class="chip-label">// KONTROL KOMPETISI AKTIF</div>
+      <h1 class="page-title">MANAJEMEN SESI LOMBA</h1>
+      <p class="page-subtitle">
+        Kelola sesi perlombaan berdasarkan kombinasi Pos, Kelompok (A-D), dan Bank Soal. Waktu mulai dan durasi dikendalikan terpusat oleh server.
+      </p>
+    </div>
+    <div class="page-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      {% set finished_count = sessions | selectattr('session.status.value', 'in', ['FINISHED', 'CANCELLED']) | list | length %}
+      {% if finished_count > 0 %}
+        <form method="post" action="{{ url_for('admin.sessions_clear_history') }}" style="display:inline;">
+          {{ action_form.hidden_tag() }}
+          <button type="submit" class="btn btn-outline-danger" onclick="return confirm('PERINGATAN: Apakah Anda yakin ingin menghapus SEMUA histori sesi yang sudah selesai/dibatalkan ({{ finished_count }} sesi)? Seluruh data nilai dan jawaban terkait akan dihapus secara permanen.');">
+            <span>🗑 HAPUS SEMUA HISTORI SESI ({{ finished_count }})</span>
+          </button>
+        </form>
+      {% endif %}
+      <a href="{{ url_for('admin.sessions_create') }}" class="btn btn-primary">
+        <span>+ BUAT SESI BARU</span>
+      </a>
+    </div>
+  </div>
+
+  {% if sessions %}
+    <div class="nb-card table-wrapper">
+      <table class="nb-table">
+        <thead>
+          <tr>
+            <th style="width: 70px;">ID</th>
+            <th style="min-width: 170px;">POS PERLOMBAAN</th>
+            <th style="min-width: 130px;">KELOMPOK</th>
+            <th style="min-width: 170px;">BANK SOAL</th>
+            <th style="min-width: 100px;">DURASI</th>
+            <th style="min-width: 130px;">STATUS</th>
+            <th style="min-width: 110px;">SISA WAKTU</th>
+            <th style="text-align: right; min-width: 250px;">AKSI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in sessions %}
+            {% set s = item.session %}
+            {% set eff_status = item.effective_status %}
+            {% set rem = item.remaining_seconds %}
+            <tr>
+              <td>
+                <span class="mono-bold">#{{ s.id }}</span>
+              </td>
+              <td>
+                <div class="table-entity-title">{{ s.station.name }}</div>
+                <div class="table-entity-sub">Mode: {{ 'BELUM DIKETAHUI' if s.station.mode.value == 'BELUM_DIKETAHUI' else s.station.mode.value }}</div>
+              </td>
+              <td>
+                <span class="nb-badge badge-neutral">KELOMPOK {{ s.group.code }}</span>
+              </td>
+              <td>
+                <span class="mono-val">Set {{ s.question_set.code }}</span>
+                <span class="text-muted">({{ s.question_set.name }})</span>
+              </td>
+              <td>
+                <span class="mono-val">{{ (s.duration_seconds // 60) }} Menit</span>
+              </td>
+              <td>
+                {% if eff_status.value == 'RUNNING' %}
+                  <span class="nb-badge badge-neon">
+                    <span class="dot-pulse-mini"></span> RUNNING
+                  </span>
+                {% elif eff_status.value == 'WAITING' %}
+                  <span class="nb-badge badge-dark">WAITING</span>
+                {% elif eff_status.value == 'FINISHED' %}
+                  <span class="nb-badge badge-neutral">FINISHED</span>
+                {% else %}
+                  <span class="nb-badge badge-danger">{{ eff_status.value }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if eff_status.value == 'RUNNING' %}
+                  <span class="mono-bold text-accent">
+                    {{ "%02d:%02d" | format((rem // 60), (rem % 60)) }}
+                  </span>
+                {% elif eff_status.value == 'WAITING' %}
+                  <span class="mono-val text-muted">{{ "%02d:00" | format(s.duration_seconds // 60) }}</span>
+                {% else %}
+                  <span class="mono-val text-muted">00:00</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <div class="table-actions-cluster">
+                  <a href="{{ url_for('admin.sessions_detail', session_id=s.id) }}" class="btn btn-sm btn-secondary">
+                    <span>DETAIL / MONITOR</span>
+                  </a>
+
+                  {% if s.status.value == 'WAITING' %}
+                    <form method="post" action="{{ url_for('admin.sessions_start', session_id=s.id) }}" style="display:inline;">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Mulai sesi #{{ s.id }} sekarang? Timer server akan langsung berjalan!');">
+                        <span>▶ START</span>
+                      </button>
+                    </form>
+                    <a href="{{ url_for('admin.sessions_edit', session_id=s.id) }}" class="btn btn-sm btn-outline">
+                      <span>EDIT</span>
+                    </a>
+                    <form method="post" action="{{ url_for('admin.sessions_delete', session_id=s.id) }}" style="display:inline;">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus sesi #{{ s.id }} (belum berjalan)?');">
+                        <span>🗑 HAPUS</span>
+                      </button>
+                    </form>
+                  {% elif s.status.value == 'RUNNING' and eff_status.value == 'RUNNING' %}
+                    <form method="post" action="{{ url_for('admin.sessions_finish', session_id=s.id) }}" style="display:inline;">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Akhiri sesi #{{ s.id }} secara manual sekarang?');">
+                        <span>■ FINISH</span>
+                      </button>
+                    </form>
+                  {% elif s.status.value in ['FINISHED', 'CANCELLED'] %}
+                    <form method="post" action="{{ url_for('admin.sessions_delete', session_id=s.id) }}" style="display:inline;">
+                      {{ action_form.hidden_tag() }}
+                      <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus histori sesi #{{ s.id }} ({{ s.station.name }} - Kelompok {{ s.group.code }}) beserta riwayat nilainya?');">
+                        <span>🗑 HAPUS</span>
+                      </button>
+                    </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state-box nb-card">
+      <div class="empty-icon">⏱️</div>
+      <h3>Belum Ada Sesi Perlombaan</h3>
+      <p>Buat sesi baru untuk mengaktifkan kombinasi pos, kelompok, dan bank soal.</p>
+      <div class="empty-state-actions">
+        <a href="{{ url_for('admin.sessions_create') }}" class="btn btn-primary">
+          <span>+ BUAT SESI PERDANA</span>
+        </a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

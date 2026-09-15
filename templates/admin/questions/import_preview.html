@@ -1,0 +1,246 @@
+{% extends "admin/base.html" %}
+{% block title %}Preview Import Soal: {{ filename }} · Admin IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">VERIFIKASI SOAL // JSON_PREVIEW</div>
+    <h1>Preview Import Bank Soal</h1>
+    <p class="welcome-text">
+      Berkas: <strong>{{ filename }}</strong> · Pos: <strong>{{ validation.station.name }}</strong> · 
+      Mode: <strong>{{ 'TAMBAH SOAL (ADD)' if mode == 'ADD' else 'PERBARUI (UPDATE external_id)' }}</strong>
+    </p>
+  </div>
+  <div class="heading-actions">
+    <form method="post" action="{{ url_for('admin.questions_import_cancel') }}" style="display: inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="file_token" value="{{ file_token }}">
+      <button type="submit" class="btn btn-secondary btn-sm">
+        ✕ BATALKAN & KEMBALI
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- PANEL RINGKASAN VALIDASI -->
+<section class="nb-panel preview-summary-panel">
+  <div class="summary-stats-grid">
+    <div class="stat-card-mini">
+      <span class="stat-mini-label">TOTAL SOAL DI BERKAS:</span>
+      <span class="stat-mini-num">{{ validation.total_questions }}</span>
+    </div>
+    <div class="stat-card-mini valid-border">
+      <span class="stat-mini-label">SOAL VALID:</span>
+      <span class="stat-mini-num text-neon">{{ validation.valid_count }}</span>
+    </div>
+    <div class="stat-card-mini {{ 'error-border' if validation.error_count > 0 }}">
+      <span class="stat-mini-label">SOAL ERROR:</span>
+      <span class="stat-mini-num {{ 'text-danger' if validation.error_count > 0 else 'text-muted' }}">
+        {{ validation.error_count }}
+      </span>
+    </div>
+    <div class="stat-card-mini">
+      <span class="stat-mini-label">POS PERLOMBAAN:</span>
+      <span class="stat-mini-num text-sm-truncate">{{ validation.station.name }}</span>
+    </div>
+    <div class="stat-card-mini">
+      <span class="stat-mini-label">MODE PROSES:</span>
+      <span class="stat-mini-num text-sm-truncate">{{ mode }}</span>
+    </div>
+  </div>
+
+  <div class="validation-status-banner {{ 'banner-valid' if validation.is_valid else 'banner-error' }}">
+    {% if validation.is_valid %}
+      <span class="banner-symbol">✓</span>
+      <div>
+        <strong>SELURUH SOAL VALID (100%):</strong> Seluruh {{ validation.valid_count }} soal memenuhi kriteria struktur, kunci jawaban, dan pembagian giliran anggota (1–3, 4–6, 7–9).
+      </div>
+    {% else %}
+      <span class="banner-symbol">⚠</span>
+      <div>
+        <strong>TRANSAKSI ALL-OR-NOTHING:</strong> Ditemukan {{ validation.error_count }} kesalahan pada data soal atau paket yang dituju. Seluruh proses import ditangguhkan hingga berkas diperbaiki.
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- RINCIAN ERROR GLOBAL (JIKA ADA) -->
+{% if validation.global_errors %}
+  <section class="nb-panel error-summary-panel">
+    <div class="error-panel-header">
+      <span class="error-badge">PERINGATAN GLOBAL / STATUS DATABASE</span>
+      <h3>Kesalahan yang menghalangi import:</h3>
+    </div>
+    <ul class="error-items-list">
+      {% for g_err in validation.global_errors %}
+        <li>{{ g_err }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+<!-- RINGKASAN PER SET & PEMBAGIAN ANGGOTA -->
+<section class="sets-overview-section mb-20">
+  <div class="section-label-bar">RINGKASAN PER PAKET SOAL (SET A–D):</div>
+  <div class="sets-overview-grid">
+    {% for set_code, s in validation.sets_summary.items()|sort %}
+      <article class="nb-panel set-overview-card {{ 'card-locked' if s.is_locked else ('card-error' if s.error_count > 0 else 'card-valid') }}">
+        <div class="set-overview-header">
+          <div class="set-code-chip">SET {{ set_code }}</div>
+          <span class="status-badge status-{{ s.db_status|lower }}">DB: {{ s.db_status }}</span>
+        </div>
+        <div class="set-overview-body">
+          <div class="stat-row">
+            <span>Total Soal:</span>
+            <strong>{{ s.total_questions }}</strong>
+          </div>
+          <div class="stat-row">
+            <span>Total Bobot:</span>
+            <strong>{{ s.total_weight }}</strong>
+          </div>
+          <div class="member-distribution-box">
+            <span class="dist-label">Distribusi Giliran Anggota:</span>
+            <div class="dist-chips">
+              <span class="dist-chip {{ 'dist-chip-ok' if s.member_counts[1] == 3 else 'dist-chip-warn' }}" title="Soal 1–3">
+                M1: {{ s.member_counts[1] }}/3
+              </span>
+              <span class="dist-chip {{ 'dist-chip-ok' if s.member_counts[2] == 3 else 'dist-chip-warn' }}" title="Soal 4–6">
+                M2: {{ s.member_counts[2] }}/3
+              </span>
+              <span class="dist-chip {{ 'dist-chip-ok' if s.member_counts[3] == 3 else 'dist-chip-warn' }}" title="Soal 7–9">
+                M3: {{ s.member_counts[3] }}/3
+              </span>
+            </div>
+          </div>
+          {% if s.is_locked %}
+            <div class="set-warning-tag">🔒 Terkunci (LOCKED)</div>
+          {% elif s.error_count > 0 %}
+            <div class="set-warning-tag">⚠ {{ s.error_count }} Baris Error</div>
+          {% else %}
+            <div class="set-success-tag">✓ Siap Diimport</div>
+          {% endif %}
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- TABEL RINCIAN BUTIR SOAL -->
+<div class="table-responsive nb-panel table-panel">
+  <div class="table-panel-header">
+    <span class="panel-eyebrow">DAFTAR RINCIAN SOAL</span>
+    <h2>Pemeriksaan Butir Soal</h2>
+  </div>
+  <table class="nb-table" aria-label="Tabel Preview Butir Soal">
+    <thead>
+      <tr>
+        <th style="width: 60px;">Set</th>
+        <th style="width: 50px;">No</th>
+        <th style="width: 80px;">Giliran</th>
+        <th style="width: 100px;">External ID</th>
+        <th style="width: 130px;">Kategori</th>
+        <th>Pertanyaan & Opsi</th>
+        <th style="width: 60px;">Kunci</th>
+        <th style="width: 60px;">Bobot</th>
+        <th style="width: 90px;">Status</th>
+        <th>Catatan Validasi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in validation.questions %}
+        <tr class="{{ 'row-error' if q.status != 'VALID' }}">
+          <td>
+            <span class="set-badge-sm">SET {{ q.set_code }}</span>
+          </td>
+          <td>
+            <strong>#{{ q.order_number }}</strong>
+          </td>
+          <td>
+            {% if q.member %}
+              <span class="member-badge-sm member-{{ q.member }}">M{{ q.member }}</span>
+            {% else %}
+              <span class="text-danger">-</span>
+            {% endif %}
+          </td>
+          <td>
+            <code>{{ q.external_id or '-' }}</code>
+          </td>
+          <td>
+            <span class="category-chip">{{ q.category or '-' }}</span>
+          </td>
+          <td>
+            <div class="question-preview-box">
+              <p class="question-text-preview">{{ q.text }}</p>
+              <div class="options-preview-grid">
+                <span class="opt-item {{ 'opt-correct' if q.correct_answer == 'A' }}"><strong>A:</strong> {{ q.option_a }}</span>
+                <span class="opt-item {{ 'opt-correct' if q.correct_answer == 'B' }}"><strong>B:</strong> {{ q.option_b }}</span>
+                <span class="opt-item {{ 'opt-correct' if q.correct_answer == 'C' }}"><strong>C:</strong> {{ q.option_c }}</span>
+                <span class="opt-item {{ 'opt-correct' if q.correct_answer == 'D' }}"><strong>D:</strong> {{ q.option_d }}</span>
+              </div>
+            </div>
+          </td>
+          <td class="text-center">
+            <strong class="key-badge">{{ q.correct_answer or '?' }}</strong>
+          </td>
+          <td class="text-center">
+            <span>{{ q.weight }}</span>
+          </td>
+          <td>
+            {% if q.status == 'VALID' %}
+              <span class="nb-badge badge-success">VALID</span>
+            {% else %}
+              <span class="nb-badge badge-danger">ERROR</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if q.errors %}
+              <ul class="row-error-list">
+                {% for err in q.errors %}
+                  <li>{{ err }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <span class="text-muted">Siap disimpan</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- FLOATING / BOTTOM CONFIRMATION ACTION BAR -->
+<div class="import-confirm-bar nb-panel">
+  <div class="confirm-bar-info">
+    <div class="confirm-stat-label">STATUS VALIDASI:</div>
+    <div class="confirm-stat-text">
+      {% if validation.is_valid %}
+        <span class="text-neon">✓ SIAP DIIMPORT</span> — Total {{ validation.valid_count }} butir soal akan diproses ke basis data.
+      {% else %}
+        <span class="text-danger">⚠ BELUM MEMENUHI SYARAT</span> — Terdapat {{ validation.error_count }} kesalahan yang wajib diperbaiki.
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="confirm-bar-buttons">
+    <form method="post" action="{{ url_for('admin.questions_import_cancel') }}" style="display: inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="file_token" value="{{ file_token }}">
+      <button type="submit" class="btn btn-secondary">
+        BATALKAN
+      </button>
+    </form>
+
+    {% if validation.is_valid %}
+      <form method="post" action="{{ url_for('admin.questions_import_confirm') }}" style="display: inline;">
+        {{ confirm_form.hidden_tag() }}
+        {{ confirm_form.submit(class="btn btn-primary") }}
+      </form>
+    {% else %}
+      <button type="button" class="btn btn-secondary" disabled title="Perbaiki file JSON Anda sebelum mengkonfirmasi">
+        🔒 IMPORT TERKUNCI (ADA KESALAHAN)
+      </button>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

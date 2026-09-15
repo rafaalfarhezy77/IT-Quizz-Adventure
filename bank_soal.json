@@ -1,0 +1,553 @@
+{
+  "station": "Software Engineering",
+  "sets": {
+    "A": [
+      {
+        "external_id": "SE-A-01",
+        "order_number": 1,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Manakah struktur data linier yang menerapkan prinsip kerja LIFO (Last In First Out)?",
+        "options": {
+          "A": "Stack (Tumpukan)",
+          "B": "Queue (Antrean)",
+          "C": "Linked List",
+          "D": "Binary Search Tree"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-02",
+        "order_number": 2,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Berapakah kompleksitas waktu rata-rata (average time complexity) dari algoritma Binary Search pada array terurut?",
+        "options": {
+          "A": "O(1)",
+          "B": "O(log n)",
+          "C": "O(n)",
+          "D": "O(n log n)"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-03",
+        "order_number": 3,
+        "member": 1,
+        "category": "Struktur Data",
+        "text": "Struktur data manakah yang paling efisien untuk memodelkan hubungan antar simpul (vertices) dan sisi (edges)?",
+        "options": {
+          "A": "Graph",
+          "B": "Array 1D",
+          "C": "Stack",
+          "D": "Queue"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-04",
+        "order_number": 4,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Prinsip SOLID manakah yang menyatakan bahwa kelas turunan harus dapat menggantikan kelas induknya tanpa merusak perilaku sistem?",
+        "options": {
+          "A": "Single Responsibility Principle",
+          "B": "Open/Closed Principle",
+          "C": "Liskov Substitution Principle",
+          "D": "Dependency Inversion Principle"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-05",
+        "order_number": 5,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Model pengembangan perangkat lunak yang berfokus pada iterasi bertahap, fleksibilitas perubahan, dan kolaborasi intensif disebut model...",
+        "options": {
+          "A": "Waterfall",
+          "B": "Agile / Scrum",
+          "C": "Big Bang",
+          "D": "Cleanroom"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-06",
+        "order_number": 6,
+        "member": 2,
+        "category": "Basis Data",
+        "text": "Klausa SQL manakah yang digunakan untuk menyaring kelompok baris setelah operasi agregasi (GROUP BY)?",
+        "options": {
+          "A": "WHERE",
+          "B": "ORDER BY",
+          "C": "HAVING",
+          "D": "DISTINCT"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-07",
+        "order_number": 7,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Status code HTTP manakah yang mengindikasikan bahwa permintaan berhasil dan sumber daya baru telah dibuat (Created)?",
+        "options": {
+          "A": "200 OK",
+          "B": "201 Created",
+          "C": "204 No Content",
+          "D": "301 Moved Permanently"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-08",
+        "order_number": 8,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Protokol keamanan web apa yang menyandikan data pertukaran antara peramban (browser) dan peladen web menggunakan TLS/SSL?",
+        "options": {
+          "A": "HTTP",
+          "B": "FTP",
+          "C": "HTTPS",
+          "D": "SMTP"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-A-09",
+        "order_number": 9,
+        "member": 3,
+        "category": "Version Control (Git)",
+        "text": "Perintah Git yang digunakan untuk menggabungkan perubahan dari satu cabang (branch) ke cabang yang sedang aktif adalah...",
+        "options": {
+          "A": "git clone",
+          "B": "git merge",
+          "C": "git push",
+          "D": "git checkout"
+        },
+        "correct_answer": "B",
+        "weight": 20.0
+      }
+    ],
+    "B": [
+      {
+        "external_id": "SE-B-01",
+        "order_number": 1,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Struktur kontrol perulangan yang dipastikan mengeksekusi blok kode minimal satu kali sebelum mengecek kondisi adalah...",
+        "options": {
+          "A": "For loop",
+          "B": "While loop",
+          "C": "Do-While loop",
+          "D": "Foreach loop"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-02",
+        "order_number": 2,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Manakah algoritma sorting berbasis perbandingan yang memiliki performa rata-rata O(n log n) dan membagi array dengan pivot?",
+        "options": {
+          "A": "Bubble Sort",
+          "B": "Insertion Sort",
+          "C": "Quick Sort",
+          "D": "Selection Sort"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-03",
+        "order_number": 3,
+        "member": 1,
+        "category": "Struktur Data",
+        "text": "Karakteristik utama dari struktur data Hash Table dalam pencarian elemen pada kondisi optimal adalah...",
+        "options": {
+          "A": "O(1) amortized",
+          "B": "O(n)",
+          "C": "O(n^2)",
+          "D": "O(log n)"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-04",
+        "order_number": 4,
+        "member": 2,
+        "category": "OOP & Desain Perangkat Lunak",
+        "text": "Pola desain (Design Pattern) yang memastikan suatu kelas hanya memiliki satu instansiasi tunggal di seluruh aplikasi adalah...",
+        "options": {
+          "A": "Factory Pattern",
+          "B": "Observer Pattern",
+          "C": "Singleton Pattern",
+          "D": "Adapter Pattern"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-05",
+        "order_number": 5,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Pengujian perangkat lunak yang memeriksa fungsi komponen individual tanpa menguji integrasi antar-modul disebut...",
+        "options": {
+          "A": "Integration Testing",
+          "B": "Unit Testing",
+          "C": "Acceptance Testing",
+          "D": "End-to-End Testing"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-06",
+        "order_number": 6,
+        "member": 2,
+        "category": "Basis Data",
+        "text": "Dalam basis data relasional, konsep ACID yang menjamin bahwa transaksi dieksekusi secara utuh atau tidak sama sekali adalah...",
+        "options": {
+          "A": "Atomicity",
+          "B": "Consistency",
+          "C": "Isolation",
+          "D": "Durability"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-07",
+        "order_number": 7,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Metode HTTP manakah yang dirancang untuk bersifat idempoten (idempotent) saat memperbarui seluruh representasi sumber daya?",
+        "options": {
+          "A": "POST",
+          "B": "PUT",
+          "C": "PATCH",
+          "D": "CONNECT"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-08",
+        "order_number": 8,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Mekanisme keamanan peramban yang membatasi dokumen atau skrip dari satu origin memuat data dari origin berbeda adalah...",
+        "options": {
+          "A": "Cross-Origin Resource Sharing (CORS)",
+          "B": "Same-Origin Policy (SOP)",
+          "C": "Content Security Policy (CSP)",
+          "D": "Subresource Integrity (SRI)"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-B-09",
+        "order_number": 9,
+        "member": 3,
+        "category": "DevOps & Deployment",
+        "text": "Teknologi containerization populer yang memungkinkan isolasi aplikasi beserta dependensinya dalam wadah portabel adalah...",
+        "options": {
+          "A": "Docker",
+          "B": "Apache HTTP Server",
+          "C": "Nginx Reverse Proxy",
+          "D": "GitLab CI"
+        },
+        "correct_answer": "A",
+        "weight": 20.0
+      }
+    ],
+    "C": [
+      {
+        "external_id": "SE-C-01",
+        "order_number": 1,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Fungsi yang memanggil dirinya sendiri secara langsung atau tidak langsung untuk menyelesaikan sub-masalah disebut...",
+        "options": {
+          "A": "Fungsi Rekursif",
+          "B": "Fungsi Lambda",
+          "C": "Fungsi Mutator",
+          "D": "Fungsi Void"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-02",
+        "order_number": 2,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Struktur data pohon biner di mana setiap simpul memiliki paling banyak dua anak disebut...",
+        "options": {
+          "A": "Trie",
+          "B": "B-Tree",
+          "C": "Binary Tree",
+          "D": "Red-Black Tree"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-03",
+        "order_number": 3,
+        "member": 1,
+        "category": "Struktur Data",
+        "text": "Struktur data Queue menerapkan prinsip operasional...",
+        "options": {
+          "A": "LIFO (Last In First Out)",
+          "B": "FIFO (First In First Out)",
+          "C": "Random Access",
+          "D": "Round Robin"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-04",
+        "order_number": 4,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Pada pola arsitektur MVC, komponen yang bertugas menangani interaksi pengguna dan mengarahkan aliran logika adalah...",
+        "options": {
+          "A": "Model",
+          "B": "View",
+          "C": "Controller",
+          "D": "Template"
+        },
+        "correct_answer": "C",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-05",
+        "order_number": 5,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Proses refactoring pada kode bertujuan untuk...",
+        "options": {
+          "A": "Menambah fitur baru secara drastis",
+          "B": "Meningkatkan keterbacaan dan struktur kode tanpa mengubah fungsionalitas eksternal",
+          "C": "Mengganti bahasa pemrograman keseluruhan",
+          "D": "Menghapus pengujian otomatis"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-06",
+        "order_number": 6,
+        "member": 2,
+        "category": "Basis Data",
+        "text": "Proses pengorganisasian data untuk mengurangi redundansi dan mencegah anomali pembaruan disebut...",
+        "options": {
+          "A": "Denormalisasi",
+          "B": "Normalisasi",
+          "C": "Indeksasi",
+          "D": "Partisi"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-07",
+        "order_number": 7,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Format pertukaran data ringan berbasis teks yang umum digunakan pada REST API modern adalah...",
+        "options": {
+          "A": "JSON",
+          "B": "XML",
+          "C": "CSV",
+          "D": "SOAP"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-08",
+        "order_number": 8,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Serangan web di mana penyerang menyuntikkan skrip berbahaya ke halaman yang dilihat pengguna lain disebut...",
+        "options": {
+          "A": "SQL Injection (SQLi)",
+          "B": "Cross-Site Scripting (XSS)",
+          "C": "Denial of Service (DoS)",
+          "D": "Man in the Middle (MitM)"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-C-09",
+        "order_number": 9,
+        "member": 3,
+        "category": "Version Control (Git)",
+        "text": "Perintah Git yang digunakan untuk menyimpan perubahan sementara pada direktori kerja tanpa membuat commit adalah...",
+        "options": {
+          "A": "git stash",
+          "B": "git reset",
+          "C": "git branch",
+          "D": "git cherry-pick"
+        },
+        "correct_answer": "A",
+        "weight": 20.0
+      }
+    ],
+    "D": [
+      {
+        "external_id": "SE-D-01",
+        "order_number": 1,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Tipe data primitif manakah yang merepresentasikan nilai logika benar (true) atau salah (false)?",
+        "options": {
+          "A": "Integer",
+          "B": "Boolean",
+          "C": "Float",
+          "D": "Character"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-02",
+        "order_number": 2,
+        "member": 1,
+        "category": "Algoritma & Pemrograman",
+        "text": "Algoritma traversal graf yang menjelajahi simpul bertetangga terlebih dahulu sebelum menuju simpul yang lebih dalam adalah...",
+        "options": {
+          "A": "Depth First Search (DFS)",
+          "B": "Breadth First Search (BFS)",
+          "C": "Dijkstra Algorithm",
+          "D": "Bellman-Ford"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-03",
+        "order_number": 3,
+        "member": 1,
+        "category": "Struktur Data",
+        "text": "Struktur data linier di mana setiap elemen menyimpan nilai data dan pointer referensi ke elemen berikutnya disebut...",
+        "options": {
+          "A": "Singly Linked List",
+          "B": "Static Array",
+          "C": "Matrix",
+          "D": "Hash Set"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-04",
+        "order_number": 4,
+        "member": 2,
+        "category": "OOP & Desain Perangkat Lunak",
+        "text": "Konsep OOP yang menyembunyikan detail implementasi internal dan hanya mengekspos antarmuka publik yang aman disebut...",
+        "options": {
+          "A": "Enkapsulasi (Encapsulation)",
+          "B": "Pewarisan (Inheritance)",
+          "C": "Polimorfisme (Polymorphism)",
+          "D": "Asosiasi (Association)"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-05",
+        "order_number": 5,
+        "member": 2,
+        "category": "Rekayasa Perangkat Lunak",
+        "text": "Dokumentasi spesifikasi formal yang mendeskripsikan seluruh kebutuhan fungsional dan non-fungsional perangkat lunak dikenal sebagai...",
+        "options": {
+          "A": "API Specification",
+          "B": "Software Requirements Specification (SRS)",
+          "C": "User Story Mapping",
+          "D": "Deployment Manifest"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-06",
+        "order_number": 6,
+        "member": 2,
+        "category": "Basis Data",
+        "text": "Kunci unik dalam tabel yang digunakan untuk mengidentifikasi setiap baris secara presisi dan tidak boleh bernilai NULL adalah...",
+        "options": {
+          "A": "Foreign Key",
+          "B": "Primary Key",
+          "C": "Candidate Key",
+          "D": "Composite Key"
+        },
+        "correct_answer": "B",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-07",
+        "order_number": 7,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Token digital berbasis standar terbuka RFC 7519 yang digunakan untuk autentikasi stateless antara klien dan peladen adalah...",
+        "options": {
+          "A": "JSON Web Token (JWT)",
+          "B": "Session Cookie",
+          "C": "Basic Auth",
+          "D": "API Key"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-08",
+        "order_number": 8,
+        "member": 3,
+        "category": "Pengembangan Web",
+        "text": "Serangan siber di mana peretas memanipulasi permintaan basis data melalui input pengguna yang tidak disanitasi disebut...",
+        "options": {
+          "A": "SQL Injection (SQLi)",
+          "B": "CSRF Attack",
+          "C": "Phishing",
+          "D": "DNS Poisoning"
+        },
+        "correct_answer": "A",
+        "weight": 10.0
+      },
+      {
+        "external_id": "SE-D-09",
+        "order_number": 9,
+        "member": 3,
+        "category": "DevOps & Deployment",
+        "text": "Praktik otomasi pengujian dan integrasi kode secara berkala ke repositori utama dikenal dengan istilah...",
+        "options": {
+          "A": "Continuous Integration (CI)",
+          "B": "Continuous Delivery (CD)",
+          "C": "Microservices Deployment",
+          "D": "Load Balancing"
+        },
+        "correct_answer": "A",
+        "weight": 20.0
+      }
+    ]
+  }
+}

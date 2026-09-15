@@ -1,0 +1,61 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Aturan Lomba Pos{% endblock %}
+
+{% block content %}
+<div class="participant-center-container">
+  <div class="rules-card nb-card">
+    <div class="rules-header">
+      <div class="chip-label">// TAHAP 5 DARI 5 · KETENTUAN POS</div>
+      <h1 class="rules-title">ATURAN PERLOMBAAN</h1>
+      <div class="rules-meta-banner">
+        <div class="rules-meta-item">
+          <span class="meta-label">POS:</span>
+          <span class="meta-value">{{ station.name }}</span>
+        </div>
+        <div class="rules-meta-item">
+          <span class="meta-label">TIM:</span>
+          <span class="meta-value">{{ team.team_name }} ({{ team.team_code }})</span>
+        </div>
+        <div class="rules-meta-item">
+          <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }}">
+            MODE: {% if station.mode.value == 'MEMBER_ROTATION' %}ROTASI ANGGOTA{% elif station.mode.value == 'BELUM_DIKETAHUI' %}BELUM DIKETAHUI{% else %}KERJA SAMA TIM{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rules Items -->
+    <div class="rules-list-container">
+      <div class="rules-subheading">TATA TERTIB & PROSEDUR PENGERJAAN:</div>
+      <ul class="rules-checklist">
+        {% for rule in rules %}
+          <li class="rule-item">
+            <span class="rule-index">#0{{ loop.index }}</span>
+            <span class="rule-text">{{ rule }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Integrity Statement -->
+    <div class="rules-agreement-box nb-card">
+      <span class="agree-icon">📜</span>
+      <div class="agree-text">
+        Dengan menekan tombol di bawah, seluruh anggota tim menyatakan telah memahami dan bersedia mematuhi seluruh ketentuan lomba pada pos ini dengan menjunjung tinggi sportivitas.
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="rules-actions">
+      <form method="post" action="{{ url_for('participant.rules') }}">
+        {{ form.hidden_tag() }}
+        <button type="submit" class="btn btn-primary btn-lg btn-block">
+          <span>SAYA SUDAH MEMBACA ATURAN & MASUK RUANG TUNGGU</span>
+          <span class="btn-arrow">➔</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

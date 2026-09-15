@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit Tim ' ~ team.team_code if is_edit else 'Tambah Tim Baru' }} · Admin IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">DATA PESERTA // TEAM_FORM</div>
+    <h1>{{ 'Edit Data Tim ' ~ team.team_code if is_edit else 'Tambah Tim Baru' }}</h1>
+    <p class="welcome-text">
+      {{ 'Perbarui kode tim unik, nama tim, asal sekolah, atau kelompok lomba.' if is_edit else 'Masukkan data tim peserta baru untuk didaftarkan ke dalam kelompok lomba.' }}
+    </p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.teams_index') }}" class="btn btn-secondary btn-sm">
+      ← KEMBALI KE DAFTAR TIM
+    </a>
+  </div>
+</div>
+
+<div class="form-container">
+  <section class="nb-panel team-form-card">
+    <div class="card-stripe"></div>
+    <form method="post" novalidate class="team-form">
+      {{ form.hidden_tag() }}
+
+      <div class="form-grid-2col">
+        <!-- KODE TIM -->
+        <div class="form-group">
+          <div class="form-label-row">
+            {{ form.team_code.label(class="control-label") }}
+            <span class="field-tag-neon">UNIK / UPPERCASE</span>
+          </div>
+          {{ form.team_code(class="nb-input", placeholder="Contoh: A01, B04, C12...", autofocus=(not is_edit)) }}
+          {% for error in form.team_code.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+          <small class="field-hint">Kode tim case-insensitive (huruf kecil otomatis diubah menjadi kapital).</small>
+        </div>
+
+        <!-- KELOMPOK / GROUP -->
+        <div class="form-group">
+          <div class="form-label-row">
+            {{ form.group_id.label(class="control-label") }}
+            <span class="field-tag">KELOMPOK</span>
+          </div>
+          {{ form.group_id(class="nb-select") }}
+          {% for error in form.group_id.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- NAMA TIM -->
+      <div class="form-group">
+        <div class="form-label-row">
+          {{ form.team_name.label(class="control-label") }}
+          <span class="field-tag">REQUIRED</span>
+        </div>
+        {{ form.team_name(class="nb-input", placeholder="Contoh: Team Alpha, Cyber Wizards, Logic Gate...") }}
+        {% for error in form.team_name.errors %}
+          <span class="field-error">⚠ {{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <!-- ASAL SEKOLAH -->
+      <div class="form-group">
+        <div class="form-label-row">
+          {{ form.school.label(class="control-label") }}
+          <span class="field-tag">INSTITUSI</span>
+        </div>
+        {{ form.school(class="nb-input", placeholder="Contoh: SMAN 1 Madiun, SMKN 1 Madiun...") }}
+        {% for error in form.school.errors %}
+          <span class="field-error">⚠ {{ error }}</span>
+        {% endfor %}
+      </div>
+
+      <!-- FORM ACTIONS -->
+      <div class="form-actions-bar">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('admin.teams_index') }}" class="btn btn-secondary">
+          BATAL
+        </a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

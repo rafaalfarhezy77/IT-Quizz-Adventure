@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Peserta{% endblock %} · IT Quest Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
+</head>
+<body class="participant-body">
+  <header class="participant-topbar">
+    <div class="topbar-inner">
+      <div class="participant-brand-wrap">
+        <a href="{{ url_for('index') }}" class="participant-brand">
+          <span class="badge-brand">IT QUEST</span>
+          <span class="badge-portal">PORTAL PESERTA</span>
+        </a>
+      </div>
+
+      <!-- Stage Tracker / Stepper (Visible if authorized) -->
+      {% if session.get('participant_authorized') %}
+      <nav class="flow-stepper" aria-label="Progress Alur Peserta">
+        {% set current_step = request.endpoint %}
+        <span class="step-chip {{ 'step-done' if session.get('participant_station_id') else ('step-current' if current_step == 'participant.station_select' else '') }}">
+          1. POS
+        </span>
+        <span class="step-divider">»</span>
+        <span class="step-chip {{ 'step-done' if session.get('participant_group_id') else ('step-current' if current_step == 'participant.group_select' else '') }}">
+          2. KELOMPOK
+        </span>
+        <span class="step-divider">»</span>
+        <span class="step-chip {{ 'step-done' if session.get('participant_team_id') else ('step-current' if current_step == 'participant.team_select' else '') }}">
+          3. ISI TIM
+        </span>
+        <span class="step-divider">»</span>
+        <span class="step-chip {{ 'step-done' if session.get('participant_confirmed') else ('step-current' if current_step == 'participant.confirm' else '') }}">
+          4. KONFIRMASI
+        </span>
+        <span class="step-divider">»</span>
+        <span class="step-chip {{ 'step-done' if session.get('participant_rules_accepted') else ('step-current' if current_step == 'participant.rules' else '') }}">
+          5. ATURAN
+        </span>
+        <span class="step-divider">»</span>
+        <span class="step-chip {{ 'step-done' if current_step == 'participant.waiting' else '' }}">
+          6. RUANG TUNGGU
+        </span>
+      </nav>
+      {% endif %}
+
+      <div class="participant-topbar-actions">
+        {% if session.get('participant_authorized') %}
+        <form method="post" action="{{ url_for('participant.reset') }}" class="form-inline-reset">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline btn-reset-flow" onclick="return confirm('Apakah Anda yakin ingin mereset pilihan dan keluar?');">
+            <span>RESET / KELUAR</span>
+          </button>
+        </form>
+        {% else %}
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-sm">
+          <span>BERANDA</span>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <main class="participant-main">
+    <!-- Flash Messages Container -->
+    <div class="flash-stack" aria-live="polite">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="nb-alert alert-{{ category }}" role="alert">
+            <span class="alert-icon">✦</span>
+            <span class="alert-text">{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endwith %}
+    </div>
+
+    <!-- Page Specific Content -->
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="participant-footer">
+    <div class="footer-inner">
+      <span>MYTHIC 3.0 · IT QUEST ADVENTURE</span>
+      <span class="status-indicator"><span class="dot-pulse"></span> SISTEM LOKAL TERHUBUNG</span>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

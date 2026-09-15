@@ -1,0 +1,159 @@
+{% extends "admin/base.html" %}
+{% block title %}Preview Import: {{ filename }} · Admin IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">VERIFIKASI DATA // CSV_PREVIEW</div>
+    <h1>Preview Import Data Tim</h1>
+    <p class="welcome-text">File: <strong>{{ filename }}</strong> · Tinjau hasil validasi setiap baris sebelum menyimpannya ke basis data.</p>
+  </div>
+  <div class="heading-actions">
+    <form method="post" action="{{ url_for('admin.teams_import_cancel') }}" style="display: inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="file_token" value="{{ file_token }}">
+      <button type="submit" class="btn btn-secondary btn-sm">
+        ✕ BATALKAN & KEMBALI
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- PANEL RINGKASAN HASIL VALIDASI -->
+<section class="nb-panel preview-summary-panel">
+  <div class="summary-stats-grid">
+    <div class="stat-card-mini">
+      <span class="stat-mini-label">TOTAL BARIS CSV:</span>
+      <span class="stat-mini-num">{{ validation.total_rows }}</span>
+    </div>
+    <div class="stat-card-mini valid-border">
+      <span class="stat-mini-label">BARIS VALID:</span>
+      <span class="stat-mini-num text-neon">{{ validation.valid_rows_count }}</span>
+    </div>
+    <div class="stat-card-mini {{ 'error-border' if validation.error_rows_count > 0 }}">
+      <span class="stat-mini-label">BARIS ERROR / DUPLIKAT:</span>
+      <span class="stat-mini-num {{ 'text-danger' if validation.error_rows_count > 0 else 'text-muted' }}">
+        {{ validation.error_rows_count }}
+      </span>
+    </div>
+  </div>
+
+  <div class="validation-status-banner {{ 'banner-valid' if validation.is_valid else 'banner-error' }}">
+    {% if validation.is_valid %}
+      <span class="banner-symbol">✓</span>
+      <div>
+        <strong>SEMUA DATA VALID (100%):</strong> Seluruh {{ validation.valid_rows_count }} tim siap didaftarkan ke dalam database lomba.
+      </div>
+    {% else %}
+      <span class="banner-symbol">⚠</span>
+      <div>
+        <strong>KEBIJAKAN ALL-OR-NOTHING:</strong> Ditemukan {{ validation.error_rows_count }} kesalahan pada file CSV. Tombol import dinonaktifkan sampai seluruh kesalahan diperbaiki.
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- RINCIAN ERROR (JIKA ADA) -->
+{% if validation.summary_errors %}
+  <section class="nb-panel error-summary-panel">
+    <div class="error-panel-header">
+      <span class="error-badge">DAFTAR KESALAHAN PER BARIS</span>
+      <h3>Perbaiki data berikut pada file CSV Anda:</h3>
+    </div>
+    <ul class="error-items-list">
+      {% for err in validation.summary_errors %}
+        <li>{{ err }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+<!-- TABEL PREVIEW DATA BARIS -->
+<div class="table-responsive nb-panel table-panel">
+  <table class="nb-table" aria-label="Tabel Preview Data Tim CSV">
+    <thead>
+      <tr>
+        <th style="width: 70px;">Baris</th>
+        <th style="width: 100px;">Kode Tim</th>
+        <th>Nama Tim</th>
+        <th>Asal Sekolah</th>
+        <th style="width: 110px;">Group</th>
+        <th style="width: 130px;">Status Baris</th>
+        <th>Catatan Validasi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in validation.rows %}
+        <tr class="{{ 'row-error' if r.status != 'VALID' }}">
+          <td>
+            <span class="line-badge">#{{ r.line }}</span>
+          </td>
+          <td>
+            <strong class="team-code-badge">{{ r.team_code or '-' }}</strong>
+          </td>
+          <td>
+            <strong>{{ r.team_name or '-' }}</strong>
+          </td>
+          <td>
+            <span>{{ r.school or '-' }}</span>
+          </td>
+          <td>
+            {% if r.group %}
+              <span class="group-badge group-{{ r.group|lower }}">Group {{ r.group }}</span>
+            {% else %}
+              <span class="text-danger">KOSONG</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.status == 'VALID' %}
+              <span class="csv-status-tag status-valid">✓ VALID</span>
+            {% elif r.status == 'DUPLICATE' %}
+              <span class="csv-status-tag status-duplicate">⚠ DUPLICATE</span>
+            {% else %}
+              <span class="csv-status-tag status-error">✕ ERROR</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.errors %}
+              <ul class="row-error-list">
+                {% for e in r.errors %}
+                  <li>{{ e }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <span class="row-ok-text">Siap di-import</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- TOMBOL KONFIRMASI / BATAL -->
+<section class="preview-actions-bar">
+  {% if validation.is_valid %}
+    <form method="post" action="{{ url_for('admin.teams_import_confirm') }}">
+      {{ confirm_form.hidden_tag() }}
+      <button type="submit" class="btn btn-primary">
+        <span>✓ KONFIRMASI & IMPORT {{ validation.valid_rows_count }} TIM KE DATABASE</span> <i>→</i>
+      </button>
+    </form>
+  {% else %}
+    <button class="btn btn-secondary" disabled title="Perbaiki file CSV terlebih dahulu">
+      🔒 IMPORT DIBLOKIR (DATA MENGANDUNG ERROR)
+    </button>
+    <a href="{{ url_for('admin.teams_import') }}" class="btn btn-primary btn-sm">
+      Unggah Ulang File Perbaikan ↗
+    </a>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin.teams_import_cancel') }}" style="display: inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="file_token" value="{{ file_token }}">
+    <button type="submit" class="btn btn-secondary">
+      Batal
+    </button>
+  </form>
+</section>
+{% endblock %}

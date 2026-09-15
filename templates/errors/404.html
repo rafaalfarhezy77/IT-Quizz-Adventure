@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>404 Halaman Tidak Ditemukan · IT Quest Adventure</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
+</head>
+<body class="participant-body">
+  <div class="participant-center-container" style="max-width: 550px; margin: 5rem auto; padding: 1.5rem;">
+    <div class="nb-card" style="border: 3px solid #000000; background: #121212; padding: 2.5rem 2rem; text-align: center; box-shadow: 8px 8px 0px #000000;">
+      <div style="font-size: 3.5rem; line-height: 1; margin-bottom: 1rem;">🔍</div>
+      <div style="font-family: var(--font-mono); font-size: 0.85rem; letter-spacing: 0.1em; color: var(--accent-neon); margin-bottom: 0.5rem;">
+        ERROR_CODE // 404_NOT_FOUND
+      </div>
+      <h1 style="font-size: 2rem; font-weight: 900; color: #FFFFFF; margin: 0 0 1rem 0;">HALAMAN TIDAK DITEMUKAN</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.6;">
+        Halaman atau alamat URL yang Anda tuju tidak ditemukan di server lomba. Silakan periksa kembali tautan Anda.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/" class="btn btn-primary">
+          <span>BERANDA LOMBA</span>
+          <span class="btn-arrow">➔</span>
+        </a>
+        <a href="javascript:history.back()" class="btn btn-outline">
+          <span>KEMBALI</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,45 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Akses Peserta{% endblock %}
+
+{% block content %}
+<div class="participant-center-container">
+  <div class="access-card nb-card">
+    <div class="access-card-header">
+      <div class="chip-label">// GERBANG AKSES LOMBA</div>
+      <h1 class="access-title">KODE AKSES PESERTA</h1>
+      <p class="access-subtitle">
+        Masukkan kode akses bersama yang diberikan oleh panitia untuk memulai pemilihan stasiun pos dan registrasi tim.
+      </p>
+    </div>
+
+    <form method="post" action="{{ url_for('participant.access') }}" class="access-form" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="nb-form-group">
+        <label for="access_code" class="nb-label">
+          KODE AKSES RESMI <span class="text-danger">*</span>
+        </label>
+        {{ form.access_code(class="nb-input access-code-input " + ("input-error" if form.access_code.errors else "")) }}
+        {% for error in form.access_code.errors %}
+          <div class="field-error-text">{{ error }}</div>
+        {% endfor %}
+        <span class="field-helper-text">
+          Tips: Kode tidak peka huruf besar/kecil (contoh: <code>QUEST2026</code>).
+        </span>
+      </div>
+
+      <div class="access-form-actions">
+        {{ form.submit(class="btn btn-primary btn-block btn-lg") }}
+      </div>
+    </form>
+
+    <div class="access-card-footer">
+      <div class="info-note">
+        <span class="note-icon">ℹ</span>
+        <span>Pastikan tim Anda berada pada pos dan meja yang telah ditentukan oleh panitia.</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

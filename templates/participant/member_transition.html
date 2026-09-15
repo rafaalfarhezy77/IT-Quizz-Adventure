@@ -1,0 +1,77 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Pergantian Anggota · {{ station.name }}{% endblock %}
+
+{% block content %}
+<div class="participant-center-container member-transition-container">
+  <div class="member-transition-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+
+    <div class="transition-topbar">
+      <div class="quiz-team-badge">
+        <span class="nb-badge badge-dark">{{ team.team_code }}</span>
+        <span class="quiz-team-name">{{ team.team_name }}</span>
+      </div>
+      <div class="quiz-station-badge">
+        <span class="nb-badge badge-neon">{{ station.name }}</span>
+        <span class="nb-badge badge-neutral">ROTASI ANGGOTA</span>
+      </div>
+    </div>
+
+    <!-- Live Timer Sync -->
+    <div class="transition-timer-box nb-card">
+      <span class="timer-mini-label"><span class="dot-pulse-mini"></span> SISA WAKTU TOTAL TIM</span>
+      <div id="session-timer"
+           class="nb-timer timer-lg {{ 'timer-normal' if remaining_seconds > 120 else ('timer-warning' if remaining_seconds > 30 else 'timer-critical') }}"
+           data-status="RUNNING"
+           data-remaining="{{ remaining_seconds }}"
+           data-duration="{{ competition_session.duration_seconds }}"
+           data-sync-url="{{ url_for('api.participant_session_status') }}"
+           data-redirect-url="{{ url_for('participant.result') }}">
+        <span class="timer-digits">
+          {{ "%02d:%02d" | format((remaining_seconds // 60), (remaining_seconds % 60)) }}
+        </span>
+      </div>
+    </div>
+
+    <div class="transition-body">
+      <div class="transition-step-badge">
+        TAHAP {{ completed_member }} SELESAI → MASUK TAHAP {{ next_member }}
+      </div>
+
+      <h1 class="transition-heading">SILAKAN GANTI GILIRAN ANGGOTA!</h1>
+
+      <div class="transition-instruction-box nb-card">
+        <div class="hand-icon">🤝</div>
+        <div class="instruction-content">
+          <p class="instruction-lead">
+            Bagian <strong>Anggota {{ completed_member }}</strong> telah dikunci.
+          </p>
+          <p class="instruction-sub">
+            Harap segera serahkan perangkat / laptop ini kepada <strong>Anggota {{ next_member }}</strong> (dari total {{ total_members }} anggota tim).
+          </p>
+          <p class="instruction-note">
+            ⚠️ <em>Waktu perlombaan tetap berjalan terus. Jangan menunda penyerahan perangkat!</em>
+          </p>
+        </div>
+      </div>
+
+      <div class="transition-action">
+        <a href="{{ url_for('participant.quiz') }}" class="btn btn-primary btn-lg btn-block btn-start-next">
+          <span>SAYA ANGGOTA {{ next_member }} — MULAI KERJAKAN SOAL</span>
+          <span class="btn-arrow">➔</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="transition-footer">
+      <span>KELOMPOK: <strong>{{ group.code }}</strong></span>
+      <span>SEKOLAH: <strong>{{ team.school }}</strong></span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
+{% endblock %}

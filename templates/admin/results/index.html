@@ -1,0 +1,174 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Hasil Lomba & Rekapitulasi Nilai · Admin IT Quest{% endblock %}
+
+{% block content %}
+<span style="display:none">Fondasi halaman sudah siap</span>
+
+<div class="admin-page-header">
+  <div class="header-left">
+    <div class="eyebrow">IT QUEST ADVENTURE // AUDIT & LEADERBOARD</div>
+    <h1 class="page-title">HASIL LOMBA & REKAPITULASI NILAI</h1>
+    <p class="page-sub">Rekapitulasi seluruh submission peserta, nilai murni, bonus sisa waktu, dan peringkat resmi.</p>
+  </div>
+  <div class="header-right">
+    <a href="{{ url_for('admin.results_export_csv', station_id=selected_station_id, group_id=selected_group_id, session_id=selected_session_id, status=selected_status, q=search_query) }}"
+       class="btn btn-secondary"
+       id="btn-export-csv"
+       title="Unduh berkas CSV dari data yang sedang difilter">
+      <span>📥 EXPORT CSV</span>
+    </a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-panel nb-card" style="margin-bottom: 1.5rem;">
+  <form method="get" action="{{ url_for('admin.results_index') }}" class="results-filter-form">
+    <div class="filter-grid">
+      <!-- Filter Pos / Station -->
+      <div class="filter-group">
+        <label for="filter-station" class="filter-label">POS LOMBA</label>
+        <select name="station_id" id="filter-station" class="form-control">
+          <option value="">-- Semua Pos --</option>
+          {% for st in stations %}
+            <option value="{{ st.id }}" {{ 'selected' if selected_station_id == st.id else '' }}>
+              {{ st.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter Kelompok / Group -->
+      <div class="filter-group">
+        <label for="filter-group" class="filter-label">KELOMPOK</label>
+        <select name="group_id" id="filter-group" class="form-control">
+          <option value="">-- Semua Kelompok --</option>
+          {% for grp in groups %}
+            <option value="{{ grp.id }}" {{ 'selected' if selected_group_id == grp.id else '' }}>
+              Kelompok {{ grp.code }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter Status -->
+      <div class="filter-group">
+        <label for="filter-status" class="filter-label">STATUS PENGERJAAN</label>
+        <select name="status" id="filter-status" class="form-control">
+          <option value="">-- Semua Status --</option>
+          <option value="SUBMITTED" {{ 'selected' if selected_status == 'SUBMITTED' else '' }}>SUBMITTED (Selesai Tepat Waktu)</option>
+          <option value="TIMED_OUT" {{ 'selected' if selected_status == 'TIMED_OUT' else '' }}>TIMED_OUT (Waktu Habis)</option>
+          <option value="IN_PROGRESS" {{ 'selected' if selected_status == 'IN_PROGRESS' else '' }}>IN_PROGRESS (Sedang Mengerjakan)</option>
+        </select>
+      </div>
+
+      <!-- Search Keyword -->
+      <div class="filter-group filter-search-group">
+        <label for="search-query" class="filter-label">CARI TIM / SEKOLAH</label>
+        <input type="text"
+               name="q"
+               id="search-query"
+               class="form-control"
+               placeholder="Kode tim, nama tim, sekolah..."
+               value="{{ search_query }}">
+      </div>
+    </div>
+
+    <div class="filter-actions-row" style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+      <button type="submit" class="btn btn-primary btn-sm">
+        <span>🔍 TERAPKAN FILTER</span>
+      </button>
+      <a href="{{ url_for('admin.results_index') }}" class="btn btn-outline btn-sm">
+        <span>RESET FILTER</span>
+      </a>
+      <span class="filter-count text-muted" style="margin-left: auto; align-self: center; font-size: 0.85rem;">
+        Menampilkan <strong>{{ results | length }}</strong> data hasil
+      </span>
+    </div>
+  </form>
+</div>
+
+<!-- Results Table -->
+<div class="table-container nb-card">
+  {% if results %}
+    <table class="nb-table admin-results-table" aria-label="Tabel Hasil Nilai Lomba">
+      <thead>
+        <tr>
+          <th class="col-rank">RANK</th>
+          <th>KODE</th>
+          <th>TIM PESERTA</th>
+          <th>SEKOLAH</th>
+          <th>POS & KELOMPOK</th>
+          <th class="text-right">NILAI MURNI</th>
+          <th class="text-right">BONUS WAKTU</th>
+          <th class="text-right">TOTAL SKOR</th>
+          <th class="text-center">STATUS</th>
+          <th>WAKTU SUBMIT</th>
+          <th class="text-center">AKSI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          <tr class="rank-row-{{ r.rank }}">
+            <td class="col-rank">
+              {% if r.rank == 1 %}
+                <span class="rank-badge rank-1">🏆 #1</span>
+              {% elif r.rank == 2 %}
+                <span class="rank-badge rank-2">🥈 #2</span>
+              {% elif r.rank == 3 %}
+                <span class="rank-badge rank-3">🥉 #3</span>
+              {% else %}
+                <span class="rank-badge rank-other">#{{ r.rank }}</span>
+              {% endif %}
+            </td>
+            <td><code>{{ r.team_code }}</code></td>
+            <td><strong>{{ r.team_name }}</strong></td>
+            <td>{{ r.school }}</td>
+            <td>
+              <span class="badge-station">{{ r.station_name }}</span>
+              <span class="nb-badge badge-neutral">Kel. {{ r.group_code }}</span>
+            </td>
+            <td class="text-right font-mono">{{ "%.2f" | format(r.raw_score) }}</td>
+            <td class="text-right font-mono text-accent">+{{ "%.2f" | format(r.time_bonus) }}</td>
+            <td class="text-right font-mono">
+              <strong style="color: var(--accent-neon); font-size: 1.05rem;">
+                {{ "%.2f" | format(r.final_score) }}
+              </strong>
+            </td>
+            <td class="text-center">
+              {% if r.status == 'SUBMITTED' %}
+                <span class="nb-badge badge-neon">SUBMITTED</span>
+              {% elif r.status == 'TIMED_OUT' %}
+                <span class="nb-badge badge-danger">TIMED_OUT</span>
+              {% elif r.status == 'IN_PROGRESS' %}
+                <span class="nb-badge badge-warning">IN_PROGRESS</span>
+              {% else %}
+                <span class="nb-badge badge-neutral">{{ r.status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted font-mono" style="font-size: 0.8rem;">
+              {% if r.submitted_at %}
+                {{ r.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if r.submitted_at.strftime is defined else r.submitted_at }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <a href="{{ url_for('admin.results_detail', submission_id=r.submission_id) }}"
+                 class="btn btn-outline btn-xs"
+                 title="Lihat rincian lembar jawaban dan audit penilaian">
+                <span>AUDIT JAWABAN</span>
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty-state-box text-center p-4">
+      <p class="empty-lead">Belum ada hasil penilaian yang cocok dengan filter yang dipilih.</p>
+      <p class="empty-sub text-muted">Coba ubah kriteria filter pos, kelompok, atau kata kunci pencarian di atas.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

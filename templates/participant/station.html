@@ -1,0 +1,66 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Pilih Pos Perlombaan{% endblock %}
+
+{% block content %}
+<div class="participant-flow-container">
+  <div class="flow-header">
+    <div class="flow-subtitle">// TAHAP 1 DARI 5</div>
+    <h1 class="flow-title">PILIH POS PERLOMBAAN</h1>
+    <p class="flow-description">
+      Pilih pos stasiun tempat tim Anda berada saat ini. Pastikan pilihan pos sesuai dengan jadwal giliran kelompok Anda.
+    </p>
+  </div>
+
+  {% if stations %}
+    <div class="selection-grid">
+      {% for station in stations %}
+        <div class="selection-card nb-card {{ 'card-selected' if selected_station_id == station.id else '' }}">
+          <div class="selection-card-header">
+            <span class="station-number">POS PERLOMBAAN</span>
+            <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }}">
+              {% if station.mode.value == 'MEMBER_ROTATION' %}
+                ROTASI ANGGOTA
+              {% elif station.mode.value == 'BELUM_DIKETAHUI' %}
+                BELUM DIKETAHUI
+              {% else %}
+                KERJA SAMA TIM
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="selection-card-body">
+            <h2 class="station-name">{{ station.name }}</h2>
+            <p class="station-mode-desc">
+              {% if station.mode.value == 'MEMBER_ROTATION' %}
+                Mode perputaran giliran anggota tiap soal. Anggota tim bergantian mengisi jawaban di layar.
+              {% elif station.mode.value == 'BELUM_DIKETAHUI' %}
+                Bentuk pengerjaan dan konsep pos ini belum ditentukan. Ikuti arahan dan instruksi dari panitia lomba.
+              {% else %}
+                Mode kolaborasi bebas. Seluruh anggota tim berdiskusi bersama dalam menyelesaikan soal.
+              {% endif %}
+            </p>
+          </div>
+
+          <div class="selection-card-footer">
+            <form method="post" action="{{ url_for('participant.station_select') }}">
+              {{ form.csrf_token }}
+              <input type="hidden" name="item_id" value="{{ station.id }}">
+              <button type="submit" class="btn {{ 'btn-primary' if selected_station_id == station.id else 'btn-secondary' }} btn-block">
+                <span>{{ '✓ TERPILIH — LANJUTKAN' if selected_station_id == station.id else 'PILIH POS INI' }}</span>
+                <span class="btn-arrow">➔</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state-box nb-card">
+      <div class="empty-icon">⚠️</div>
+      <h3>Tidak Ada Pos Aktif</h3>
+      <p>Belum ada pos perlombaan yang aktif saat ini. Silakan hubungi panitia untuk mengaktifkan pos lomba.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

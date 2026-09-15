@@ -1,0 +1,86 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Ruang Tunggu Peserta{% endblock %}
+
+{% block content %}
+<div class="participant-center-container waiting-room-container">
+  <div class="waiting-card nb-card">
+    <!-- Status Header Banner -->
+    <div class="waiting-header">
+      <div class="waiting-status-badge-wrap">
+        <div class="status-indicator-live" id="session-status" data-status="WAITING">
+          <span class="live-dot-pulse"></span>
+          <span class="status-text">STATUS: WAITING FOR HOST</span>
+        </div>
+      </div>
+      <h1 class="waiting-title">RUANG TUNGGU SESI</h1>
+      <p class="waiting-subtitle">
+        Tim Anda telah siap dan terdaftar di pos ini. Harap menunggu panitia memulai sesi perlombaan.
+      </p>
+    </div>
+
+    <!-- Verified Team Identity Card -->
+    <div class="team-identity-card nb-card">
+      <div class="identity-card-header">
+        <span class="identity-tag">[IDENTITAS TERDAFTAR]</span>
+        <span class="nb-badge badge-neon">VERIFIED ✓</span>
+      </div>
+
+      <div class="identity-grid">
+        <div class="identity-field">
+          <span class="mono-label">POS PERLOMBAAN</span>
+          <span class="mono-val text-bold">{{ station.name }}</span>
+          <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }} badge-xs">
+            {{ 'ROTASI ANGGOTA' if station.mode.value == 'MEMBER_ROTATION' else ('BELUM DIKETAHUI' if station.mode.value == 'BELUM_DIKETAHUI' else 'KERJA SAMA') }}
+          </span>
+        </div>
+
+        <div class="identity-field">
+          <span class="mono-label">KELOMPOK</span>
+          <span class="mono-val text-bold">KELOMPOK {{ group.code }}</span>
+        </div>
+
+        <div class="identity-field">
+          <span class="mono-label">KODE TIM</span>
+          <span class="mono-val text-bold mono-highlight">{{ team.team_code }}</span>
+        </div>
+
+        <div class="identity-field">
+          <span class="mono-label">NAMA TIM</span>
+          <span class="mono-val text-bold team-name-display">{{ team.team_name }}</span>
+        </div>
+
+        <div class="identity-field span-full">
+          <span class="mono-label">ASAL SEKOLAH</span>
+          <span class="mono-val">{{ team.school }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Instructions Notice -->
+    <div class="waiting-instructions nb-card">
+      <div class="instruction-header">
+        <span class="inst-icon">⏳</span>
+        <span class="inst-title">PETUNJUK DI RUANG TUNGGU:</span>
+      </div>
+      <ol class="inst-list">
+        <li>Panitia pos akan mengonfirmasi kesiapan seluruh tim sebelum menekan tombol <strong>Mulai Sesi</strong>.</li>
+        <li>Setelah sesi dimulai oleh panitia, sistem akan otomatis mengaktifkan soal dan waktu perlombaan.</li>
+        <li>Jika terdapat kekeliruan identitas tim atau pos, segera tekan tombol <strong>Ganti / Reset Pilihan</strong> di bawah sebelum sesi dimulai.</li>
+      </ol>
+    </div>
+
+    <!-- Actions Row -->
+    <div class="waiting-actions">
+      <form method="post" action="{{ url_for('participant.reset') }}" class="form-reset-waiting">
+        {{ reset_form.hidden_tag() }}
+        <button type="submit" class="btn btn-outline btn-block" onclick="return confirm('Apakah Anda yakin ingin keluar dan mereset pilihan tim ini?');">
+          <span>✕ KELUAR / RESET PILIHAN TIM</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/waiting.js') }}"></script>
+{% endblock %}

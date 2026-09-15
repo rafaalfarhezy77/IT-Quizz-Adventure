@@ -1,0 +1,69 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Pilih Kelompok{% endblock %}
+
+{% block content %}
+<div class="participant-flow-container">
+  <!-- Selection Context Banner -->
+  <div class="selection-context-banner nb-card">
+    <div class="context-item">
+      <span class="context-label">POS TERPILIH:</span>
+      <span class="context-value">{{ ctx.station.name }}</span>
+      <span class="nb-badge {{ 'badge-neon' if ctx.station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if ctx.station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }}">{{ 'ROTASI' if ctx.station.mode.value == 'MEMBER_ROTATION' else ('BELUM DIKETAHUI' if ctx.station.mode.value == 'BELUM_DIKETAHUI' else 'NORMAL') }}</span>
+    </div>
+    <div class="context-actions">
+      <a href="{{ url_for('participant.station_select') }}" class="btn btn-outline btn-sm">
+        <span>← GANTI POS</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="flow-header">
+    <div class="flow-subtitle">// TAHAP 2 DARI 5</div>
+    <h1 class="flow-title">PILIH KELOMPOK</h1>
+    <p class="flow-description">
+      Tentukan kelompok Anda (Kelompok A, B, C, atau D). Daftar tim peserta akan disaring sesuai kelompok yang dipilih.
+    </p>
+  </div>
+
+  {% if groups %}
+    <div class="selection-grid selection-grid-groups">
+      {% for group in groups %}
+        <div class="selection-card nb-card group-card {{ 'card-selected' if selected_group_id == group.id else '' }}">
+          <div class="group-card-header">
+            <span class="group-badge">KELOMPOK</span>
+            <span class="group-code-display">{{ group.code }}</span>
+          </div>
+
+          <div class="selection-card-body">
+            <div class="group-stats">
+              <span class="mono-label">TERDAFTAR:</span>
+              <span class="mono-value">{{ group.teams | length }} TIM</span>
+            </div>
+            <p class="group-card-desc">
+              Pilih kelompok ini jika tim Anda dijadwalkan di Kelompok {{ group.code }}.
+            </p>
+          </div>
+
+          <div class="selection-card-footer">
+            <form method="post" action="{{ url_for('participant.group_select') }}">
+              {{ form.csrf_token }}
+              <input type="hidden" name="item_id" value="{{ group.id }}">
+              <button type="submit" class="btn {{ 'btn-primary' if selected_group_id == group.id else 'btn-secondary' }} btn-block">
+                <span>{{ '✓ TERPILIH — LANJUTKAN' if selected_group_id == group.id else 'PILIH KELOMPOK ' + group.code }}</span>
+                <span class="btn-arrow">➔</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state-box nb-card">
+      <div class="empty-icon">⚠️</div>
+      <h3>Tidak Ada Kelompok</h3>
+      <p>Belum ada data kelompok di dalam sistem. Silakan hubungi panitia.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

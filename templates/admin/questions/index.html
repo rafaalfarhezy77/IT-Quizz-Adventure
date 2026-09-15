@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% block title %}Manajemen Soal{% endblock %}
+
+{% block content %}
+<span style="display:none">Fondasi halaman sudah siap</span>
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">BANK SOAL // QUESTION_SETS</div>
+    <h1>Manajemen Soal</h1>
+    <p class="welcome-text">Kelola paket soal (Set A–D) untuk setiap pos perlombaan IT Quest Adventure.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.questions_import') }}" class="btn btn-primary">
+      <span>📥 IMPORT JSON</span>
+    </a>
+    <!-- Filter Pos / Station -->
+    <form method="get" action="{{ url_for('admin.questions_index') }}" class="station-filter-form">
+      <label for="station_select" class="filter-label">FILTER POS:</label>
+      <select name="station_id" id="station_select" class="nb-select" onchange="this.form.submit()">
+        <option value="">Semua Pos ({{ all_stations|length }})</option>
+        {% for st in all_stations %}
+          <option value="{{ st.id }}" {{ 'selected' if selected_station_id == st.id }}>{{ st.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+</div>
+
+<div class="question-sets-container">
+  {% for st in stations %}
+    <section class="station-block" aria-labelledby="station-heading-{{ st.id }}">
+      <div class="station-header">
+        <div class="station-title-box">
+          <span class="station-icon">⬢</span>
+          <h2 id="station-heading-{{ st.id }}">{{ st.name }}</h2>
+          <span class="station-mode-tag {{ 'badge-warning' if st.mode.value == 'BELUM_DIKETAHUI' else '' }}">{{ 'BELUM DIKETAHUI' if st.mode.value == 'BELUM_DIKETAHUI' else st.mode.value }}</span>
+        </div>
+        <span class="station-set-count">
+          {% if st.question_sets %}
+            {{ st.question_sets|length }} PAKET SOAL
+          {% else %}
+            BELUM ADA PAKET SOAL
+          {% endif %}
+        </span>
+      </div>
+
+      <div class="sets-grid">
+        {% for qs in st.question_sets|sort(attribute='code') %}
+          {% set active_count = qs.questions|selectattr('is_active', 'equalto', True)|list|length %}
+          {% set total_count = qs.questions|length %}
+          <article class="nb-card set-card status-border-{{ qs.status.value|lower }}">
+            <div class="set-card-top">
+              <div class="set-code-badge">{{ qs.code }}</div>
+              <span class="status-badge status-{{ qs.status.value|lower }}">{{ qs.status.value }}</span>
+            </div>
+
+            <div class="set-card-body">
+              <h3 class="set-name">{{ qs.name }}</h3>
+              <p class="set-station-sub">{{ st.name }}</p>
+              
+              <div class="set-meta-row">
+                <div class="set-stat-box">
+                  <span class="stat-number">{{ active_count }}</span>
+                  <span class="stat-label">Soal Aktif</span>
+                </div>
+                {% if total_count > active_count %}
+                  <div class="set-stat-box muted-box">
+                    <span class="stat-number">{{ total_count - active_count }}</span>
+                    <span class="stat-label">Nonaktif</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="set-card-actions" style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; gap: 6px;">
+                <a href="{{ url_for('admin.question_create', set_id=qs.id) }}" class="btn btn-primary btn-sm" style="flex: 1; text-align: center;" title="Tambah Soal ke Set {{ qs.code }}">
+                  <span>+ TAMBAH SOAL</span>
+                </a>
+                <a href="{{ url_for('admin.question_set_preview', set_id=qs.id) }}" class="btn btn-secondary btn-sm" title="Preview Tampilan Soal">
+                  <span>👁 PREVIEW</span>
+                </a>
+              </div>
+              <a href="{{ url_for('admin.question_set_detail', set_id=qs.id) }}" class="btn btn-outline btn-sm btn-block" style="text-align: center;">
+                <span>KELOLA & HAPUS SOAL ➔</span>
+              </a>
+            </div>
+          </article>
+        {% else %}
+          <div class="nb-panel empty-panel" style="grid-column: 1 / -1; padding: 28px 20px; text-align: center; border: 2px dashed var(--nb-black, #000); background: #fafafa;">
+            <div style="font-family: var(--font-mono, monospace); font-weight: 800; font-size: 0.95rem; color: var(--nb-black, #000); margin-bottom: 6px;">
+              // BELUM ADA PAKET SOAL
+            </div>
+            <p style="margin: 0; font-size: 0.88rem; color: var(--nb-gray-600, #666); max-width: 520px; margin-inline: auto;">
+              Bentuk pengerjaan dan konsep pos ini belum ditentukan, sehingga belum dibuatkan set soal yang berbeda.
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <div class="nb-panel empty-panel">
+      <p>Tidak ada pos perlombaan yang ditemukan.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

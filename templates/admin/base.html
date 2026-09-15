@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin{% endblock %} · IT Quest Adventure</title>
+  <!-- Google Fonts: Space Grotesk (Display/Headings) & JetBrains Mono (Stats/Code/Badges) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body class="{{ 'admin-shell' if g.current_admin else 'login-page' }}">
+{% if g.current_admin %}
+  <header class="topbar">
+    <div class="topbar-left">
+      <a class="brand" href="{{ url_for('admin.dashboard') }}">
+        <span class="brand-badge">IT QUEST</span>
+        <span class="brand-sub">ADVENTURE</span>
+      </a>
+      <span class="system-tag">[ADMIN CONSOLE]</span>
+    </div>
+    <div class="topbar-right">
+      <div class="admin-identity">
+        <span class="status-dot"></span>
+        <span class="admin-role">ROOT</span>
+        <span class="admin-name">{{ g.current_admin.username }}</span>
+      </div>
+    </div>
+  </header>
+  <aside class="sidebar" aria-label="Navigasi admin">
+    <div class="sidebar-top">
+      <div class="nav-header-label">MENU NAVIGASI</div>
+      <nav>
+        <a class="nav-link {{ 'active' if request.endpoint == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">
+          <span class="nav-indicator">▸</span> Dashboard
+        </a>
+        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.question') and not request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_index') }}">
+          <span class="nav-indicator">▸</span> Bank Soal
+        </a>
+        <a class="nav-link nav-sub-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_import') }}">
+          <span class="nav-indicator">└</span> Import JSON
+        </a>
+        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.team') }}" href="{{ url_for('admin.teams_index') }}">
+          <span class="nav-indicator">▸</span> Tim
+        </a>
+        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.sessions') }}" href="{{ url_for('admin.sessions_index') }}">
+          <span class="nav-indicator">▸</span> Sesi
+        </a>
+        <a class="nav-link {{ 'active' if request.view_args and request.view_args.get('page') == 'results' }}" href="{{ url_for('admin.placeholder', page='results') }}">
+          <span class="nav-indicator">▸</span> Hasil
+        </a>
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="system-mini-info">
+        <span>STATUS: ACTIVE</span>
+        <span class="version-chip">v3.0</span>
+      </div>
+      <form method="post" action="{{ url_for('admin.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-logout sidebar-logout" type="submit">
+          <span>KELUAR / LOGOUT</span> <span class="logout-icon">⏻</span>
+        </button>
+      </form>
+    </div>
+  </aside>
+{% endif %}
+<main class="{{ 'main-content' if g.current_admin else 'login-main' }}">
+  <div class="flash-stack" aria-live="polite">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="nb-alert alert-{{ category }}" role="alert">
+          <span class="alert-icon">✦</span>
+          <span class="alert-text">{{ message }}</span>
+        </div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+  {% block content %}{% endblock %}
+</main>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

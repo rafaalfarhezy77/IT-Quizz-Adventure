@@ -1,0 +1,160 @@
+{% extends "admin/base.html" %}
+{% block title %}Manajemen Tim{% endblock %}
+
+{% block content %}
+<span style="display:none">Fondasi halaman sudah siap</span>
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">PESERTA LOMBA // TEAMS_CATALOG</div>
+    <h1>Manajemen Tim</h1>
+    <p class="welcome-text">Kelola data peserta lomba, pembagian kelompok (Group A–D), dan import massal tim melalui file CSV.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.team_create') }}" class="btn btn-primary btn-sm">
+      + TAMBAH TIM
+    </a>
+    <a href="{{ url_for('admin.teams_import') }}" class="btn btn-secondary btn-sm">
+      📁 IMPORT CSV
+    </a>
+  </div>
+</div>
+
+<!-- STATS SUMMARY BAR -->
+<section class="nb-panel team-summary-panel">
+  <div class="summary-stat-item">
+    <span class="control-label">TOTAL TIM TERDAFTAR:</span>
+    <span class="control-stat-val">{{ total_teams }}</span>
+  </div>
+  <div class="summary-stat-item">
+    <span class="control-label">TIM AKTIF:</span>
+    <span class="control-stat-val text-neon">{{ active_teams }}</span>
+  </div>
+  {% if total_teams > active_teams %}
+    <div class="summary-stat-item">
+      <span class="control-label">NONAKTIF:</span>
+      <span class="control-stat-val text-muted">{{ total_teams - active_teams }}</span>
+    </div>
+  {% endif %}
+  <div class="summary-stat-item">
+    <span class="control-label">KELOMPOK / GROUP:</span>
+    <span class="control-stat-val">{{ groups|length }} GROUP</span>
+  </div>
+</section>
+
+<!-- FILTER & SEARCH TOOLBAR -->
+<section class="table-toolbar">
+  <form method="get" action="{{ url_for('admin.teams_index') }}" class="toolbar-filter-form">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Cari kode tim, nama, atau sekolah..." class="nb-input nb-input-sm">
+    </div>
+
+    <!-- FILTER GROUP -->
+    <div class="filter-pills">
+      <span class="filter-pills-label">GROUP:</span>
+      <a href="{{ url_for('admin.teams_index', search=search_query, group='', status=status_filter) }}"
+         class="filter-pill {{ 'active' if not selected_group }}">Semua</a>
+      {% for g in groups %}
+        <a href="{{ url_for('admin.teams_index', search=search_query, group=g.code, status=status_filter) }}"
+           class="filter-pill {{ 'active' if selected_group == g.code }}">Group {{ g.code }}</a>
+      {% endfor %}
+    </div>
+
+    <!-- FILTER STATUS -->
+    <div class="filter-pills">
+      <span class="filter-pills-label">STATUS:</span>
+      <a href="{{ url_for('admin.teams_index', search=search_query, group=selected_group, status='all') }}"
+         class="filter-pill {{ 'active' if status_filter == 'all' }}">Semua</a>
+      <a href="{{ url_for('admin.teams_index', search=search_query, group=selected_group, status='active') }}"
+         class="filter-pill {{ 'active' if status_filter == 'active' }}">Aktif</a>
+      <a href="{{ url_for('admin.teams_index', search=search_query, group=selected_group, status='inactive') }}"
+         class="filter-pill {{ 'active' if status_filter == 'inactive' }}">Nonaktif</a>
+    </div>
+
+    {% if search_query or selected_group or status_filter != 'all' %}
+      <a href="{{ url_for('admin.teams_index') }}" class="btn-clear-filter">Reset Filter</a>
+    {% endif %}
+  </form>
+</section>
+
+<!-- TABEL DAFTAR TIM -->
+<div class="table-responsive nb-panel table-panel">
+  <table class="nb-table" aria-label="Daftar Tim Peserta">
+    <thead>
+      <tr>
+        <th style="width: 100px;">Kode Tim</th>
+        <th>Nama Tim</th>
+        <th>Asal Sekolah</th>
+        <th style="width: 110px;">Group</th>
+        <th style="width: 110px;">Status</th>
+        <th style="width: 170px; text-align: right;">Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for team in teams %}
+        <tr class="{{ 'row-inactive' if not team.is_active }}">
+          <td>
+            <span class="team-code-badge">{{ team.team_code }}</span>
+          </td>
+          <td>
+            <strong class="team-name-cell">{{ team.team_name }}</strong>
+          </td>
+          <td>
+            <span class="school-cell">{{ team.school }}</span>
+          </td>
+          <td>
+            <span class="group-badge group-{{ team.group.code|lower }}">Group {{ team.group.code }}</span>
+          </td>
+          <td>
+            {% if team.is_active %}
+              <span class="badge-active">● AKTIF</span>
+            {% else %}
+              <span class="badge-inactive">○ NONAKTIF</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <div class="table-actions">
+              <a href="{{ url_for('admin.team_edit', team_id=team.id) }}" class="btn-table-edit" title="Edit Tim">
+                EDIT
+              </a>
+
+              {% if team.is_active %}
+                <form method="post" action="{{ url_for('admin.team_deactivate', team_id=team.id) }}"
+                      onsubmit="return confirm('Nonaktifkan tim {{ team.team_code }} ({{ team.team_name }})? Data historis lomba tetap aman.');"
+                      style="display: inline;">
+                  {{ empty_form.hidden_tag() }}
+                  <button type="submit" class="btn-table-delete" title="Nonaktifkan Tim">
+                    NONAKTIFKAN
+                  </button>
+                </form>
+              {% else %}
+                <form method="post" action="{{ url_for('admin.team_restore', team_id=team.id) }}"
+                      onsubmit="return confirm('Aktifkan kembali tim {{ team.team_code }} ({{ team.team_name }})?');"
+                      style="display: inline;">
+                  {{ empty_form.hidden_tag() }}
+                  <button type="submit" class="btn-table-restore" title="Pulihkan Tim">
+                    PULIHKAN
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6" class="table-empty-message">
+            <div class="empty-state-box">
+              <span class="empty-icon">👥</span>
+              <p>Belum ada data tim yang cocok dengan filter yang dipilih.</p>
+              <div class="empty-actions" style="margin-top: 14px; display: flex; gap: 10px; justify-content: center;">
+                <a href="{{ url_for('admin.team_create') }}" class="btn btn-primary btn-sm">+ Tambah Tim Manual</a>
+                <a href="{{ url_for('admin.teams_import') }}" class="btn btn-secondary btn-sm">📁 Import CSV</a>
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

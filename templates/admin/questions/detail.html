@@ -1,0 +1,191 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ question_set.station.name }} — {{ question_set.name }}{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">POS: {{ question_set.station.name }} // SET {{ question_set.code }}</div>
+    <h1>{{ question_set.station.name }} — {{ question_set.name }}</h1>
+    <p class="welcome-text">Kelola butir soal, opsi pilihan jawaban, bobot nilai, dan status paket soal.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.questions_index') }}" class="btn btn-secondary btn-sm">
+      ← KEMBALI KE DAFTAR SOAL
+    </a>
+  </div>
+</div>
+
+<!-- PANEL KONTROL QUESTION SET -->
+<section class="nb-panel set-control-panel">
+  <div class="set-control-meta">
+    <div class="status-summary-item">
+      <span class="control-label">STATUS SET:</span>
+      <span class="status-badge status-{{ question_set.status.value|lower }}">
+        {{ question_set.status.value }}
+      </span>
+    </div>
+    <div class="status-summary-item">
+      <span class="control-label">SOAL AKTIF:</span>
+      <span class="control-stat-val">{{ active_questions }} / {{ total_questions }}</span>
+    </div>
+    {% if not editable %}
+      <div class="locked-warning-chip">
+        <span>🔒 {{ locked_reason or "Terkunci (LOCKED)" }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="set-control-actions">
+    <!-- FORM UBAH STATUS -->
+    <form method="post" action="{{ url_for('admin.question_set_status', set_id=question_set.id) }}" class="status-change-form">
+      {{ status_form.hidden_tag() }}
+      <label for="status-select" class="control-label">UBAH STATUS:</label>
+      <div class="status-input-row">
+        {{ status_form.status(id="status-select", class="nb-select nb-select-sm") }}
+        {{ status_form.submit(class="btn btn-secondary btn-sm") }}
+      </div>
+    </form>
+
+    <div class="action-buttons-group">
+      {% if editable %}
+        <a href="{{ url_for('admin.question_create', set_id=question_set.id) }}" class="btn btn-primary btn-sm">
+          <span>+ TAMBAH SOAL</span>
+        </a>
+      {% else %}
+        <button class="btn btn-secondary btn-sm" disabled title="Set LOCKED tidak dapat ditambah soal">
+          🔒 TAMBAH SOAL
+        </button>
+      {% endif %}
+      <a href="{{ url_for('admin.question_set_preview', set_id=question_set.id) }}" class="btn btn-secondary btn-sm">
+        <span>PREVIEW SET 👁</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FILTER & SEARCH BAR -->
+<section class="table-toolbar">
+  <form method="get" class="toolbar-filter-form">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Cari pertanyaan soal..." class="nb-input nb-input-sm">
+    </div>
+
+    <div class="filter-pills">
+      <span class="filter-pills-label">STATUS:</span>
+      <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id, search=search_query, status='all') }}"
+         class="filter-pill {{ 'active' if status_filter == 'all' }}">Semua ({{ total_questions }})</a>
+      <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id, search=search_query, status='active') }}"
+         class="filter-pill {{ 'active' if status_filter == 'active' }}">Aktif ({{ active_questions }})</a>
+      <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id, search=search_query, status='inactive') }}"
+         class="filter-pill {{ 'active' if status_filter == 'inactive' }}">Nonaktif ({{ total_questions - active_questions }})</a>
+    </div>
+    
+    {% if search_query or status_filter != 'all' %}
+      <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id) }}" class="btn-clear-filter">Reset Filter</a>
+    {% endif %}
+  </form>
+</section>
+
+<!-- TABEL DAFTAR SOAL -->
+<div class="table-responsive nb-panel table-panel">
+  <table class="nb-table" aria-label="Daftar Soal">
+    <thead>
+      <tr>
+        <th style="width: 60px;">No</th>
+        <th>Pertanyaan</th>
+        <th style="width: 90px;">Kunci</th>
+        <th style="width: 100px;">Bobot</th>
+        <th style="width: 110px;">Status</th>
+        <th style="width: 170px; text-align: right;">Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for q in questions %}
+        <tr class="{{ 'row-inactive' if not q.is_active }}">
+          <td>
+            <span class="order-badge">#{{ q.order_number }}</span>
+          </td>
+          <td>
+            <div class="question-text-cell">
+              <p class="question-main-text">{{ q.text }}</p>
+              <div class="options-preview-strip">
+                <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'A' }}"><b>A:</b> {{ q.option_a }}</span>
+                <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'B' }}"><b>B:</b> {{ q.option_b }}</span>
+                <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'C' }}"><b>C:</b> {{ q.option_c }}</span>
+                <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'D' }}"><b>D:</b> {{ q.option_d }}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="key-badge">KUNCI: {{ q.correct_answer }}</span>
+          </td>
+          <td>
+            <span class="weight-badge">{{ q.weight|round(0)|int if q.weight == q.weight|int else q.weight }} Pts</span>
+          </td>
+          <td>
+            {% if q.is_active %}
+              <span class="badge-active">● AKTIF</span>
+            {% else %}
+              <span class="badge-inactive">○ NONAKTIF</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <div class="table-actions">
+              {% if editable %}
+                <a href="{{ url_for('admin.question_edit', question_id=q.id) }}" class="btn-table-edit" title="Edit Soal">
+                  EDIT
+                </a>
+
+                {% if q.is_active %}
+                  <form method="post" action="{{ url_for('admin.question_delete', question_id=q.id) }}"
+                        onsubmit="return confirm('Hapus / nonaktifkan soal nomor #{{ q.order_number }}?');"
+                        style="display: inline;">
+                    {{ empty_form.hidden_tag() }}
+                    <button type="submit" class="btn-table-delete" title="Hapus / Nonaktifkan Soal">
+                      🗑 HAPUS
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('admin.question_restore', question_id=q.id) }}"
+                        onsubmit="return confirm('Aktifkan kembali soal nomor #{{ q.order_number }}?');"
+                        style="display: inline;">
+                    {{ empty_form.hidden_tag() }}
+                    <button type="submit" class="btn-table-restore" title="Pulihkan Soal">
+                      PULIHKAN
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('admin.question_permanent_delete', question_id=q.id) }}"
+                        onsubmit="return confirm('PERINGATAN: Hapus soal nomor #{{ q.order_number }} secara PERMANEN dari database?');"
+                        style="display: inline;">
+                    {{ empty_form.hidden_tag() }}
+                    <button type="submit" class="btn-table-delete" style="background: var(--nb-danger); color: var(--nb-white);" title="Hapus Permanen">
+                      🗑 HAPUS PERMANEN
+                    </button>
+                  </form>
+                {% endif %}
+              {% else %}
+                <span class="locked-text">TERKUNCI</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="6" class="table-empty-message">
+            <div class="empty-state-box">
+              <span class="empty-icon">📂</span>
+              <p>Belum ada soal pada filter ini.</p>
+              {% if editable and not search_query and status_filter == 'all' %}
+                <a href="{{ url_for('admin.question_create', set_id=question_set.id) }}" class="btn btn-primary btn-sm" style="margin-top: 10px;">
+                  + Tambah Soal Pertama
+                </a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Isi Identitas Tim{% endblock %}
+
+{% block content %}
+<div class="participant-flow-container">
+  <!-- Selection Context Banner -->
+  <div class="selection-context-banner nb-card">
+    <div class="context-item-group">
+      <div class="context-item">
+        <span class="context-label">POS:</span>
+        <span class="context-value">{{ ctx.station.name }}</span>
+      </div>
+      <div class="context-item">
+        <span class="context-label">KELOMPOK:</span>
+        <span class="context-value">KELOMPOK {{ selected_group.code }}</span>
+      </div>
+    </div>
+    <div class="context-actions">
+      <a href="{{ url_for('participant.group_select') }}" class="btn btn-outline btn-sm">
+        <span>← GANTI KELOMPOK</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="flow-header">
+    <div class="flow-subtitle">// TAHAP 3 DARI 5</div>
+    <h1 class="flow-title">ISI IDENTITAS TIM</h1>
+    <p class="flow-description">
+      Silakan isi nama tim dan asal sekolah Anda di bawah ini untuk didaftarkan pada <strong>Kelompok {{ selected_group.code }}</strong>.
+    </p>
+  </div>
+
+  <div class="nb-card" style="max-width: 680px; margin: 0 auto; padding: 2rem; background: var(--nb-white);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--nb-black);">
+      <span class="chip-label" style="font-size: 0.85rem;">[FORMULIR REGISTRASI TIM]</span>
+      <span class="nb-badge badge-neutral">KELOMPOK {{ selected_group.code }}</span>
+    </div>
+
+    <form method="post" action="{{ url_for('participant.team_select') }}" class="team-input-form" novalidate>
+      {{ form.csrf_token }}
+      <input type="hidden" name="item_id" id="item_id" value="{{ form.item_id.data or '' }}">
+
+      <div class="nb-form-group" style="margin-bottom: 1.5rem;">
+        <label for="team_name" class="nb-label" style="display: block; font-family: var(--font-mono); font-weight: 800; font-size: 0.85rem; margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+          NAMA TIM <span class="text-danger" style="color: var(--nb-danger);">*</span>
+        </label>
+        <input type="text"
+               name="team_name"
+               id="team_name"
+               class="nb-input"
+               placeholder="Contoh: Garuda Cyber"
+               value="{{ form.team_name.data or '' }}"
+               autocomplete="off"
+               spellcheck="false"
+               required
+               autofocus>
+        <span class="field-helper-text" style="display: block; font-size: 0.8rem; color: var(--nb-gray-600); margin-top: 0.35rem;">
+          Masukkan nama tim yang akan ditampilkan pada papan skor.
+        </span>
+      </div>
+
+      <div class="nb-form-group" style="margin-bottom: 2rem;">
+        <label for="school" class="nb-label" style="display: block; font-family: var(--font-mono); font-weight: 800; font-size: 0.85rem; margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+          ASAL SEKOLAH <span class="text-danger" style="color: var(--nb-danger);">*</span>
+        </label>
+        <input type="text"
+               name="school"
+               id="school"
+               class="nb-input"
+               placeholder="Contoh: SMK Negeri 1 Surabaya"
+               value="{{ form.school.data or '' }}"
+               autocomplete="off"
+               spellcheck="false"
+               required>
+        <span class="field-helper-text" style="display: block; font-size: 0.8rem; color: var(--nb-gray-600); margin-top: 0.35rem;">
+          Nama instansi sekolah asal tim peserta lomba.
+        </span>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-block btn-lg" style="padding: 1rem; font-size: 1rem; font-weight: 800;">
+          <span>SIMPAN & LANJUTKAN KE KONFIRMASI</span>
+          <span class="btn-arrow" style="margin-left: 8px;">➔</span>
+        </button>
+      </div>
+    </form>
+
+    {% if teams %}
+      <div class="existing-teams-helper" style="margin-top: 2rem; padding: 1.2rem; background: var(--nb-gray-50); border: 2px dashed var(--nb-gray-400);">
+        <div style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: var(--nb-gray-700); margin-bottom: 0.75rem;">
+          <span>💡</span>
+          <span>TIM SUDAH PERNAH BERMAIN DI POS LAIN? KLIK UNTUK MENGISI OTOMATIS:</span>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          {% for t in teams %}
+            <button type="button"
+                    class="btn btn-sm btn-secondary"
+                    onclick="autofillTeam('{{ t.team_name | escape }}', '{{ t.school | escape }}', '{{ t.id }}')"
+                    title="Klik untuk mengisi otomatis data tim {{ t.team_name }}">
+              <span class="mono-bold" style="background: var(--nb-black); color: var(--nb-neon); padding: 1px 5px; font-size: 0.75rem; margin-right: 4px;">{{ t.team_code }}</span>
+              <span style="font-weight: 700;">{{ t.team_name }}</span>
+              <span style="color: var(--nb-gray-600); font-size: 0.75rem; margin-left: 4px;">({{ t.school }})</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <script>
+        function autofillTeam(name, school, id) {
+          var teamNameInput = document.getElementById('team_name');
+          var schoolInput = document.getElementById('school');
+          var itemIdInput = document.getElementById('item_id');
+          if (teamNameInput && schoolInput) {
+            teamNameInput.value = name;
+            schoolInput.value = school;
+            if (itemIdInput) itemIdInput.value = id;
+            teamNameInput.focus();
+          }
+        }
+      </script>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

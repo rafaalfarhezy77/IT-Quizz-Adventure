@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables & secrets (JANGAN UPLOAD)
+.env
+.env.*
+!.env.example
+
+# SQLite Databases & Local Instance Data (JANGAN UPLOAD)
+instance/*.db
+instance/*.db-wal
+instance/*.db-shm
+instance/quiz.db
+instance/competition.db
+instance/uploads/*
+!instance/.gitkeep
+!instance/uploads/.gitkeep
+
+# IDE & Editor specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AI Agent & Internal IDE data
+.agents/
+
+# Logs
+*.log
+
+# Operating System files
+Thumbs.db
+desktop.ini
+.DS_Store

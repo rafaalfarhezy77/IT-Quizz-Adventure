@@ -1,0 +1,129 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Audit Penilaian: {{ team.team_name }} ({{ team.team_code }}) · Admin IT Quest{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+  <div class="header-left">
+    <div class="eyebrow">IT QUEST ADVENTURE // AUDIT LEMBAR JAWABAN</div>
+    <h1 class="page-title">RINCIAN PENILAIAN TIM: {{ team.team_name | upper }}</h1>
+    <p class="page-sub">Audit per butir soal: kunci jawaban resmi, pilihan peserta, dan perolehan poin.</p>
+  </div>
+  <div class="header-right">
+    <a href="{{ url_for('admin.results_index') }}" class="btn btn-outline">
+      <span>⬅ KEMBALI KE HASIL LOMBA</span>
+    </a>
+  </div>
+</div>
+
+<!-- Team & Session Meta Cards -->
+<div class="results-meta-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+  <div class="meta-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">IDENTITAS TIM</h3>
+    <div style="font-size: 1.25rem; font-weight: 800; color: #FFFFFF;">{{ team.team_name }}</div>
+    <div style="font-family: var(--font-mono); color: var(--accent-neon); margin-bottom: 0.25rem;">Kode: {{ team.team_code }}</div>
+    <div style="color: var(--text-muted); font-size: 0.9rem;">Asal Sekolah: {{ team.school }}</div>
+  </div>
+
+  <div class="meta-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">POS & SESI</h3>
+    <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF;">{{ station.name }}</div>
+    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Kelompok: <strong>{{ group.code }}</strong> · Sesi #{{ session.id }}</div>
+    <div style="margin-top: 0.5rem;">
+      <span class="nb-badge {{ 'badge-neon' if submission.status.value == 'SUBMITTED' else ('badge-danger' if submission.status.value == 'TIMED_OUT' else 'badge-neutral') }}">
+        STATUS: {{ submission.status.value }}
+      </span>
+    </div>
+  </div>
+
+  <div class="meta-card nb-card">
+    <div class="card-stripe stripe-neon"></div>
+    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">REKAP SKOR AKHIR</h3>
+    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.25rem;">
+      <span>Nilai Murni (Raw):</span>
+      <strong class="font-mono">{{ "%.2f" | format(score.raw_score if score else 0.0) }}</strong>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem;">
+      <span>Bonus Waktu:</span>
+      <strong class="font-mono text-accent">+{{ "%.2f" | format(score.time_bonus if score else 0.0) }}</strong>
+    </div>
+    <div style="border-top: 2px solid var(--border-color); padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: baseline;">
+      <span style="font-weight: 700;">TOTAL SKOR:</span>
+      <span style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 900; color: var(--accent-neon);">
+        {{ "%.2f" | format(score.final_score if score else 0.0) }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Question-by-Question Audit Table -->
+<div class="table-container nb-card">
+  <div style="padding: 1rem 1.25rem; border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center;">
+    <h2 style="font-size: 1.1rem; font-weight: 800; margin: 0;">LEMBAR AUDIT JAWABAN PESERTA</h2>
+    <span class="text-muted" style="font-size: 0.85rem;">Total Soal: <strong>{{ audit_items | length }}</strong></span>
+  </div>
+
+  <table class="nb-table audit-table" aria-label="Tabel Audit Lembar Jawaban">
+    <thead>
+      <tr>
+        <th style="width: 50px;">NO</th>
+        <th>TEKS PERTANYAAN & OPSI</th>
+        <th class="text-center" style="width: 120px;">PILIHAN PESERTA</th>
+        <th class="text-center" style="width: 120px;">KUNCI RESMI</th>
+        <th class="text-center" style="width: 100px;">BOBOT</th>
+        <th class="text-center" style="width: 110px;">POIN DIRAIH</th>
+        <th class="text-center" style="width: 110px;">STATUS</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in audit_items %}
+        <tr>
+          <td class="font-mono text-center"><strong>#{{ item.order_number }}</strong></td>
+          <td>
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">{{ item.text }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem;">
+              <div><strong>A:</strong> {{ item.option_a }}</div>
+              <div><strong>B:</strong> {{ item.option_b }}</div>
+              <div><strong>C:</strong> {{ item.option_c }}</div>
+              <div><strong>D:</strong> {{ item.option_d }}</div>
+            </div>
+          </td>
+          <td class="text-center">
+            {% if item.selected_answer %}
+              {% if item.is_correct %}
+                <span class="font-mono" style="font-size: 1.2rem; font-weight: 800; color: var(--accent-neon);">
+                  {{ item.selected_answer }}
+                </span>
+              {% else %}
+                <span class="font-mono" style="font-size: 1.2rem; font-weight: 800; color: #FF5555;">
+                  {{ item.selected_answer }}
+                </span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted" style="font-style: italic;">(Kosong)</span>
+            {% endif %}
+          </td>
+          <td class="text-center font-mono" style="font-size: 1.2rem; font-weight: 800; color: #FFFFFF;">
+            {{ item.correct_answer }}
+          </td>
+          <td class="text-center font-mono">{{ "%.2f" | format(item.weight) }}</td>
+          <td class="text-center font-mono">
+            <strong>{{ "%.2f" | format(item.points_awarded) }}</strong>
+          </td>
+          <td class="text-center">
+            {% if item.is_correct %}
+              <span class="nb-badge badge-neon">BENAR</span>
+            {% elif item.selected_answer %}
+              <span class="nb-badge badge-danger">SALAH</span>
+            {% else %}
+              <span class="nb-badge badge-neutral">KOSONG</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

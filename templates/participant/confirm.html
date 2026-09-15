@@ -1,0 +1,92 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Konfirmasi Identitas Tim{% endblock %}
+
+{% block content %}
+<div class="participant-center-container">
+  <div class="confirm-card nb-card">
+    <div class="confirm-header">
+      <div class="chip-label">// TAHAP 4 DARI 5 · VERIFIKASI IDENTITAS</div>
+      <h1 class="confirm-title">KONFIRMASI PILIHAN TIM</h1>
+      <p class="confirm-subtitle">
+        Periksa kembali data stasiun pos dan identitas tim Anda di bawah ini sebelum mengunci pilihan dan membaca aturan lomba.
+      </p>
+    </div>
+
+    <!-- Identity Summary Table/Grid -->
+    <div class="identity-summary-box">
+      <div class="summary-row">
+        <span class="summary-key">POS PERLOMBAAN:</span>
+        <div class="summary-val-wrap">
+          <span class="summary-val-highlight">{{ station.name }}</span>
+          <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }}">
+            {% if station.mode.value == 'MEMBER_ROTATION' %}
+              ROTASI ANGGOTA
+            {% elif station.mode.value == 'BELUM_DIKETAHUI' %}
+              BELUM DIKETAHUI
+            {% else %}
+              KERJA SAMA TIM
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <span class="summary-key">KELOMPOK PESERTA:</span>
+        <div class="summary-val-wrap">
+          <span class="summary-val-bold">KELOMPOK {{ group.code }}</span>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <span class="summary-key">KODE TIM:</span>
+        <div class="summary-val-wrap">
+          <span class="summary-val-code">{{ team.team_code }}</span>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <span class="summary-key">NAMA TIM:</span>
+        <div class="summary-val-wrap">
+          <span class="summary-val-bold text-accent">{{ team.team_name }}</span>
+        </div>
+      </div>
+
+      <div class="summary-row">
+        <span class="summary-key">ASAL SEKOLAH:</span>
+        <div class="summary-val-wrap">
+          <span class="summary-val-school">{{ team.school }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Warning Notice -->
+    <div class="confirm-notice nb-card">
+      <span class="notice-icon">⚠️</span>
+      <div class="notice-text">
+        <strong>PENTING:</strong> Pastikan Anda tidak salah memilih tim. Seluruh nilai dan riwayat pengerjaan soal di pos ini akan dicatat atas nama tim di atas.
+      </div>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="confirm-actions-row">
+      <form method="post" action="{{ url_for('participant.confirm') }}" class="form-confirm">
+        {{ form.hidden_tag() }}
+        <button type="submit" class="btn btn-primary btn-lg btn-block">
+          <span>✓ IDENTITAS SUDAH BENAR — LANJUTKAN</span>
+          <span class="btn-arrow">➔</span>
+        </button>
+      </form>
+
+      <div class="confirm-change-links">
+        <a href="{{ url_for('participant.team_select') }}" class="btn btn-outline btn-sm">
+          <span>← GANTI TIM</span>
+        </a>
+        <a href="{{ url_for('participant.station_select') }}" class="btn btn-outline btn-sm">
+          <span>← GANTI POS</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

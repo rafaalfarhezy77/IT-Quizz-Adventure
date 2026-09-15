@@ -1,0 +1,78 @@
+{% extends "admin/base.html" %}
+{% block title %}Preview {{ question_set.station.name }} — {{ question_set.name }}{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">SIMULASI & PREVIEW // ADMIN_VIEW</div>
+    <h1>Preview {{ question_set.name }}</h1>
+    <p class="welcome-text">Pos: <strong>{{ question_set.station.name }}</strong> · Status Paket: <strong>{{ question_set.status.value }}</strong> · Total Soal Aktif: <strong>{{ questions|length }}</strong></p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.question_set_detail', set_id=question_set.id) }}" class="btn btn-secondary btn-sm">
+      ← KEMBALI KE DETAIL SET
+    </a>
+  </div>
+</div>
+
+<div class="preview-container">
+  {% if questions %}
+    <div class="preview-notice-banner">
+      <span class="banner-icon">ℹ</span>
+      <div>
+        <strong>MODE PREVIEW ADMIN:</strong> Menampilkan soal sesuai urutan yang akan dikerjakan peserta. Kunci jawaban dan bobot nilai ditampilkan khusus untuk verifikasi tim pembuat soal.
+      </div>
+    </div>
+
+    <div class="preview-questions-list">
+      {% for q in questions %}
+        <article class="nb-panel preview-question-card" id="q-{{ q.order_number }}">
+          <div class="preview-card-header">
+            <div class="q-number-box">
+              <span class="q-label">SOAL</span>
+              <span class="q-num">#{{ q.order_number }}</span>
+            </div>
+            
+            <div class="q-admin-badges">
+              <span class="admin-key-badge">KUNCI JAWABAN: {{ q.correct_answer }}</span>
+              <span class="admin-weight-badge">BOBOT: {{ q.weight|round(0)|int if q.weight == q.weight|int else q.weight }} PTS</span>
+            </div>
+          </div>
+
+          <div class="preview-card-body">
+            <div class="question-content-box">
+              <p class="preview-question-text">{{ q.text }}</p>
+            </div>
+
+            <div class="preview-options-list">
+              {% for opt_key, opt_val in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d)] %}
+                <div class="preview-option-item {{ 'is-correct-option' if opt_key == q.correct_answer }}">
+                  <div class="opt-bullet">{{ opt_key }}</div>
+                  <div class="opt-text">{{ opt_val }}</div>
+                  {% if opt_key == q.correct_answer %}
+                    <span class="correct-tag">✓ KUNCI</span>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="preview-card-footer">
+            <span class="footer-note">ID Database: #{{ q.id }} · Pos: {{ question_set.station.name }}</span>
+            <a href="{{ url_for('admin.question_edit', question_id=q.id) }}" class="btn-preview-edit">Edit Butir Soal Ini ↗</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="nb-panel empty-panel">
+      <span class="empty-icon">📭</span>
+      <h2>Belum Ada Soal Aktif</h2>
+      <p>Question set ini belum memiliki butir soal aktif untuk di-preview.</p>
+      <a href="{{ url_for('admin.question_create', set_id=question_set.id) }}" class="btn btn-primary btn-sm" style="margin-top: 14px;">
+        + Tambah Soal Sekarang
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

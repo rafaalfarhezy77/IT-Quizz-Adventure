@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+{% block title %}Import Data Tim · Admin IT Quest Adventure{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">IMPORT MASSAL // CSV_LOADER</div>
+    <h1>Import Data Tim dari CSV</h1>
+    <p class="welcome-text">Unggah file <code>team.csv</code> untuk mendaftarkan banyak tim peserta sekaligus ke dalam sistem lomba.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.teams_template_csv') }}" class="btn btn-secondary btn-sm">
+      📥 UNDUH TEMPLATE CSV
+    </a>
+    <a href="{{ url_for('admin.teams_index') }}" class="btn btn-secondary btn-sm">
+      ← KEMBALI
+    </a>
+  </div>
+</div>
+
+<div class="import-container">
+  <div class="import-grid">
+    <!-- PANEL UPLOAD -->
+    <section class="nb-panel import-upload-card">
+      <div class="card-stripe"></div>
+      <div class="import-card-header">
+        <h2>PILIH FILE CSV</h2>
+        <p class="muted">File akan diverifikasi terlebih dahulu sebelum disimpan ke basis data.</p>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" novalidate class="upload-form">
+        {{ form.hidden_tag() }}
+
+        <div class="upload-dropzone">
+          <div class="dropzone-icon">📁</div>
+          <label for="csv_file_input" class="dropzone-label">Pilih file <code>team.csv</code> dari perangkat:</label>
+          {{ form.file(id="csv_file_input", class="file-input-field") }}
+          {% for error in form.file.errors %}
+            <span class="field-error">⚠ {{ error }}</span>
+          {% endfor %}
+        </div>
+
+        <div class="form-actions-bar">
+          {{ form.submit(class="btn btn-primary btn-block") }}
+        </div>
+      </form>
+    </section>
+
+    <!-- PANEL INSTRUKSI & ATURAN -->
+    <section class="nb-panel import-rules-card">
+      <div class="rules-header">
+        <span class="rules-badge">SPESIFIKASI FORMAT</span>
+        <h2>Ketentuan File CSV</h2>
+      </div>
+
+      <div class="rules-content">
+        <ul class="rules-list">
+          <li>
+            <strong>Header Wajib:</strong> File CSV harus memiliki baris header dengan kolom:
+            <code>team_code,team_name,school,group</code>
+          </li>
+          <li>
+            <strong>Pilihan Kelompok:</strong> Nilai pada kolom <code>group</code> harus berupa salah satu dari <code>A</code>, <code>B</code>, <code>C</code>, atau <code>D</code>.
+          </li>
+          <li>
+            <strong>Keunikan Kode:</strong> <code>team_code</code> harus unik (tidak boleh duplikat di dalam file maupun dengan data yang sudah terdaftar di database).
+          </li>
+          <li>
+            <strong>Format & Encoding:</strong> Mendukung file CSV standar (UTF-8) maupun hasil ekspor Microsoft Excel (UTF-8 dengan BOM).
+          </li>
+          <li>
+            <strong>Kebijakan All-or-Nothing:</strong> Jika ditemukan kesalahan pada satu baris data saja, seluruh proses import akan ditangguhkan sampai data diperbaiki.
+          </li>
+        </ul>
+
+        <div class="csv-example-box">
+          <div class="example-title">Contoh Format Isi File:</div>
+          <pre><code>team_code,team_name,school,group
+A01,Team Alpha,SMAN 1 Madiun,A
+A02,Team Beta,SMKN 1 Madiun,A
+B01,Team Gamma,SMAN 2 Ngawi,B
+C01,Team Delta,SMAN 1 Caruban,C</code></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

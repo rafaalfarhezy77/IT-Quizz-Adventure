@@ -1,0 +1,255 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Kuis Lomba · {{ station.name }}{% endblock %}
+
+{% block content %}
+<div class="quiz-container">
+  <!-- Sticky Quiz Header: Identity + Live Timer + Autosave Indicator -->
+  <header class="quiz-top-sticky nb-panel">
+    <div class="quiz-sticky-inner">
+      <div class="quiz-identity-block">
+        <div class="quiz-pos-badge">
+          <span class="pos-icon">⚡</span>
+          <span class="pos-name">{{ station.name }}</span>
+          <span class="group-tag">KELOMPOK {{ group.code }}</span>
+          {% if is_member_rotation %}
+            <span class="nb-badge badge-neon">ANGGOTA {{ current_member }} / {{ total_members }}</span>
+          {% else %}
+            <span class="nb-badge badge-neutral">KOLABORASI TIM</span>
+          {% endif %}
+        </div>
+        <div class="quiz-status-eyebrow" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-neon); letter-spacing: 0.05em; margin-top: 2px;">
+          SESI PERLOMBAAN SEDANG BERLANGSUNG
+        </div>
+        <div class="quiz-team-info">
+          <span class="team-code">{{ team.team_code }}</span>
+          <span class="team-name">{{ team.team_name }}</span>
+        </div>
+      </div>
+
+      <!-- Live Countdown Timer -->
+      <div class="quiz-timer-wrap">
+        <div class="timer-mini-label">SISA WAKTU</div>
+        <div id="session-timer"
+             class="nb-timer {{ 'timer-normal' if remaining_seconds > 120 else ('timer-warning' if remaining_seconds > 30 else 'timer-critical') }}"
+             data-status="RUNNING"
+             data-remaining="{{ remaining_seconds }}"
+             data-duration="{{ competition_session.duration_seconds }}"
+             data-sync-url="{{ url_for('api.participant_session_status') }}"
+             data-redirect-url="{{ url_for('participant.result') }}">
+          <span class="timer-digits">
+            {{ "%02d:%02d" | format((remaining_seconds // 60), (remaining_seconds % 60)) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Autosave State Indicator -->
+      <div class="quiz-save-status-wrap">
+        <div id="autosave-status" class="autosave-pill status-saved">
+          <span class="save-dot"></span>
+          <span id="save-status-text" class="save-text">Tersimpan</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Quiz Area -->
+  <div class="quiz-main-layout">
+    <!-- Left / Top: Question Navigator Grid -->
+    <aside class="quiz-nav-sidebar nb-card" aria-label="Navigasi Butir Soal">
+      <div class="nav-sidebar-header">
+        <span class="sidebar-title">NAVIGATOR SOAL</span>
+        <span class="answered-badge" id="nav-answered-summary">
+          <span id="nav-answered-count">{{ answers_map|length }}</span> / {{ questions|length }} Terjawab
+        </span>
+      </div>
+
+      <div class="question-nav-grid" id="question-nav-grid">
+        {% for q in questions %}
+          {% set is_answered = (q.id in answers_map and answers_map[q.id]) %}
+          <button type="button"
+                  class="q-nav-btn {{ 'nav-answered' if is_answered else '' }} {{ 'nav-active' if loop.first else '' }}"
+                  data-index="{{ loop.index0 }}"
+                  data-question-id="{{ q.id }}"
+                  id="nav-btn-{{ q.id }}">
+            <span class="nav-num">{{ loop.index }}</span>
+            <span class="nav-check">{{ '✓' if is_answered else '' }}</span>
+          </button>
+        {% endfor %}
+      </div>
+
+      <div class="nav-legend">
+        <div class="legend-item"><span class="legend-box legend-active"></span> Aktif</div>
+        <div class="legend-item"><span class="legend-box legend-answered"></span> Terjawab</div>
+        <div class="legend-item"><span class="legend-box legend-empty"></span> Kosong</div>
+      </div>
+    </aside>
+
+    <!-- Right / Center: Active Question Card -->
+    <section class="quiz-question-area" aria-label="Lembar Pertanyaan">
+      {% if questions %}
+        {% for q in questions %}
+          <article class="question-card nb-card {{ 'active-question' if loop.first else 'hidden-question' }}"
+                   id="question-card-{{ loop.index0 }}"
+                   data-question-id="{{ q.id }}"
+                   data-index="{{ loop.index0 }}">
+            
+            <div class="question-header">
+              <div class="q-number-pill">
+                SOAL #{{ loop.index }} DARI {{ questions|length }}
+              </div>
+              <div class="q-weight-pill">
+                BOBOT: {{ q.weight }} POIN
+              </div>
+            </div>
+
+            <div class="question-body">
+              <p class="question-text">{{ q.text }}</p>
+            </div>
+
+            <!-- Options Grid (A, B, C, D) -->
+            <div class="options-container" role="radiogroup" aria-label="Pilihan jawaban soal {{ loop.index }}">
+              {% set current_ans = answers_map.get(q.id) %}
+              {% for opt_code, opt_val in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d)] %}
+                <label class="option-card nb-card {{ 'option-selected' if current_ans == opt_code else '' }}"
+                       id="option-label-{{ q.id }}-{{ opt_code }}">
+                  <input type="radio"
+                         name="question_{{ q.id }}"
+                         value="{{ opt_code }}"
+                         class="option-radio-input"
+                         data-question-id="{{ q.id }}"
+                         {{ 'checked' if current_ans == opt_code else '' }}>
+                  <span class="option-badge">{{ opt_code }}</span>
+                  <span class="option-content">{{ opt_val }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </article>
+        {% endfor %}
+
+        <!-- Navigation Buttons & Submit Trigger -->
+        <div class="quiz-action-bar nb-card">
+          <div class="action-left">
+            <button type="button" id="btn-prev-question" class="btn btn-secondary" disabled>
+              ← SOAL SEBELUMNYA
+            </button>
+            <button type="button" id="btn-next-question" class="btn btn-secondary">
+              SOAL SELANJUTNYA →
+            </button>
+          </div>
+
+          <div class="action-right">
+            {% if is_member_rotation and current_member < total_members %}
+              <!-- Submit Bagian Anggota -->
+              <form method="post" action="{{ url_for('participant.member_submit') }}" id="form-member-submit">
+                {{ member_form.hidden_tag() }}
+                <button type="button" id="btn-trigger-member-submit" class="btn btn-primary btn-submit-step">
+                  <span>SELESAIKAN BAGIAN ANGGOTA {{ current_member }}</span>
+                  <span class="btn-arrow">➔</span>
+                </button>
+              </form>
+            {% else %}
+              <!-- Final Submit Tim -->
+              <button type="button" id="btn-trigger-final-submit" class="btn btn-primary btn-submit-final">
+                <span>✓ KIRIM SEMUA JAWABAN TIM</span>
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="empty-quiz-box nb-card">
+          <h3>Tidak Ada Soal untuk Bagian Ini</h3>
+          <p>Belum ada butir soal yang dialokasikan untuk bagian ini. Hubungi panitia lomba.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Submit Final -->
+<div id="modal-submit-confirm" class="nb-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="nb-modal-card nb-card">
+    <div class="modal-stripe"></div>
+    <div class="modal-header">
+      <span class="modal-eyebrow">FINALISASI JAWABAN // KONFIRMASI AKHIR</span>
+      <h2 id="modal-title">Kirim Jawaban Sekarang?</h2>
+      <p class="muted">Setelah dikirim, seluruh jawaban tim Anda akan dikunci permanen dan dinilai oleh sistem.</p>
+    </div>
+
+    <div class="modal-stats-grid">
+      <div class="modal-stat-box stat-total">
+        <span class="stat-lbl">TOTAL SOAL</span>
+        <span class="stat-val" id="modal-total-val">{{ questions|length }}</span>
+      </div>
+      <div class="modal-stat-box stat-answered">
+        <span class="stat-lbl">SUDAH DIJAWAB</span>
+        <span class="stat-val" id="modal-answered-val">0</span>
+      </div>
+      <div class="modal-stat-box stat-unanswered">
+        <span class="stat-lbl">BELUM DIJAWAB</span>
+        <span class="stat-val" id="modal-unanswered-val">0</span>
+      </div>
+    </div>
+
+    <div id="unanswered-warning-box" class="modal-warning-box" style="display: none;">
+      <span class="warning-icon">⚠️</span>
+      <div class="warning-text">
+        <strong>PERHATIAN:</strong> Masih ada soal yang belum Anda jawab. Soal yang kosong akan mendapatkan nilai <strong>0 poin</strong>.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" id="btn-modal-cancel" class="btn btn-secondary">
+        ← KEMBALI PERIKSA SOAL
+      </button>
+
+      <form method="post" action="{{ url_for('participant.quiz_submit') }}" id="form-final-submit" style="display: inline;">
+        {{ submit_form.hidden_tag() }}
+        <button type="submit" id="btn-modal-confirm-submit" class="btn btn-primary">
+          <span>YA, SAYA YAKIN KIRIM ➔</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Submit Bagian Anggota (Member Rotation) -->
+{% if is_member_rotation and current_member < total_members %}
+<div id="modal-member-confirm" class="nb-modal-backdrop" style="display: none;" role="dialog" aria-modal="true">
+  <div class="nb-modal-card nb-card">
+    <div class="modal-stripe"></div>
+    <div class="modal-header">
+      <span class="modal-eyebrow">ROTASI ANGGOTA // BAGIAN {{ current_member }}</span>
+      <h2>Selesaikan Bagian Anggota {{ current_member }}?</h2>
+      <p class="muted">
+        Jawaban bagian Anggota {{ current_member }} akan dikunci dan tidak dapat diubah lagi. Selanjutnya perangkat akan diserahkan kepada <strong>Anggota {{ current_member + 1 }}</strong>.
+      </p>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" id="btn-member-cancel" class="btn btn-secondary">
+        ← KEMBALI PERIKSA SOAL
+      </button>
+      <button type="button" id="btn-member-confirm" class="btn btn-primary">
+        <span>KUNCI BAGIAN & LANJUTKAN ➔</span>
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.QUIZ_CONFIG = {
+    answerApiUrl: "{{ url_for('api.participant_save_answer') }}",
+    csrfToken: "{{ csrf_token() }}",
+    totalQuestions: {{ questions|length }},
+    isMemberRotation: {{ 'true' if is_member_rotation else 'false' }},
+    currentMember: {{ current_member }},
+    totalMembers: {{ total_members }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+{% endblock %}
