@@ -1,0 +1,138 @@
+{% extends "admin/base.html" %}
+{% block title %}Pratinjau Peserta · {{ package.package_code }}{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">PREVIEW TAMPILAN PESERTA // VERIFIKASI KONTEN</div>
+    <h1>Pratinjau: {{ package.package_code }} — {{ package.title }}</h1>
+    <p class="welcome-text">Berikut tampilan simulasi yang akan disajikan kepada peserta di Pos {{ package.station.name }} saat sesi dimulai.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.packages_index', station_id=package.station_id) }}" class="btn btn-outline">
+      <span>← Kembali ke Daftar Paket</span>
+    </a>
+  </div>
+</div>
+
+<div class="nb-card" style="margin-bottom: 2rem; border-top: 6px solid var(--accent-neon); padding: 1.5rem;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <span class="nb-badge badge-neon" style="font-size: 0.9rem;">{{ package.package_code }}</span>
+      <span class="nb-badge badge-neutral" style="margin-left: 6px;">DURASI: {{ package.duration_minutes }} MENIT</span>
+      <h2 style="font-size: 1.75rem; margin-top: 0.5rem;">{{ package.title }}</h2>
+    </div>
+    {% if package.external_tool_url %}
+      <a href="{{ package.external_tool_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-neon">
+        <span>Buka BuildCores ↗</span>
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Narasi Studi Kasus -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; border-bottom: 2px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.75rem;">
+      📋 STUDI KASUS & DESKRIPSI KEBUTUHAN
+    </h3>
+    <div style="font-size: 1rem; line-height: 1.7; white-space: pre-line; background: #fafafa; padding: 1rem; border: 2px solid #000;">
+      {{ package.description }}
+    </div>
+  </div>
+
+  <!-- Petunjuk Teknis -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; border-bottom: 2px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.75rem;">
+      🛠 PETUNJUK PENGERJAAN
+    </h3>
+    <div style="font-size: 0.95rem; line-height: 1.6; white-space: pre-line; background: #ecfdf5; padding: 1rem; border: 2px solid #000;">
+      {{ package.instructions }}
+    </div>
+  </div>
+
+  <!-- Tabel Batasan Build -->
+  {% set rules = package.rules_config or {} %}
+  <div style="margin-bottom: 2rem;">
+    <h3 style="font-size: 1.1rem; border-bottom: 2px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.75rem;">
+      ⚙ TABEL BATASAN BUILD PC (CONSTRAINTS)
+    </h3>
+    <div class="nb-table-wrap">
+      <table class="nb-table">
+        <tbody>
+          <tr>
+            <td style="width: 250px; font-weight: 700;">Budget Maksimal</td>
+            <td><span class="mono-highlight" style="font-size: 1.1rem; font-weight: 800;">{{ rules.get('currency', 'USD') }} {{ rules.get('max_budget', 0) }}</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Target CPU Score Minimal</td>
+            <td><span class="mono-val text-bold">{{ rules.get('min_cpu_score', 0) }}</span> poin</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Target GPU Score Minimal</td>
+            <td><span class="mono-val text-bold">{{ rules.get('min_gpu_score', 0) }}</span> poin</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Kapasitas RAM Minimal</td>
+            <td>{{ rules.get('min_ram_gb', 0) }} GB</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Kapasitas Storage Minimal</td>
+            <td>{{ rules.get('min_storage_gb', 0) }} GB</td>
+          </tr>
+          {% if rules.get('min_psu_watt') %}
+          <tr>
+            <td style="font-weight: 700;">Daya PSU Minimal</td>
+            <td>{{ rules.get('min_psu_watt') }} Watt</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td style="font-weight: 700;">Komponen Wajib</td>
+            <td>{{ rules.get('required_components') or 'Tidak ada ketentuan khusus' }}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Komponen Terlarang</td>
+            <td>{{ rules.get('forbidden_components') or 'Tidak ada ketentuan khusus' }}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 700;">Aturan Pembelian</td>
+            <td>
+              Used Parts: {{ 'Diizinkan' if rules.get('used_parts_allowed') else 'Dilarang' }} |
+              Custom Price: {{ 'Diizinkan' if rules.get('custom_price_allowed') else 'Dilarang' }} |
+              Diskon/Promo: {{ 'Diizinkan' if rules.get('discount_allowed') else 'Dilarang' }}
+            </td>
+          </tr>
+          {% if rules.get('extra_notes') %}
+          <tr>
+            <td style="font-weight: 700;">Catatan Tambahan</td>
+            <td><em>{{ rules.get('extra_notes') }}</em></td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Kriteria & Pembobotan Penilaian -->
+  {% set scoring = package.scoring_config or {} %}
+  <div>
+    <h3 style="font-size: 1.1rem; border-bottom: 2px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.75rem;">
+      🎯 KRITERIA & BOBOT PENILAIAN
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+      {% for k, label in [
+        ('weight_compatibility','Kompatibilitas'),
+        ('weight_budget','Kepatuhan Budget'),
+        ('weight_cpu_target','Target CPU'),
+        ('weight_gpu_target','Target GPU'),
+        ('weight_completeness','Kelengkapan'),
+        ('weight_efficiency','Efisiensi'),
+        ('weight_time_bonus','Bonus Waktu')
+      ] %}
+        <div class="nb-card" style="padding: 0.75rem; text-align: center; background: #fff;">
+          <span class="mono-label" style="font-size: 0.75rem;">{{ label }}</span>
+          <strong style="font-size: 1.25rem; display: block; margin-top: 0.25rem;">{{ scoring.get(k, 0) }}%</strong>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

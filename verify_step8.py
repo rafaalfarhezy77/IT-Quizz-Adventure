@@ -565,8 +565,8 @@ class Step8LeaderboardAdminExportTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.data.decode("utf-8")
         self.assertIn("MONITORING STATUS TIM PESERTA", html)
-        self.assertIn("Submitted: 1", html)
-        self.assertIn("In Progress: 1", html)
+        self.assertIn("Terkumpul: 1", html)
+        self.assertIn("Mengerjakan: 1", html)
         self.assertIn("Belum Mulai: 1", html)
 
     # -------------------------------------------------------------------------

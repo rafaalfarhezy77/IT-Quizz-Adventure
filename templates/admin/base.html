@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/module_layout.css') }}">
+  <script src="{{ url_for('static', filename='js/module_dialogs.js') }}" defer></script>
 </head>
 <body class="{{ 'admin-shell' if g.current_admin else 'login-page' }}">
 {% if g.current_admin %}
@@ -20,7 +22,22 @@
       </a>
       <span class="system-tag">[ADMIN CONSOLE]</span>
     </div>
-    <div class="topbar-right">
+    <div class="topbar-right" style="display: flex; align-items: center; gap: 1rem;">
+      <div class="station-badge-wrapper">
+        {% if g.active_station %}
+          <a href="{{ url_for('admin.station_select') }}" class="station-pill-btn active-station-pill" title="Klik untuk berganti pos lomba">
+            <span class="pulse-dot-green"></span>
+            <span class="station-pill-text">POS: {{ g.active_station.name|upper }}</span>
+            <span class="station-pill-action">⇄ GANTI</span>
+          </a>
+        {% else %}
+          <a href="{{ url_for('admin.station_select') }}" class="station-pill-btn global-station-pill" title="Klik untuk memilih pos spesifik">
+            <span class="pulse-dot-gray"></span>
+            <span class="station-pill-text">MODE: SEMUA POS</span>
+            <span class="station-pill-action">PILIH POS ▾</span>
+          </a>
+        {% endif %}
+      </div>
       <div class="admin-identity">
         <span class="status-dot"></span>
         <span class="admin-role">ROOT</span>
@@ -30,25 +47,115 @@
   </header>
   <aside class="sidebar" aria-label="Navigasi admin">
     <div class="sidebar-top">
-      <div class="nav-header-label">MENU NAVIGASI</div>
+      <!-- Active Station Context Box -->
+      <div class="sidebar-station-box">
+        <div class="station-box-header">
+          <span>POS AKTIF</span>
+          <a href="{{ url_for('admin.station_select') }}" class="box-switch-link">⇄ GANTI</a>
+        </div>
+        {% if g.active_station %}
+          <div class="station-box-title">Pos {{ g.active_station.name }}</div>
+          <div class="station-box-subtitle">
+            {% if g.active_station.name.lower() == 'hardware' %}
+              BuildCores PC Challenge
+            {% elif g.active_station.mode.value == 'member_rotation' %}
+              Kuis Rotasi Anggota
+            {% else %}
+              Kuis Pilihan Ganda
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="station-box-title">Semua Pos</div>
+          <div class="station-box-subtitle">Mode Kontrol Global</div>
+        {% endif %}
+      </div>
+
+      <div class="nav-header-label" style="margin-top: 1rem;">MENU OPERASIONAL</div>
       <nav>
+        <!-- 1. Dashboard -->
         <a class="nav-link {{ 'active' if request.endpoint == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">
-          <span class="nav-indicator">▸</span> Dashboard
+          <span class="nav-indicator">▸</span> Dashboard {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Utama' }}
         </a>
-        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.question') and not request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_index') }}">
-          <span class="nav-indicator">▸</span> Bank Soal
-        </a>
-        <a class="nav-link nav-sub-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_import') }}">
-          <span class="nav-indicator">└</span> Import JSON
-        </a>
+
+        <!-- 2. Modul Pos Hardware -->
+        {% if not g.active_station or g.active_station.name.lower() == 'hardware' %}
+          <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.packages') }}">
+            <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.packages') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id if g.active_station else None) }}">
+              <span class="nav-indicator">▸</span> Paket Soal / Kasus {{ ('Hardware') if g.active_station else '' }}
+            </a>
+            {% if request.endpoint and request.endpoint.startswith('admin.packages') %}
+              <div class="nav-submenu-box">
+                <a class="nav-subitem {{ 'active' if not request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id if g.active_station else None) }}">
+                  • Kelola Paket
+                </a>
+                <a class="nav-subitem {{ 'active' if request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_mapping', station_id=g.active_station.id if g.active_station else None) }}">
+                  • Pemetaan Kelompok A–D
+                </a>
+              </div>
+            {% endif %}
+          </div>
+          <!-- VERIFIKASI HARDWARE: HANYA ADA DI POS HARDWARE / GLOBAL -->
+          <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.hardware_submission') }}" href="{{ url_for('admin.hardware_submissions_index') }}">
+            <span class="nav-indicator">▸</span> 🛠️ Verifikasi Hardware
+          </a>
+        {% endif %}
+
+        <!-- 3. Modul Pos Kuis (Software Engineering & Cyber Security & Networking) -->
+        {% if not g.active_station or g.active_station.name.lower() != 'hardware' %}
+          {% if g.active_station and g.active_station.name.lower() == 'networking' %}
+            <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.networking_') }}" href="{{ url_for('admin.networking_lobby') }}">
+              <span class="nav-indicator">▸</span> 🌐 Konsol Pos Networking
+            </a>
+          {% endif %}
+          {% if g.active_station and g.active_station.name.lower() not in ('hardware', 'networking') %}
+            <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.packages') }}">
+              <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.packages') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id) }}">
+                <span class="nav-indicator">▸</span> Paket Soal Kuis
+              </a>
+              {% if request.endpoint and request.endpoint.startswith('admin.packages') %}
+                <div class="nav-submenu-box">
+                  <a class="nav-subitem {{ 'active' if not request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id) }}">
+                    • Kelola Paket
+                  </a>
+                  <a class="nav-subitem {{ 'active' if request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_mapping', station_id=g.active_station.id) }}">
+                    • Pemetaan Kelompok A–D
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+          <!-- BANK SOAL: HANYA MUNCUL DI POS KUIS / GLOBAL (Bukan Hardware) -->
+          <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.question') }}">
+            <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.question') }}" href="{{ url_for('admin.questions_index', station_id=g.active_station.id if g.active_station else None) }}">
+              <span class="nav-indicator">▸</span> 📝 Bank Soal {{ ('Pos ' ~ g.active_station.name) if g.active_station else '(Kuis PG)' }}
+            </a>
+            {% if request.endpoint and request.endpoint.startswith('admin.question') %}
+              <div class="nav-submenu-box">
+                <a class="nav-subitem {{ 'active' if not request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_index', station_id=g.active_station.id if g.active_station else None) }}">
+                  • Daftar Soal
+                </a>
+                <a class="nav-subitem {{ 'active' if request.endpoint.startswith('admin.questions_import') }}" href="{{ url_for('admin.questions_import') }}">
+                  • Import JSON Soal
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- 4. Kontrol Umum Perlombaan -->
         <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.team') }}" href="{{ url_for('admin.teams_index') }}">
-          <span class="nav-indicator">▸</span> Tim
+          <span class="nav-indicator">▸</span> 👥 Tim Peserta
         </a>
-        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.sessions') }}" href="{{ url_for('admin.sessions_index') }}">
-          <span class="nav-indicator">▸</span> Sesi
+        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.sessions') }}" href="{{ url_for('admin.sessions_index', station_id=g.active_station.id if g.active_station else None) }}">
+          <span class="nav-indicator">▸</span> ⏱️ Sesi {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Perlombaan' }}
         </a>
-        <a class="nav-link {{ 'active' if request.view_args and request.view_args.get('page') == 'results' }}" href="{{ url_for('admin.placeholder', page='results') }}">
-          <span class="nav-indicator">▸</span> Hasil
+        <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.results') }}" href="{{ url_for('admin.results_index', station_id=g.active_station.id if g.active_station else None) }}">
+          <span class="nav-indicator">▸</span> 🏆 Hasil & Leaderboard
+        </a>
+
+        <!-- 5. Tombol Pintas Ganti Pos -->
+        <a class="nav-link nav-link-switch-pos" href="{{ url_for('admin.station_select') }}" style="margin-top: 0.75rem; border: 2px solid #000; background: var(--nb-neon); color: #000; font-weight: 800; box-shadow: 2px 2px 0 #000;">
+          <span class="nav-indicator">⇄</span> GANTI POS LOMBA
         </a>
       </nav>
     </div>

@@ -61,8 +61,13 @@
                 <span class="nb-badge badge-neutral">KELOMPOK {{ s.group.code }}</span>
               </td>
               <td>
-                <span class="mono-val">Set {{ s.question_set.code }}</span>
-                <span class="text-muted">({{ s.question_set.name }})</span>
+                {% if s.question_set %}
+                  <span class="mono-val">Set {{ s.question_set.code }}</span>
+                  <span class="text-muted">({{ s.question_set.name }})</span>
+                {% elif s.package %}
+                  <span class="mono-val">{{ s.package.package_code }}</span>
+                  <span class="text-muted">({{ s.package.title }})</span>
+                {% else %}<span class="nb-badge badge-danger">Paket belum dipetakan</span>{% endif %}
               </td>
               <td>
                 <span class="mono-val">{{ (s.duration_seconds // 60) }} Menit</span>
@@ -94,7 +99,7 @@
               <td style="text-align: right;">
                 <div class="table-actions-cluster">
                   <a href="{{ url_for('admin.sessions_detail', session_id=s.id) }}" class="btn btn-sm btn-secondary">
-                    <span>DETAIL / MONITOR</span>
+                    <span>Lihat sesi &amp; tim</span>
                   </a>
 
                   {% if s.status.value == 'WAITING' %}
@@ -113,11 +118,11 @@
                         <span>🗑 HAPUS</span>
                       </button>
                     </form>
-                  {% elif s.status.value == 'RUNNING' and eff_status.value == 'RUNNING' %}
+                  {% elif s.status.value == 'RUNNING' %}
                     <form method="post" action="{{ url_for('admin.sessions_finish', session_id=s.id) }}" style="display:inline;">
                       {{ action_form.hidden_tag() }}
                       <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Akhiri sesi #{{ s.id }} secara manual sekarang?');">
-                        <span>■ FINISH</span>
+                        <span>{{ 'TUTUP SESI' if eff_status.value == 'FINISHED' else 'AKHIRI SESI' }}</span>
                       </button>
                     </form>
                   {% elif s.status.value in ['FINISHED', 'CANCELLED'] %}

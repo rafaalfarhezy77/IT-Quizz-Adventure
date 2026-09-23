@@ -1,0 +1,181 @@
+{% extends "admin/base.html" %}
+{% block title %}Pemetaan Paket ke Kelompok A–D{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">DISTRIBUSI STUDI KASUS // KELOMPOK A–D</div>
+    <h1>Pemetaan Paket ke Kelompok</h1>
+    <p class="welcome-text">Tentukan paket soal/studi kasus yang ditugaskan kepada masing-masing Kelompok (A, B, C, D). Sistem mendukung strategi <strong>SAME_FOR_ALL</strong> dan <strong>BY_GROUP</strong>.</p>
+  </div>
+  <div class="heading-actions">
+    {% if selected_station %}
+      <a href="{{ url_for('admin.packages_index', station_id=selected_station.id) }}" class="btn btn-outline">
+        <span>← Kelola Paket Pos Ini</span>
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Sub Menu Modul Paket -->
+<div class="module-subnav nb-card">
+  <span class="subnav-label">SUB MENU:</span>
+  <div class="subnav-links">
+    <a href="{{ url_for('admin.packages_index', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
+       class="subnav-item">
+      <span class="subnav-badge">01</span>
+      <span>📦 Kelola Paket Soal & Studi Kasus</span>
+    </a>
+    <a href="{{ url_for('admin.packages_mapping', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
+       class="subnav-item active">
+      <span class="subnav-badge">02</span>
+      <span>🗺️ Pemetaan Kelompok A–D</span>
+    </a>
+  </div>
+</div>
+
+<!-- Station Selector Tabs -->
+<div class="station-filter-tabs nb-card" style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+  <span class="mono-label" style="margin-right: 0.5rem;">PILIH POS:</span>
+  {% for st in stations %}
+    <a href="{{ url_for('admin.packages_mapping', station_id=st.id) }}"
+       class="nb-badge {{ 'badge-neon' if selected_station and selected_station.id == st.id else 'badge-neutral' }}"
+       style="font-size: 0.9rem; text-decoration: none; padding: 0.4rem 0.8rem;">
+      {{ st.name }}
+    </a>
+  {% endfor %}
+</div>
+
+<!-- Current Mapping Status Table -->
+<section style="margin-bottom: 2rem;">
+  <div class="section-title">
+    <div class="title-with-badge">
+      <h2>Status Pemetaan Saat Ini (Kelompok A–D)</h2>
+      <span class="count-badge">POS: {{ selected_station.name }}</span>
+    </div>
+  </div>
+
+  <div class="nb-table-wrap nb-card">
+    <table class="nb-table">
+      <thead>
+        <tr>
+          <th style="width: 120px;">Kelompok</th>
+          <th>Paket yang Ditugaskan</th>
+          <th style="width: 140px;">Status Paket</th>
+          <th style="width: 140px;">Strategi</th>
+          <th style="width: 160px; text-align: center;">Kesiapan Sesi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for grp in groups %}
+          {% set map_item = current_mappings.get(grp.code) %}
+          <tr>
+            <td>
+              <span class="mono-val text-bold" style="font-size: 1.1rem;">KELOMPOK {{ grp.code }}</span>
+            </td>
+            <td>
+              {% if map_item and map_item.package %}
+                <strong>{{ map_item.package.package_code }}</strong> — {{ map_item.package.title }}
+              {% else %}
+                <span class="mono-sub" style="color: #dc2626; font-weight: 700;">⚠ BELUM ADA PAKET YANG DIPETAKAN</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if map_item and map_item.package %}
+                <span class="nb-badge {{ 'badge-neon' if map_item.package.status.value == 'ACTIVE' else 'badge-warning' }}">
+                  {{ map_item.package.status.value }}
+                </span>
+              {% else %}
+                <span class="nb-badge badge-neutral">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="mono-sub">{{ map_item.strategy if map_item else '-' }}</span>
+            </td>
+            <td style="text-align: center;">
+              {% if map_item and map_item.package and map_item.package.status.value in ['ACTIVE', 'LOCKED'] %}
+                <span class="nb-badge badge-neon">SIAP DIMULAI ✓</span>
+              {% else %}
+                <span class="nb-badge badge-danger">BELUM SIAP ✕</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Form Pemetaan -->
+<form method="post" class="nb-form-layout nb-card" style="padding: 1.5rem;" novalidate>
+  {{ form.hidden_tag() }}
+
+  <div class="form-group" style="margin-bottom: 1.5rem;">
+    {{ form.strategy.label(class="field-label") }}
+    {{ form.strategy(class="nb-input", id="strategy-selector") }}
+    <small class="field-hint">Pilih metode pembagian studi kasus ke kelompok lomba.</small>
+  </div>
+
+  <!-- Container Strategi SAME_FOR_ALL -->
+  <div id="same-for-all-box" style="padding: 1rem; border: 2px dashed #000; background: #fafafa; margin-bottom: 1.5rem; display: none;">
+    <h3 style="margin-bottom: 0.5rem; font-size: 1rem;">STRATEGI: SAME_FOR_ALL</h3>
+    <p class="mono-sub" style="margin-bottom: 1rem;">Seluruh kelompok (A, B, C, D) akan mengerjakan paket studi kasus yang persis sama.</p>
+    <div class="form-group">
+      {{ form.same_package_id.label(class="field-label") }}
+      {{ form.same_package_id(class="nb-input") }}
+    </div>
+  </div>
+
+  <!-- Container Strategi BY_GROUP -->
+  <div id="by-group-box" style="padding: 1rem; border: 2px dashed #000; background: #fafafa; margin-bottom: 1.5rem;">
+    <h3 style="margin-bottom: 0.5rem; font-size: 1rem;">STRATEGI: BY_GROUP (PER KELOMPOK)</h3>
+    <p class="mono-sub" style="margin-bottom: 1rem;">Tugaskan paket yang berbeda untuk masing-masing kelompok (misal: Kelompok A -> Paket 01, Kelompok B -> Paket 02, dst.).</p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        {{ form.package_group_a.label(class="field-label") }}
+        {{ form.package_group_a(class="nb-input") }}
+      </div>
+      <div class="form-group">
+        {{ form.package_group_b.label(class="field-label") }}
+        {{ form.package_group_b(class="nb-input") }}
+      </div>
+      <div class="form-group">
+        {{ form.package_group_c.label(class="field-label") }}
+        {{ form.package_group_c(class="nb-input") }}
+      </div>
+      <div class="form-group">
+        {{ form.package_group_d.label(class="field-label") }}
+        {{ form.package_group_d(class="nb-input") }}
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+    <button type="submit" class="btn btn-neon">
+      <span>💾 SIMPAN PEMETAAN KELOMPOK</span>
+    </button>
+  </div>
+</form>
+
+<script>
+(function() {
+  const strategySelector = document.getElementById('strategy-selector');
+  const sameBox = document.getElementById('same-for-all-box');
+  const byGroupBox = document.getElementById('by-group-box');
+
+  function updateDisplay() {
+    if (strategySelector.value === 'SAME_FOR_ALL') {
+      sameBox.style.display = 'block';
+      byGroupBox.style.display = 'none';
+    } else {
+      sameBox.style.display = 'none';
+      byGroupBox.style.display = 'block';
+    }
+  }
+
+  strategySelector.addEventListener('change', updateDisplay);
+  updateDisplay();
+})();
+</script>
+{% endblock %}

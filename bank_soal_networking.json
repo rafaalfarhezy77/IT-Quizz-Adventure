@@ -1,0 +1,314 @@
+{
+  "pos": "Networking",
+  "sets": {
+    "A": [
+      {
+        "order_number": 1,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Konsep Dasar Jaringan",
+        "text": "Pengertian jaringan komputer yang paling tepat adalah…",
+        "options": {
+          "A": "Sekumpulan komputer otonom yang saling terhubung menggunakan protokol komunikasi untuk berbagi data, sumber daya, dan layanan",
+          "B": "Kumpulan kabel listrik dalam satu gedung",
+          "C": "Sistem operasi untuk mengelola file",
+          "D": "Aplikasi pengolah kata",
+          "E": "Perangkat penyimpanan data eksternal"
+        },
+        "correct_answer": "A",
+        "weight": 1.0
+      },
+      {
+        "order_number": 2,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Jenis Jaringan Geografis",
+        "text": "Jaringan yang menghubungkan HP dengan earphone/speaker lewat Bluetooth dalam jarak sangat dekat disebut…",
+        "options": {
+          "A": "PAN",
+          "B": "LAN",
+          "C": "MAN",
+          "D": "WAN",
+          "E": "VPN"
+        },
+        "correct_answer": "A",
+        "weight": 1.0
+      },
+      {
+        "order_number": 3,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Jenis Jaringan Geografis",
+        "text": "Jaringan yang mencakup satu ruangan, satu rumah, atau satu gedung sekolah disebut…",
+        "options": {
+          "A": "PAN",
+          "B": "LAN",
+          "C": "MAN",
+          "D": "WAN",
+          "E": "GAN"
+        },
+        "correct_answer": "B",
+        "weight": 1.0
+      },
+      {
+        "order_number": 4,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Jenis Jaringan Geografis",
+        "text": "Jaringan yang menghubungkan beberapa LAN dalam cakupan satu kota disebut…",
+        "options": {
+          "A": "PAN",
+          "B": "LAN",
+          "C": "MAN",
+          "D": "WAN",
+          "E": "SAN"
+        },
+        "correct_answer": "C",
+        "weight": 1.0
+      },
+      {
+        "order_number": 5,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Jenis Jaringan Geografis",
+        "text": "Jaringan yang mencakup wilayah sangat luas (antar kota/negara/benua) dan menggunakan router disebut…",
+        "options": {
+          "A": "PAN",
+          "B": "LAN",
+          "C": "MAN",
+          "D": "WAN",
+          "E": "HAN"
+        },
+        "correct_answer": "D",
+        "weight": 1.0
+      },
+      {
+        "order_number": 6,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Media Konektivitas",
+        "text": "Media kabel yang memanfaatkan cahaya untuk mengirim data dengan kecepatan sangat tinggi dan jarak jauh adalah…",
+        "options": {
+          "A": "Kabel UTP",
+          "B": "Kabel Coaxial",
+          "C": "Fiber Optik",
+          "D": "Kabel Telepon",
+          "E": "Kabel Listrik"
+        },
+        "correct_answer": "C",
+        "weight": 1.0
+      },
+      {
+        "order_number": 7,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Perangkat Jaringan",
+        "text": "Perangkat yang berfungsi menghubungkan beberapa komputer dalam satu jaringan LAN disebut…",
+        "options": {
+          "A": "Router",
+          "B": "Switch/Hub",
+          "C": "Modem",
+          "D": "Firewall",
+          "E": "NIC"
+        },
+        "correct_answer": "B",
+        "weight": 1.0
+      },
+      {
+        "order_number": 8,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Perangkat Jaringan",
+        "text": "Perangkat yang mengatur jalur (routing) pengiriman data antar jaringan yang berbeda, misalnya dari LAN ke internet, disebut…",
+        "options": {
+          "A": "Switch",
+          "B": "Access Point",
+          "C": "Router",
+          "D": "NIC",
+          "E": "Hub"
+        },
+        "correct_answer": "C",
+        "weight": 1.0
+      },
+      {
+        "order_number": 9,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Perangkat Jaringan",
+        "text": "Kartu yang dipasang pada komputer agar dapat terhubung ke jaringan disebut…",
+        "options": {
+          "A": "Firewall",
+          "B": "NIC (Network Interface Card)",
+          "C": "Access Point",
+          "D": "Switch",
+          "E": "Modem"
+        },
+        "correct_answer": "B",
+        "weight": 1.0
+      },
+      {
+        "order_number": 10,
+        "stage": 1,
+        "question_type": "multiple_choice",
+        "category": "Topologi Jaringan",
+        "text": "Topologi jaringan di mana setiap komputer terhubung langsung ke semua komputer lain, sehingga sangat andal namun mahal, disebut topologi…",
+        "options": {
+          "A": "Bus",
+          "B": "Star",
+          "C": "Ring",
+          "D": "Mesh",
+          "E": "Tree"
+        },
+        "correct_answer": "D",
+        "weight": 1.0
+      },
+      {
+        "order_number": 11,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Konsep Dasar Jaringan",
+        "text": "Internet adalah jaringan privat yang hanya bisa diakses oleh satu sekolah saja.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 12,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Jenis Jaringan Geografis",
+        "text": "LAN biasanya mencakup wilayah yang lebih kecil dibanding MAN.",
+        "correct_answer": "Benar",
+        "weight": 1.0
+      },
+      {
+        "order_number": 13,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Media Konektivitas",
+        "text": "Kabel UTP termasuk media jaringan nirkabel.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 14,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Perangkat Jaringan",
+        "text": "Access Point berfungsi memancarkan sinyal WiFi agar perangkat bisa terhubung secara nirkabel.",
+        "correct_answer": "Benar",
+        "weight": 1.0
+      },
+      {
+        "order_number": 15,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Perangkat Jaringan",
+        "text": "Firewall berfungsi mempercepat kecepatan koneksi internet.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 16,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Topologi Jaringan",
+        "text": "Pada topologi Bus, seluruh komputer terhubung ke satu kabel utama secara berurutan.",
+        "correct_answer": "Benar",
+        "weight": 1.0
+      },
+      {
+        "order_number": 17,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Topologi Jaringan",
+        "text": "Pada topologi Star, jika satu kabel dari komputer ke switch putus, seluruh jaringan otomatis ikut mati total.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 18,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Topologi Jaringan",
+        "case_study": "Sebuah lab sekolah menghubungkan 20 komputer memakai 1 switch di tengah ruangan, dan tiap komputer punya kabel sendiri langsung ke switch tersebut.",
+        "text": "Topologi yang dipakai lab ini adalah topologi Ring.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 19,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Jenis Jaringan Geografis",
+        "case_study": "Sebuah kios kecil menghubungkan komputer kasir ke printer struk tanpa kabel dari jarak sekitar 2 meter memakai Bluetooth.",
+        "text": "Jenis jaringan yang terbentuk ini disebut PAN.",
+        "correct_answer": "Benar",
+        "weight": 1.0
+      },
+      {
+        "order_number": 20,
+        "stage": 2,
+        "question_type": "true_false",
+        "category": "Perangkat Jaringan",
+        "text": "Router hanya bisa dipakai untuk jaringan berskala LAN dan tidak berperan apa pun dalam koneksi ke internet.",
+        "correct_answer": "Salah",
+        "weight": 1.0
+      },
+      {
+        "order_number": 21,
+        "stage": 3,
+        "question_type": "short_text",
+        "category": "Pertanian",
+        "case_study": "Sebuah startup smart farming memasang banyak sensor kelembapan tanah di satu petak sawah. Sensor-sensor ini saling terhubung dalam kelompok kecil berjarak kurang dari 10 meter satu sama lain sebelum datanya dikumpulkan ke satu alat pengumpul (gateway) di pinggir sawah.",
+        "text": "Jenis jaringan antar-sensor yang berjarak sangat dekat ini disebut ___",
+        "correct_answer": "PAN",
+        "accepted_answers": ["PAN", "Personal Area Network"],
+        "weight": 1.0
+      },
+      {
+        "order_number": 22,
+        "stage": 3,
+        "question_type": "short_text",
+        "category": "Kesehatan",
+        "case_study": "Sebuah klinik di desa terpencil ingin melakukan konsultasi video secara langsung dengan dokter spesialis yang bertugas di rumah sakit besar di kota lain, bahkan berbeda pulau. Meski sinyal HP di desa tersebut sering naik-turun, komunikasi video tetap harus bisa tersambung lintas pulau.",
+        "text": "Jenis jaringan berskala sangat luas yang dibutuhkan agar komunikasi ini bisa berjalan disebut ___",
+        "correct_answer": "WAN",
+        "accepted_answers": ["WAN", "Wide Area Network", "internet"],
+        "weight": 1.0
+      },
+      {
+        "order_number": 23,
+        "stage": 3,
+        "question_type": "short_text",
+        "category": "Ketahanan Pangan",
+        "case_study": "Sebuah gudang penyimpanan pangan nasional memasang belasan kamera CCTV. Seluruh kamera tersebut disambungkan lewat kabel ke satu alat pusat yang diletakkan di tengah ruangan kontrol, sehingga jika salah satu kabel kamera putus, kamera-kamera lain tetap merekam normal tanpa terganggu.",
+        "text": "Topologi jaringan CCTV gudang ini disebut topologi ___",
+        "correct_answer": "Star",
+        "accepted_answers": ["Star", "topologi star", "bintang", "topologi bintang"],
+        "weight": 1.0
+      },
+      {
+        "order_number": 24,
+        "stage": 3,
+        "question_type": "short_text",
+        "category": "Ekonomi Sirkular/Sampah",
+        "case_study": "Aplikasi bank sampah digital di suatu kota diakses oleh ribuan warga dari berbagai kecamatan secara bersamaan lewat internet untuk mencatat transaksi tukar sampah menjadi saldo. Agar data transaksi dan saldo warga tidak bisa diretas atau diakses sembarang orang dari luar, perangkat/sistem keamanan jaringan yang wajib dipasang di server aplikasi tersebut adalah ___",
+        "text": "Perangkat/sistem keamanan jaringan yang wajib dipasang di server aplikasi tersebut adalah ___",
+        "correct_answer": "Firewall",
+        "accepted_answers": ["Firewall", "firewall jaringan"],
+        "weight": 1.0
+      },
+      {
+        "order_number": 25,
+        "stage": 3,
+        "question_type": "short_text",
+        "category": "Pariwisata",
+        "case_study": "Pengelola sebuah destinasi wisata baru ingin menyediakan akses WiFi gratis ke seluruh area terbuka objek wisata yang cukup luas, tanpa harus menarik kabel LAN ke setiap sudut area.",
+        "text": "Perangkat yang perlu dipasang di beberapa titik untuk memancarkan sinyal WiFi ke seluruh area terbuka tersebut disebut ___",
+        "correct_answer": "Access Point",
+        "accepted_answers": ["Access Point", "AP", "access point WiFi", "pemancar WiFi"],
+        "weight": 1.0
+      }
+    ]
+  }
+}

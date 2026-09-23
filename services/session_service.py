@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import update
 from models import (
     CompetitionSession,
     Group,
@@ -98,7 +99,13 @@ def find_participant_session(station_id: int, group_id: int) -> CompetitionSessi
     return sessions[0]
 
 
-def create_session(station_id: int, group_id: int, question_set_id: int, duration_minutes: int) -> CompetitionSession:
+def create_session(
+    station_id: int,
+    group_id: int,
+    question_set_id: int | None = None,
+    duration_minutes: int = 30,
+    package_id: int | None = None,
+) -> CompetitionSession:
     """
     Create a new competition session in WAITING status with comprehensive validations.
     """
@@ -110,17 +117,24 @@ def create_session(station_id: int, group_id: int, question_set_id: int, duratio
     if not group:
         raise ValueError("Kelompok peserta tidak ditemukan.")
 
-    qs = db.session.get(QuestionSet, question_set_id)
-    if not qs:
-        raise ValueError("Bank soal tidak ditemukan.")
+    if station.name.lower() == "networking":
+        raise ValueError("Pos Networking memakai lobby khusus. Siapkan rotasi, kelompok, dan set soal di Konsol Pos Networking.")
+    if station.name.lower() != "hardware" and not question_set_id:
+        raise ValueError("Pilih bank soal READY untuk pos kuis ini.")
 
-    if qs.station_id != station.id:
-        raise ValueError(f"Bank soal '{qs.code}' bukan milik pos '{station.name}'.")
+    qs = None
+    if question_set_id:
+        qs = db.session.get(QuestionSet, question_set_id)
+        if not qs:
+            raise ValueError("Bank soal tidak ditemukan.")
 
-    if qs.status != QuestionSetStatus.READY:
-        raise ValueError(
-            f"Bank soal harus berstatus READY untuk dapat digunakan dalam sesi (status saat ini: {qs.status.value})."
-        )
+        if qs.station_id != station.id:
+            raise ValueError(f"Bank soal '{qs.code}' bukan milik pos '{station.name}'.")
+
+        if qs.status != QuestionSetStatus.READY:
+            raise ValueError(
+                f"Bank soal harus berstatus READY untuk dapat digunakan dalam sesi (status saat ini: {qs.status.value})."
+            )
 
     if duration_minutes <= 0:
         raise ValueError("Durasi sesi harus lebih dari 0 menit.")
@@ -138,11 +152,25 @@ def create_session(station_id: int, group_id: int, question_set_id: int, duratio
             f"Sudah ada sesi berstatus {duplicate.status.value} (ID: #{duplicate.id}) untuk Pos {station.name} dan Kelompok {group.code}."
         )
 
+    # Deteksi paket jika tidak dispesifikasikan
+    from services.package_mapping_service import get_assigned_package_for_group
+    if not package_id:
+        pkg = get_assigned_package_for_group(station.id, group.id)
+        if pkg:
+            package_id = pkg.id
+
+    if not qs and not package_id:
+        # Jika bukan station quiz atau ada paket untuk station ini, harus ada pemetaan paket
+        pkg = get_assigned_package_for_group(station.id, group.id)
+        if pkg:
+            package_id = pkg.id
+
     duration_seconds = int(duration_minutes * 60)
     new_session = CompetitionSession(
         station_id=station.id,
         group_id=group.id,
-        question_set_id=qs.id,
+        question_set_id=qs.id if qs else None,
+        package_id=package_id,
         duration_seconds=duration_seconds,
         status=SessionStatus.WAITING,
     )
@@ -155,7 +183,7 @@ def update_session(
     session_obj: CompetitionSession,
     station_id: int,
     group_id: int,
-    question_set_id: int,
+    question_set_id: int | None,
     duration_minutes: int,
 ) -> CompetitionSession:
     """
@@ -172,14 +200,19 @@ def update_session(
     if not group:
         raise ValueError("Kelompok peserta tidak ditemukan.")
 
-    qs = db.session.get(QuestionSet, question_set_id)
-    if not qs:
+    if station.name.lower() == "networking":
+        raise ValueError("Ubah sesi Networking melalui Konsol Pos Networking.")
+    if station.name.lower() != "hardware" and not question_set_id:
+        raise ValueError("Pilih bank soal READY untuk pos kuis ini.")
+
+    qs = db.session.get(QuestionSet, question_set_id) if question_set_id else None
+    if question_set_id and not qs:
         raise ValueError("Bank soal tidak ditemukan.")
 
-    if qs.station_id != station.id:
+    if qs and qs.station_id != station.id:
         raise ValueError(f"Bank soal '{qs.code}' bukan milik pos '{station.name}'.")
 
-    if qs.status != QuestionSetStatus.READY:
+    if qs and qs.status != QuestionSetStatus.READY:
         raise ValueError(
             f"Bank soal harus berstatus READY untuk dapat digunakan dalam sesi (status saat ini: {qs.status.value})."
         )
@@ -203,7 +236,7 @@ def update_session(
 
     session_obj.station_id = station.id
     session_obj.group_id = group.id
-    session_obj.question_set_id = qs.id
+    session_obj.question_set_id = qs.id if qs else None
     session_obj.duration_seconds = int(duration_minutes * 60)
     db.session.commit()
     return session_obj
@@ -225,7 +258,7 @@ def start_session(session_obj: CompetitionSession) -> tuple[bool, str]:
         return False, f"Sesi dengan status {session_obj.status.value} tidak dapat dimulai."
 
     # Check question set status
-    if session_obj.question_set.status != QuestionSetStatus.READY:
+    if session_obj.question_set and session_obj.question_set.status != QuestionSetStatus.READY:
         return False, f"Bank soal harus berstatus READY (status saat ini: {session_obj.question_set.status.value})."
 
     # Check conflicting running session for same station + group
@@ -241,9 +274,39 @@ def start_session(session_obj: CompetitionSession) -> tuple[bool, str]:
         return False, f"Sudah ada sesi lain yang sedang berjalan (ID: #{conflicting.id}) untuk pos dan kelompok ini."
 
     now = get_server_now()
-    session_obj.status = SessionStatus.RUNNING
-    session_obj.started_at = now
-    session_obj.question_set.status = QuestionSetStatus.LOCKED
+
+    # Validasi dan penguncian paket tantangan
+    from services.package_mapping_service import get_assigned_package_for_group
+    from models import PackageStatus, ChallengePackage
+
+    package = session_obj.package or get_assigned_package_for_group(
+        session_obj.station_id, session_obj.group_id, session_obj.id
+    )
+    has_packages = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(ChallengePackage)
+        .where(ChallengePackage.station_id == session_obj.station_id)
+    ) or 0
+
+    if package:
+        if package.status not in (PackageStatus.ACTIVE, PackageStatus.LOCKED):
+            return False, f"Paket '{package.package_code}' yang ditugaskan harus berstatus ACTIVE atau LOCKED (status: {package.status.value})."
+        session_obj.package_id = package.id
+        package.status = PackageStatus.LOCKED
+    elif has_packages > 0 or session_obj.station.name.lower() == "hardware":
+        return False, f"Sesi tidak dapat dimulai: Kelompok {session_obj.group.code} belum memiliki Paket Soal/Studi Kasus pada pos ini."
+
+    # Conditional write makes two dashboard requests for the same session agree on one timer.
+    claimed = db.session.execute(
+        update(CompetitionSession)
+        .where(CompetitionSession.id == session_obj.id, CompetitionSession.status == SessionStatus.WAITING)
+        .values(status=SessionStatus.RUNNING, started_at=now)
+    )
+    if claimed.rowcount != 1:
+        db.session.rollback()
+        return False, "Sesi sudah dimulai dari perangkat lain. Muat ulang halaman untuk melihat waktu resmi."
+    if session_obj.question_set:
+        session_obj.question_set.status = QuestionSetStatus.LOCKED
 
     db.session.commit()
     return True, "Sesi perlombaan berhasil dimulai!"
@@ -343,4 +406,3 @@ def clear_session_history(only_finished: bool = True) -> tuple[int, str]:
 
     db.session.commit()
     return count, f"Berhasil menghapus {count} histori sesi beserta seluruh data nilainya."
-

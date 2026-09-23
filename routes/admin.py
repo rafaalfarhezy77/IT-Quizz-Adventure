@@ -24,12 +24,26 @@ from forms.question import (
     QuestionJSONUploadForm,
     QuestionSetStatusForm,
 )
+from forms.hardware import HardwareReviewForm
+from forms.package import (
+    HardwarePackageForm,
+    PackageActionForm,
+    PackageMappingForm,
+)
 from forms.session import SessionActionForm, SessionForm
 from forms.team import TeamCSVUploadForm, TeamForm, TeamImportConfirmForm
 from models import (
     Admin,
+    Answer,
+    ChallengePackage,
     CompetitionSession,
     Group,
+    GroupPackageMapping,
+    HardwareSubmission,
+    HardwareSubmissionAudit,
+    NetworkingSubmission,
+    NetworkingSubmissionAudit,
+    PackageStatus,
     Question,
     QuestionSet,
     QuestionSetStatus,
@@ -41,6 +55,24 @@ from models import (
     SubmissionStatus,
     Team,
     db,
+)
+from services.hardware_service import review_hardware_submission
+from services.package_mapping_service import (
+    apply_by_group_mapping,
+    apply_same_for_all_mapping,
+    get_group_mappings_for_station,
+)
+from services.package_service import (
+    create_package,
+    delete_or_archive_package,
+    duplicate_package,
+    generate_next_package_code,
+    get_package_by_id,
+    get_packages_by_station,
+    is_package_editable,
+    is_package_used,
+    set_package_status,
+    update_package,
 )
 from services.leaderboard_service import (
     generate_results_csv,
@@ -96,6 +128,15 @@ def load_current_admin():
         flash("Sesi admin tidak valid. Silakan login kembali.", "warning")
         return redirect(url_for("admin.login"))
     g.current_admin = admin
+
+    # Context pos aktif yang sedang dikelola admin
+    station_id = session.get("admin_station_id")
+    if station_id:
+        st = db.session.get(Station, station_id)
+        g.active_station = st if (st and st.is_active) else None
+    else:
+        g.active_station = None
+
     return None
 
 
@@ -124,19 +165,283 @@ def logout():
     return redirect(url_for("admin.login"))
 
 
+@admin_bp.get("/station-select")
+@admin_required
+def station_select():
+    """Halaman pemilihan pos bagi admin untuk menentukan fokus operasional pos."""
+    stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+
+    station_meta = []
+    for st in stations:
+        is_hw = (st.name.lower() == "hardware")
+        is_net = (st.name.lower() == "networking")
+        if is_hw:
+            pkg_cnt = db.session.scalar(db.select(db.func.count()).select_from(ChallengePackage).where(ChallengePackage.station_id == st.id)) or 0
+            pending_cnt = db.session.scalar(
+                db.select(db.func.count())
+                .select_from(HardwareSubmission)
+                .join(Submission)
+                .join(CompetitionSession)
+                .where(CompetitionSession.station_id == st.id, HardwareSubmission.verification_status.in_(("SUBMITTED", "NEEDS_REVIEW")))
+            ) or 0
+            act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+            meta = {
+                "station": st,
+                "type": "Hardware Challenge",
+                "badge": "BuildCores Challenge",
+                "icon": "💻",
+                "desc": "Studi kasus perakitan PC via BuildCores, form data spesifikasi & bukti screenshot, serta verifikasi juri.",
+                "packages_count": pkg_cnt,
+                "pending_count": pending_cnt,
+                "active_sessions": act_sess,
+                "is_hardware": True,
+                "is_networking": False,
+            }
+        elif is_net:
+            act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+            pending_cnt = db.session.scalar(
+                db.select(db.func.count())
+                .select_from(Answer)
+                .join(Submission, Answer.submission_id == Submission.id)
+                .join(CompetitionSession, Submission.session_id == CompetitionSession.id)
+                .where(CompetitionSession.station_id == st.id, Answer.review_status == "NEEDS_REVIEW")
+            ) or 0
+            q_cnt = db.session.scalar(db.select(db.func.count()).select_from(QuestionSet).where(QuestionSet.station_id == st.id)) or 0
+            meta = {
+                "station": st,
+                "type": "Networking 3-Tahap",
+                "badge": "Signal Check & Stamp",
+                "icon": "🌐",
+                "desc": "Kuis tim 3 tahap (Signal Check, True or Trap, Case Signal), verifikasi jawaban isian, dan evaluasi Stamp.",
+                "packages_count": q_cnt,
+                "pending_count": pending_cnt,
+                "active_sessions": act_sess,
+                "is_hardware": False,
+                "is_networking": True,
+            }
+        else:
+            q_cnt = db.session.scalar(db.select(db.func.count()).select_from(QuestionSet).where(QuestionSet.station_id == st.id)) or 0
+            act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+            meta = {
+                "station": st,
+                "type": "Quiz Challenge",
+                "badge": "Rotasi Anggota" if st.mode.value == "member_rotation" else "Kuis Standar",
+                "icon": "⚙️" if st.mode.value == "member_rotation" else "🛡️",
+                "desc": "Kuis pilihan ganda interaktif dengan " + ("sistem rotasi giliran anggota tim per paket soal." if st.mode.value == "member_rotation" else "pengerjaan soal standar."),
+                "packages_count": q_cnt,
+                "pending_count": 0,
+                "active_sessions": act_sess,
+                "is_hardware": False,
+                "is_networking": False,
+            }
+        station_meta.append(meta)
+
+    return render_template("admin/station_select.html", station_meta=station_meta)
+
+
+@admin_bp.get("/set-station/<int:station_id>")
+@admin_required
+def set_station(station_id: int):
+    """Mengatur pos aktif yang dikelola admin."""
+    if station_id == 0:
+        session.pop("admin_station_id", None)
+        flash("Mode operasional diatur ke: Semua Pos (Mode Global).", "info")
+        return redirect(url_for("admin.dashboard"))
+
+    st = db.session.get(Station, station_id)
+    if not st or not st.is_active:
+        flash("Pos tidak ditemukan atau sedang tidak aktif.", "danger")
+        return redirect(url_for("admin.station_select"))
+
+    session["admin_station_id"] = st.id
+    flash(f"Pos aktif berhasil diatur ke: Pos {st.name}.", "success")
+    return redirect(url_for("admin.dashboard"))
+
+
+@admin_bp.get("/set-station/clear")
+@admin_required
+def clear_station():
+    """Menghapus filter pos aktif dan kembali ke Mode Global."""
+    session.pop("admin_station_id", None)
+    flash("Beralih ke Mode Global (Semua Pos).", "info")
+    return redirect(url_for("admin.dashboard"))
+
+
 @admin_bp.get("/dashboard")
 @admin_required
 def dashboard():
+    all_stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+    st_active = g.active_station
+
+    all_sessions = db.session.scalars(db.select(CompetitionSession)).all()
+    unmapped_sessions = 0
+    for s in all_sessions:
+        if not s.package_id:
+            from services.package_mapping_service import get_assigned_package_for_group
+            pkg = get_assigned_package_for_group(s.station_id, s.group_id, s.id)
+            if not pkg and (s.station.name.lower() == "hardware"):
+                if not st_active or st_active.id == s.station_id:
+                    unmapped_sessions += 1
+
+    total_stations_count = db.session.scalar(db.select(db.func.count()).select_from(Station))
+    total_groups_count = db.session.scalar(db.select(db.func.count()).select_from(Group))
+    total_teams_count = db.session.scalar(db.select(db.func.count()).select_from(Team).where(Team.is_active.is_(True)))
+
+    if st_active and st_active.name.lower() == "hardware":
+        active_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st_active.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+        finished_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st_active.id, CompetitionSession.status == SessionStatus.FINISHED)) or 0
+        total_subs = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, Submission.status.in_((SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED)))
+        ) or 0
+        packages_count = db.session.scalar(db.select(db.func.count()).select_from(ChallengePackage).where(ChallengePackage.station_id == st_active.id)) or 0
+        mapped_groups_count = db.session.scalar(db.select(db.func.count(db.func.distinct(GroupPackageMapping.group_id))).where(GroupPackageMapping.station_id == st_active.id)) or 0
+
+        hw_draft = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "DRAFT")
+        ) or 0
+        hw_submitted = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "SUBMITTED")
+        ) or 0
+        hw_needs_review = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "NEEDS_REVIEW")
+        ) or 0
+        hw_verified = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "VERIFIED")
+        ) or 0
+        hw_rejected = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "REJECTED")
+        ) or 0
+        hw_scored = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(HardwareSubmission)
+            .join(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, HardwareSubmission.verification_status == "SCORED")
+        ) or 0
+        hw_pending = hw_submitted + hw_needs_review
+        net_pending = net_finalized = net_stamps = 0
+    elif st_active:
+        active_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st_active.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+        finished_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st_active.id, CompetitionSession.status == SessionStatus.FINISHED)) or 0
+        total_subs = db.session.scalar(
+            db.select(db.func.count())
+            .select_from(Submission)
+            .join(CompetitionSession)
+            .where(CompetitionSession.station_id == st_active.id, Submission.status.in_((SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED)))
+        ) or 0
+        packages_count = db.session.scalar(db.select(db.func.count()).select_from(QuestionSet).where(QuestionSet.station_id == st_active.id)) or 0
+        mapped_groups_count = 4
+        hw_draft = hw_submitted = hw_needs_review = hw_verified = hw_rejected = hw_scored = hw_pending = 0
+        if st_active.name.lower() == "networking":
+            net_pending = db.session.scalar(
+                db.select(db.func.count())
+                .select_from(NetworkingSubmission)
+                .join(Submission)
+                .join(CompetitionSession)
+                .where(CompetitionSession.station_id == st_active.id, NetworkingSubmission.verification_status.in_(["SUBMITTED", "NEEDS_REVIEW"]))
+            ) or 0
+            net_finalized = db.session.scalar(
+                db.select(db.func.count())
+                .select_from(NetworkingSubmission)
+                .join(Submission)
+                .join(CompetitionSession)
+                .where(CompetitionSession.station_id == st_active.id, NetworkingSubmission.verification_status == "FINALIZED")
+            ) or 0
+            net_stamps = db.session.scalar(
+                db.select(db.func.count())
+                .select_from(NetworkingSubmission)
+                .join(Submission)
+                .join(CompetitionSession)
+                .where(CompetitionSession.station_id == st_active.id, NetworkingSubmission.has_stamp.is_(True))
+            ) or 0
+        else:
+            net_pending = net_finalized = net_stamps = 0
+    else:
+        active_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.status == SessionStatus.RUNNING)) or 0
+        finished_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.status == SessionStatus.FINISHED)) or 0
+        total_subs = db.session.scalar(db.select(db.func.count()).select_from(Submission).where(Submission.status.in_((SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED)))) or 0
+        packages_count = db.session.scalar(db.select(db.func.count()).select_from(ChallengePackage)) or 0
+        mapped_groups_count = db.session.scalar(db.select(db.func.count(db.func.distinct(GroupPackageMapping.group_id)))) or 0
+        hw_draft = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "DRAFT")) or 0
+        hw_submitted = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "SUBMITTED")) or 0
+        hw_needs_review = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "NEEDS_REVIEW")) or 0
+        hw_verified = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "VERIFIED")) or 0
+        hw_rejected = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "REJECTED")) or 0
+        hw_scored = db.session.scalar(db.select(db.func.count()).select_from(HardwareSubmission).where(HardwareSubmission.verification_status == "SCORED")) or 0
+        hw_pending = hw_submitted + hw_needs_review
+        net_pending = db.session.scalar(db.select(db.func.count()).select_from(NetworkingSubmission).where(NetworkingSubmission.verification_status.in_(["SUBMITTED", "NEEDS_REVIEW"]))) or 0
+        net_finalized = db.session.scalar(db.select(db.func.count()).select_from(NetworkingSubmission).where(NetworkingSubmission.verification_status == "FINALIZED")) or 0
+        net_stamps = db.session.scalar(db.select(db.func.count()).select_from(NetworkingSubmission).where(NetworkingSubmission.has_stamp.is_(True))) or 0
+
     statistics = {
-        "stations": db.session.scalar(db.select(db.func.count()).select_from(Station)),
-        "groups": db.session.scalar(db.select(db.func.count()).select_from(Group)),
-        "teams": db.session.scalar(db.select(db.func.count()).select_from(Team).where(Team.is_active.is_(True))),
+        "stations": total_stations_count,
+        "groups": total_groups_count,
+        "teams": total_teams_count,
         "questions": db.session.scalar(db.select(db.func.count()).select_from(Question).where(Question.is_active.is_(True))),
-        "active_sessions": db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.status == SessionStatus.RUNNING)),
-        "finished_sessions": db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.status == SessionStatus.FINISHED)),
-        "total_submissions": db.session.scalar(db.select(db.func.count()).select_from(Submission).where(Submission.status.in_((SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED)))),
+        "active_sessions": active_sessions,
+        "finished_sessions": finished_sessions,
+        "total_submissions": total_subs,
+        "packages": packages_count,
+        "mapped_groups": mapped_groups_count,
+        "unmapped_sessions": unmapped_sessions,
+        "hw_draft": hw_draft,
+        "hw_submitted": hw_submitted,
+        "hw_needs_review": hw_needs_review,
+        "hw_verified": hw_verified,
+        "hw_rejected": hw_rejected,
+        "hw_scored": hw_scored,
+        "hw_pending": hw_pending,
+        "net_pending": net_pending,
+        "net_finalized": net_finalized,
+        "net_stamps": net_stamps,
     }
-    return render_template("admin/dashboard.html", statistics=statistics)
+    focus_sessions = [
+        {
+            "session": item,
+            "status": get_effective_status(item),
+            "remaining": get_remaining_seconds(item),
+            "team_count": sum(1 for team in item.group.teams if team.is_active),
+            "submitted_count": sum(1 for sub in item.submissions if sub.status in (SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED)),
+        }
+        for item in all_sessions
+        if (not st_active or item.station_id == st_active.id)
+        and item.status in (SessionStatus.WAITING, SessionStatus.RUNNING)
+    ]
+    focus_sessions.sort(key=lambda item: (item["status"] != SessionStatus.RUNNING, item["session"].station.name, item["session"].group.code))
+    return render_template(
+        "admin/dashboard.html",
+        statistics=statistics,
+        all_stations=all_stations,
+        active_station=st_active,
+        focus_sessions=focus_sessions,
+    )
 
 
 # ==============================================================================
@@ -150,6 +455,8 @@ def questions_index():
     ensure_default_question_sets()
 
     selected_station_id = request.args.get("station_id", type=int)
+    if not selected_station_id and g.active_station and g.active_station.name.lower() != "hardware":
+        selected_station_id = g.active_station.id
 
     station_priority = db.case(
         {"Software Engineering": 1, "Cyber Security": 2, "Hardware": 3, "Networking": 4},
@@ -897,7 +1204,7 @@ def _populate_session_form_choices(form, station_id=None):
         .where(QuestionSet.status == QuestionSetStatus.READY)
         .order_by(Station.name, QuestionSet.code)
     ).all()
-    form.question_set_id.choices = [
+    form.question_set_id.choices = [(0, "Tanpa bank soal — khusus Hardware (paket studi kasus)")] + [
         (qs.id, f"{qs.station.name} — Set {qs.code} ({qs.name})") for qs in ready_sets
     ]
 
@@ -905,9 +1212,14 @@ def _populate_session_form_choices(form, station_id=None):
 @admin_bp.get("/sessions")
 @admin_required
 def sessions_index():
-    sessions = db.session.scalars(
-        db.select(CompetitionSession).order_by(CompetitionSession.created_at.desc())
-    ).all()
+    station_id = request.args.get("station_id", type=int)
+    if not station_id and g.active_station:
+        station_id = g.active_station.id
+
+    stmt = db.select(CompetitionSession).order_by(CompetitionSession.created_at.desc())
+    if station_id:
+        stmt = stmt.where(CompetitionSession.station_id == station_id)
+    sessions = db.session.scalars(stmt).all()
 
     session_data = []
     for s in sessions:
@@ -920,7 +1232,12 @@ def sessions_index():
         })
 
     action_form = SessionActionForm()
-    return render_template("admin/sessions/index.html", sessions=session_data, action_form=action_form)
+    return render_template(
+        "admin/sessions/index.html",
+        sessions=session_data,
+        action_form=action_form,
+        selected_station_id=station_id,
+    )
 
 
 @admin_bp.route("/sessions/create", methods=["GET", "POST"])
@@ -929,12 +1246,15 @@ def sessions_create():
     form = SessionForm()
     _populate_session_form_choices(form)
 
+    if request.method == "GET" and g.active_station:
+        form.station_id.data = g.active_station.id
+
     if form.validate_on_submit():
         try:
             new_session = create_session(
                 station_id=form.station_id.data,
                 group_id=form.group_id.data,
-                question_set_id=form.question_set_id.data,
+                question_set_id=form.question_set_id.data or None,
                 duration_minutes=form.duration_minutes.data,
             )
             flash(f"Sesi #{new_session.id} berhasil dibuat dengan status WAITING.", "success")
@@ -984,12 +1304,13 @@ def sessions_edit(session_id: int):
     _populate_session_form_choices(form)
 
     # Ensure current question set choice is available if not in READY (e.g. if preserved)
-    current_choice = (
-        session_obj.question_set_id,
-        f"{session_obj.station.name} — Set {session_obj.question_set.code} ({session_obj.question_set.name})",
-    )
-    if current_choice not in form.question_set_id.choices:
-        form.question_set_id.choices.append(current_choice)
+    if session_obj.question_set:
+        current_choice = (
+            session_obj.question_set_id,
+            f"{session_obj.station.name} — Set {session_obj.question_set.code} ({session_obj.question_set.name})",
+        )
+        if current_choice not in form.question_set_id.choices:
+            form.question_set_id.choices.append(current_choice)
 
     if form.validate_on_submit():
         try:
@@ -997,7 +1318,7 @@ def sessions_edit(session_id: int):
                 session_obj=session_obj,
                 station_id=form.station_id.data,
                 group_id=form.group_id.data,
-                question_set_id=form.question_set_id.data,
+                question_set_id=form.question_set_id.data or None,
                 duration_minutes=form.duration_minutes.data,
             )
             flash("Data sesi berhasil diperbarui.", "success")
@@ -1007,7 +1328,7 @@ def sessions_edit(session_id: int):
     elif request.method == "GET":
         form.station_id.data = session_obj.station_id
         form.group_id.data = session_obj.group_id
-        form.question_set_id.data = session_obj.question_set_id
+        form.question_set_id.data = session_obj.question_set_id or 0
         form.duration_minutes.data = int(session_obj.duration_seconds // 60)
 
     return render_template("admin/sessions/form.html", form=form, is_edit=True, session=session_obj)
@@ -1127,6 +1448,8 @@ def sessions_clear_history():
 @admin_required
 def results_index():
     station_id = request.args.get("station_id", type=int)
+    if not station_id and g.active_station:
+        station_id = g.active_station.id
     group_id = request.args.get("group_id", type=int)
     session_id = request.args.get("session_id", type=int)
     status = request.args.get("status", type=str)
@@ -1250,6 +1573,875 @@ def results_export_csv():
     resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp
+
+
+# ==============================================================================
+# MANAJEMEN PAKET SOAL / STUDI KASUS (FITUR 1 & 2)
+# ==============================================================================
+
+@admin_bp.get("/packages")
+@admin_required
+def packages_index():
+    """Daftar seluruh paket soal / studi kasus dikelompokkan berdasarkan pos."""
+    station_id = request.args.get("station_id", type=int)
+    status_filter = request.args.get("status", type=str)
+
+    all_stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+
+    selected_station = None
+    if station_id:
+        selected_station = db.session.get(Station, station_id)
+    elif g.active_station:
+        selected_station = g.active_station
+        station_id = selected_station.id
+    elif all_stations:
+        # Prioritaskan Pos Hardware jika ada
+        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+        selected_station = hw_st or all_stations[0]
+        station_id = selected_station.id
+
+    packages = get_packages_by_station(station_id=station_id, status=status_filter)
+
+    # Ambil info pemetaan kelompok untuk pos ini
+    group_mappings = get_group_mappings_for_station(station_id) if station_id else {}
+
+    package_data = []
+    for p in packages:
+        used = is_package_used(p.id)
+        editable, lock_reason = is_package_editable(p)
+        assigned_grps = [grp_code for grp_code, m in group_mappings.items() if m and m.package_id == p.id]
+        package_data.append({
+            "package": p,
+            "is_used": used,
+            "editable": editable,
+            "lock_reason": lock_reason,
+            "assigned_groups": assigned_grps,
+        })
+
+    action_form = PackageActionForm()
+
+    return render_template(
+        "admin/packages/index.html",
+        stations=all_stations,
+        selected_station=selected_station,
+        packages=package_data,
+        status_filter=status_filter or "all",
+        action_form=action_form,
+    )
+
+
+@admin_bp.route("/packages/create", methods=["GET", "POST"])
+@admin_required
+def packages_create():
+    """Form pembuatan paket soal / studi kasus baru."""
+    all_stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+
+    selected_station_id = request.args.get("station_id", type=int)
+    if not selected_station_id and g.active_station:
+        selected_station_id = g.active_station.id
+    elif not selected_station_id and all_stations:
+        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+        selected_station_id = (hw_st or all_stations[0]).id
+
+    form = HardwarePackageForm()
+    form.station_id.choices = [(s.id, f"{s.name}") for s in all_stations]
+
+    if request.method == "GET":
+        form.station_id.data = selected_station_id
+        form.package_code.data = generate_next_package_code(selected_station_id)
+
+    if form.validate_on_submit():
+        st_id = form.station_id.data
+        pkg_code = form.package_code.data.strip()
+
+        budget_val = form.max_budget.data if form.max_budget.data is not None else request.form.get("budget_max")
+        budget_float = float(budget_val or 1500.0)
+
+        rules_cfg = {
+            "max_budget": budget_float,
+            "budget_max": budget_float,
+            "currency": form.currency.data.strip() or "USD",
+            "region": form.region.data.strip() or "United States",
+            "min_cpu_score": float(form.min_cpu_score.data or 1000.0),
+            "min_gpu_score": float(form.min_gpu_score.data or 2000.0),
+            "min_ram_gb": float(form.min_ram_gb.data or 16.0),
+            "min_storage_gb": float(form.min_storage_gb.data or 512.0),
+            "min_psu_watt": float(form.min_psu_watt.data or 550.0) if form.min_psu_watt.data else None,
+            "required_components": form.required_components.data.strip() if form.required_components.data else "",
+            "forbidden_components": form.forbidden_components.data.strip() if form.forbidden_components.data else "",
+            "used_parts_allowed": bool(form.used_parts_allowed.data),
+            "custom_price_allowed": bool(form.custom_price_allowed.data),
+            "discount_allowed": bool(form.discount_allowed.data),
+            "extra_notes": form.extra_notes.data.strip() if form.extra_notes.data else "",
+        }
+
+        scoring_cfg = {
+            "weight_compatibility": float(form.weight_compatibility.data or 20.0),
+            "weight_budget": float(form.weight_budget.data or 15.0),
+            "weight_cpu_target": float(form.weight_cpu_target.data or 15.0),
+            "weight_cpu": float(form.weight_cpu_target.data or 15.0),
+            "weight_gpu_target": float(form.weight_gpu_target.data or 20.0),
+            "weight_gpu": float(form.weight_gpu_target.data or 20.0),
+            "weight_completeness": float(form.weight_completeness.data or 10.0),
+            "weight_efficiency": float(form.weight_efficiency.data or 15.0),
+            "weight_time_bonus": float(form.weight_time_bonus.data or 5.0),
+        }
+
+        try:
+            status_enum = PackageStatus[form.status.data]
+            new_pkg = create_package(
+                station_id=st_id,
+                package_code=pkg_code,
+                title=form.title.data.strip(),
+                description=form.description.data.strip(),
+                instructions=form.instructions.data.strip(),
+                challenge_type="hardware_build_challenge",
+                external_tool_url=form.external_tool_url.data.strip(),
+                rules_config=rules_cfg,
+                scoring_config=scoring_cfg,
+                duration_minutes=form.duration_minutes.data,
+                status=status_enum,
+            )
+            flash(f"Paket '{new_pkg.package_code}' ({new_pkg.title}) berhasil dibuat.", "success")
+            return redirect(url_for("admin.packages_index", station_id=st_id))
+        except ValueError as e:
+            flash(str(e), "error")
+
+    return render_template(
+        "admin/packages/form_hardware.html",
+        form=form,
+        is_edit=False,
+        stations=all_stations,
+        selected_station_id=selected_station_id,
+    )
+
+
+@admin_bp.route("/packages/<int:package_id>/edit", methods=["GET", "POST"])
+@admin_required
+def packages_edit(package_id: int):
+    """Form pengeditan paket soal / studi kasus."""
+    package = get_package_by_id(package_id)
+    if not package:
+        abort(404)
+
+    editable, reason = is_package_editable(package)
+    if not editable:
+        flash(reason, "error")
+        return redirect(url_for("admin.packages_index", station_id=package.station_id))
+
+    all_stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+
+    form = HardwarePackageForm(obj=package)
+    form.station_id.choices = [(s.id, f"{s.name}") for s in all_stations]
+
+    if request.method == "GET":
+        form.station_id.data = package.station_id
+        form.status.data = package.status.value
+        rules = package.rules_config or {}
+        scoring = package.scoring_config or {}
+
+        form.max_budget.data = rules.get("max_budget", 1500.0)
+        form.currency.data = rules.get("currency", "USD")
+        form.region.data = rules.get("region", "United States")
+        form.min_cpu_score.data = rules.get("min_cpu_score", 1000.0)
+        form.min_gpu_score.data = rules.get("min_gpu_score", 2000.0)
+        form.min_ram_gb.data = rules.get("min_ram_gb", 16.0)
+        form.min_storage_gb.data = rules.get("min_storage_gb", 512.0)
+        form.min_psu_watt.data = rules.get("min_psu_watt", 550.0)
+        form.required_components.data = rules.get("required_components", "")
+        form.forbidden_components.data = rules.get("forbidden_components", "")
+        form.used_parts_allowed.data = rules.get("used_parts_allowed", False)
+        form.custom_price_allowed.data = rules.get("custom_price_allowed", False)
+        form.discount_allowed.data = rules.get("discount_allowed", True)
+        form.extra_notes.data = rules.get("extra_notes", "")
+
+        form.weight_compatibility.data = scoring.get("weight_compatibility", 20.0)
+        form.weight_budget.data = scoring.get("weight_budget", 15.0)
+        form.weight_cpu_target.data = scoring.get("weight_cpu_target", 15.0)
+        form.weight_gpu_target.data = scoring.get("weight_gpu_target", 20.0)
+        form.weight_completeness.data = scoring.get("weight_completeness", 10.0)
+        form.weight_efficiency.data = scoring.get("weight_efficiency", 15.0)
+        form.weight_time_bonus.data = scoring.get("weight_time_bonus", 5.0)
+
+    if form.validate_on_submit():
+        rules_cfg = {
+            "max_budget": float(form.max_budget.data or 1500.0),
+            "budget_max": float(form.max_budget.data or 1500.0),
+            "currency": form.currency.data.strip() or "USD",
+            "region": form.region.data.strip() or "United States",
+            "min_cpu_score": float(form.min_cpu_score.data or 1000.0),
+            "min_gpu_score": float(form.min_gpu_score.data or 2000.0),
+            "min_ram_gb": float(form.min_ram_gb.data or 16.0),
+            "min_storage_gb": float(form.min_storage_gb.data or 512.0),
+            "min_psu_watt": float(form.min_psu_watt.data or 550.0) if form.min_psu_watt.data else None,
+            "required_components": form.required_components.data.strip() if form.required_components.data else "",
+            "forbidden_components": form.forbidden_components.data.strip() if form.forbidden_components.data else "",
+            "used_parts_allowed": bool(form.used_parts_allowed.data),
+            "custom_price_allowed": bool(form.custom_price_allowed.data),
+            "discount_allowed": bool(form.discount_allowed.data),
+            "extra_notes": form.extra_notes.data.strip() if form.extra_notes.data else "",
+        }
+
+        scoring_cfg = {
+            "weight_compatibility": float(form.weight_compatibility.data or 20.0),
+            "weight_budget": float(form.weight_budget.data or 15.0),
+            "weight_cpu_target": float(form.weight_cpu_target.data or 15.0),
+            "weight_cpu": float(form.weight_cpu_target.data or 15.0),
+            "weight_gpu_target": float(form.weight_gpu_target.data or 20.0),
+            "weight_gpu": float(form.weight_gpu_target.data or 20.0),
+            "weight_completeness": float(form.weight_completeness.data or 10.0),
+            "weight_efficiency": float(form.weight_efficiency.data or 15.0),
+            "weight_time_bonus": float(form.weight_time_bonus.data or 5.0),
+        }
+
+        try:
+            status_enum = PackageStatus[form.status.data]
+            update_package(
+                package=package,
+                package_code=form.package_code.data.strip(),
+                title=form.title.data.strip(),
+                description=form.description.data.strip(),
+                instructions=form.instructions.data.strip(),
+                external_tool_url=form.external_tool_url.data.strip(),
+                rules_config=rules_cfg,
+                scoring_config=scoring_cfg,
+                duration_minutes=form.duration_minutes.data,
+                status=status_enum,
+            )
+            flash(f"Paket '{package.package_code}' berhasil diperbarui.", "success")
+            return redirect(url_for("admin.packages_index", station_id=package.station_id))
+        except ValueError as e:
+            flash(str(e), "error")
+
+    return render_template(
+        "admin/packages/form_hardware.html",
+        form=form,
+        package=package,
+        is_edit=True,
+        stations=all_stations,
+        selected_station_id=package.station_id,
+    )
+
+
+@admin_bp.post("/packages/<int:package_id>/duplicate")
+@admin_required
+def packages_duplicate(package_id: int):
+    """Menduplikasi paket yang sudah ada menjadi draft salinan baru."""
+    action_form = PackageActionForm()
+    if not action_form.validate_on_submit():
+        flash("Token CSRF tidak valid.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    try:
+        dup = duplicate_package(package_id)
+        flash(f"Paket berhasil diduplikasi menjadi '{dup.package_code}' dalam status DRAFT.", "success")
+        return redirect(url_for("admin.packages_index", station_id=dup.station_id))
+    except ValueError as e:
+        flash(str(e), "error")
+        return redirect(url_for("admin.packages_index"))
+
+
+@admin_bp.get("/packages/<int:package_id>/preview")
+@admin_required
+def packages_preview(package_id: int):
+    """Melihat pratinjau tampilan pengerjaan paket studi kasus oleh peserta."""
+    package = get_package_by_id(package_id)
+    if not package:
+        abort(404)
+
+    return render_template("admin/packages/preview.html", package=package)
+
+
+@admin_bp.post("/packages/<int:package_id>/status")
+@admin_required
+def packages_status(package_id: int):
+    """Mengubah status paket (ACTIVE, LOCKED, ARCHIVED, DRAFT)."""
+    action_form = PackageActionForm()
+    if not action_form.validate_on_submit():
+        flash("Token CSRF tidak valid.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    new_status_str = request.form.get("status", "").strip().upper()
+    try:
+        new_status = PackageStatus[new_status_str]
+        success, msg = set_package_status(package_id, new_status)
+        if success:
+            flash(msg, "success")
+        else:
+            flash(msg, "error")
+    except KeyError:
+        flash("Status paket tidak valid.", "error")
+
+    package = get_package_by_id(package_id)
+    st_id = package.station_id if package else None
+    return redirect(url_for("admin.packages_index", station_id=st_id))
+
+
+@admin_bp.post("/packages/<int:package_id>/delete")
+@admin_required
+def packages_delete(package_id: int):
+    """Menghapus paket jika belum terpakai, atau mengarsipkan jika sudah ada riwayat."""
+    action_form = PackageActionForm()
+    if not action_form.validate_on_submit():
+        flash("Token CSRF tidak valid.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    package = get_package_by_id(package_id)
+    st_id = package.station_id if package else None
+
+    success, msg = delete_or_archive_package(package_id)
+    if success:
+        flash(msg, "info")
+    else:
+        flash(msg, "error")
+
+    return redirect(url_for("admin.packages_index", station_id=st_id))
+
+
+@admin_bp.route("/packages/mapping", methods=["GET", "POST"])
+@admin_required
+def packages_mapping():
+    """Halaman pengelolaan pemetaan paket soal kepada Kelompok A, B, C, D."""
+    station_id = request.args.get("station_id", type=int)
+
+    all_stations = db.session.scalars(
+        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+    ).all()
+
+    selected_station = None
+    if station_id:
+        selected_station = db.session.get(Station, station_id)
+    elif g.active_station:
+        selected_station = g.active_station
+        station_id = selected_station.id
+    elif all_stations:
+        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+        selected_station = hw_st or all_stations[0]
+        station_id = selected_station.id
+
+    # Ambil seluruh paket aktif pada pos ini
+    active_packages = db.session.scalars(
+        db.select(ChallengePackage).where(
+            ChallengePackage.station_id == station_id,
+            ChallengePackage.status.in_((PackageStatus.ACTIVE, PackageStatus.LOCKED)),
+        ).order_by(ChallengePackage.package_code.asc())
+    ).all()
+
+    pkg_choices = [(p.id, f"{p.package_code} — {p.title}") for p in active_packages]
+
+    form = PackageMappingForm()
+    form.same_package_id.choices = [(-1, "-- Pilih Paket Bersama --")] + pkg_choices
+    form.package_group_a.choices = [(-1, "-- Pilih Paket Kelompok A --")] + pkg_choices
+    form.package_group_b.choices = [(-1, "-- Pilih Paket Kelompok B --")] + pkg_choices
+    form.package_group_c.choices = [(-1, "-- Pilih Paket Kelompok C --")] + pkg_choices
+    form.package_group_d.choices = [(-1, "-- Pilih Paket Kelompok D --")] + pkg_choices
+
+    current_mappings = get_group_mappings_for_station(station_id)
+
+    if request.method == "GET":
+        map_a = current_mappings.get("A")
+        map_b = current_mappings.get("B")
+        map_c = current_mappings.get("C")
+        map_d = current_mappings.get("D")
+
+        if map_a and map_b and map_c and map_d and (map_a.package_id == map_b.package_id == map_c.package_id == map_d.package_id):
+            form.strategy.data = "SAME_FOR_ALL"
+            form.same_package_id.data = map_a.package_id
+        else:
+            form.strategy.data = "BY_GROUP"
+
+        if map_a:
+            form.package_group_a.data = map_a.package_id
+        if map_b:
+            form.package_group_b.data = map_b.package_id
+        if map_c:
+            form.package_group_c.data = map_c.package_id
+        if map_d:
+            form.package_group_d.data = map_d.package_id
+
+    if form.validate_on_submit():
+        strat = form.strategy.data
+        if strat == "SAME_FOR_ALL":
+            pkg_id = form.same_package_id.data
+            if not pkg_id or pkg_id == -1:
+                flash("Silakan pilih paket bersama untuk strategi SAME_FOR_ALL.", "error")
+            else:
+                ok, msg = apply_same_for_all_mapping(station_id, pkg_id)
+                if ok:
+                    flash(msg, "success")
+                    return redirect(url_for("admin.packages_mapping", station_id=station_id))
+                else:
+                    flash(msg, "error")
+        elif strat == "BY_GROUP":
+            grp_dict = {
+                "A": form.package_group_a.data if form.package_group_a.data != -1 else None,
+                "B": form.package_group_b.data if form.package_group_b.data != -1 else None,
+                "C": form.package_group_c.data if form.package_group_c.data != -1 else None,
+                "D": form.package_group_d.data if form.package_group_d.data != -1 else None,
+            }
+            if not any(grp_dict.values()):
+                flash("Pilih minimal satu paket untuk kelompok.", "error")
+            else:
+                ok, msg = apply_by_group_mapping(station_id, grp_dict)
+                if ok:
+                    flash(msg, "success")
+                    return redirect(url_for("admin.packages_mapping", station_id=station_id))
+                else:
+                    flash(msg, "error")
+
+    groups = db.session.scalars(db.select(Group).order_by(Group.code.asc())).all()
+
+    return render_template(
+        "admin/packages/mapping.html",
+        form=form,
+        stations=all_stations,
+        selected_station=selected_station,
+        active_packages=active_packages,
+        current_mappings=current_mappings,
+        groups=groups,
+    )
+
+
+# ==============================================================================
+# VERIFIKASI & REVIEW SUBMISSION POS HARDWARE (FITUR 5)
+# ==============================================================================
+
+@admin_bp.get("/hardware/submissions")
+@admin_required
+def hardware_submissions_index():
+    """Daftar submission Pos Hardware dengan filter status dan informasi tim."""
+    status_filter = request.args.get("status", "all").strip()
+
+    stmt = (
+        db.select(HardwareSubmission)
+        .join(Submission, HardwareSubmission.submission_id == Submission.id)
+        .join(Team, Submission.team_id == Team.id)
+        .join(CompetitionSession, Submission.session_id == CompetitionSession.id)
+        .join(Group, CompetitionSession.group_id == Group.id)
+        .join(Station, CompetitionSession.station_id == Station.id)
+        .order_by(Submission.submitted_at.desc(), HardwareSubmission.id.desc())
+    )
+
+    if status_filter and status_filter != "all":
+        stmt = stmt.where(HardwareSubmission.verification_status == status_filter.upper())
+
+    submissions = db.session.scalars(stmt).all()
+
+    return render_template(
+        "admin/hardware/submissions.html",
+        submissions=submissions,
+        status_filter=status_filter,
+    )
+
+
+@admin_bp.route("/hardware/submissions/<int:hw_id>/review", methods=["GET", "POST"])
+@admin_required
+def hardware_submission_review(hw_id: int):
+    """Detail submission Pos Hardware, verifikasi kesesuaian BuildCores, koreksi, dan scoring."""
+    hw_sub = db.session.get(HardwareSubmission, hw_id)
+    if not hw_sub:
+        abort(404)
+
+    submission = hw_sub.submission
+    session_obj = submission.session
+    station = session_obj.station
+    group = session_obj.group
+    team = submission.team
+    package = submission.package or session_obj.package
+    rules = (submission.package_snapshot or {}).get("rules_config") or (package.rules_config if package else {})
+    scoring = (submission.package_snapshot or {}).get("scoring_config") or (package.scoring_config if package else {})
+
+    form = HardwareReviewForm()
+
+    if request.method == "GET":
+        form.is_compatible.data = "1" if (hw_sub.is_compatible is None or hw_sub.is_compatible) else "0"
+        form.corrected_price.data = hw_sub.total_price
+        form.corrected_cpu_score.data = hw_sub.cpu_score
+        form.corrected_gpu_score.data = hw_sub.gpu_score
+        form.reviewer_notes.data = hw_sub.reviewer_notes or ""
+
+    if form.validate_on_submit():
+        action = request.form.get("action", "VERIFY").strip().upper()
+        reason = form.reason.data.strip() if form.reason.data else f"Verifikasi submission via action {action}"
+
+        corrected = {
+            "is_compatible": (form.is_compatible.data == "1"),
+            "total_price": form.corrected_price.data,
+            "cpu_score": form.corrected_cpu_score.data,
+            "gpu_score": form.corrected_gpu_score.data,
+            "reviewer_notes": form.reviewer_notes.data,
+        }
+
+        success, msg = review_hardware_submission(
+            hardware_submission_id=hw_sub.id,
+            admin_id=g.current_admin.id,
+            action=action,
+            corrected_data=corrected,
+            reason=reason,
+        )
+
+        if success:
+            flash(msg, "success")
+            return redirect(url_for("admin.hardware_submissions_index"))
+        else:
+            flash(msg, "error")
+
+    audits = hw_sub.audits
+
+    return render_template(
+        "admin/hardware/review.html",
+        hw_sub=hw_sub,
+        submission=submission,
+        session=session_obj,
+        station=station,
+        group=group,
+        team=team,
+        package=package,
+        rules=rules,
+        scoring=scoring,
+        form=form,
+        audits=audits,
+    )
+
+
+# ==============================================================================
+# MODUL POS NETWORKING (FASILITATOR LOBBY, MONITOR, VERIFIKASI & STAMP)
+# ==============================================================================
+
+@admin_bp.route("/networking/lobby", methods=["GET"])
+@admin_required
+def networking_lobby():
+    """Halaman Lobby Fasilitator Pos Networking untuk pemilihan rotasi, kelompok, dan set soal."""
+    net_station = db.session.scalar(db.select(Station).where(Station.name == "Networking"))
+    if not net_station:
+        flash("Pos Networking tidak ditemukan dalam basis data.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    groups = db.session.scalars(db.select(Group).order_by(Group.code.asc())).all()
+    question_sets = db.session.scalars(
+        db.select(QuestionSet).where(QuestionSet.station_id == net_station.id).order_by(QuestionSet.code.asc())
+    ).all()
+
+    # Param rotasi & kelompok dari query string
+    selected_rotation = request.args.get("rotation", default=1, type=int)
+    group_id_param = request.args.get("group_id", type=int)
+    set_id_param = request.args.get("set_id", type=int)
+
+    selected_group = next((g for g in groups if g.id == group_id_param), groups[0] if groups else None)
+    if not selected_group:
+        flash("Kelompok peserta belum tersedia.", "warning")
+        return redirect(url_for("admin.dashboard"))
+
+    # Pemetaan otomatis: Kelompok A -> Set A, dsb
+    selected_set = None
+    if set_id_param:
+        selected_set = next((qs for qs in question_sets if qs.id == set_id_param), None)
+    if not selected_set and selected_group:
+        selected_set = next((qs for qs in question_sets if qs.code.upper() == selected_group.code.upper()), None)
+    if not selected_set and question_sets:
+        selected_set = question_sets[0]
+
+    # Cari sesi aktif untuk rotasi dan kelompok ini
+    active_session = db.session.scalar(
+        db.select(CompetitionSession).where(
+            CompetitionSession.station_id == net_station.id,
+            CompetitionSession.group_id == selected_group.id,
+            CompetitionSession.status.in_((SessionStatus.WAITING, SessionStatus.RUNNING)),
+        ).order_by(CompetitionSession.id.desc())
+    )
+
+    # Ambil tim dalam kelompok
+    teams = db.session.scalars(
+        db.select(Team).where(Team.group_id == selected_group.id, Team.is_active.is_(True)).order_by(Team.team_code.asc())
+    ).all()
+
+    teams_status = []
+    for t in teams:
+        sub = None
+        net_sub = None
+        if active_session:
+            sub = db.session.scalar(
+                db.select(Submission).where(
+                    Submission.session_id == active_session.id,
+                    Submission.team_id == t.id,
+                )
+            )
+            if sub:
+                net_sub = sub.networking_submission
+
+        st_label = "BELUM_MASUK"
+        current_st = 1
+        has_stamp = False
+        if net_sub:
+            st_label = net_sub.verification_status
+            current_st = net_sub.current_stage
+            has_stamp = net_sub.has_stamp
+        elif sub:
+            st_label = "LOBBY"
+
+        teams_status.append({
+            "team": t,
+            "has_submission": sub is not None,
+            "net_status": st_label,
+            "current_stage": current_st,
+            "has_stamp": has_stamp,
+        })
+
+    return render_template(
+        "admin/networking/lobby.html",
+        station=net_station,
+        groups=groups,
+        question_sets=question_sets,
+        selected_rotation=selected_rotation,
+        selected_group=selected_group,
+        selected_set=selected_set,
+        active_session=active_session,
+        teams_status=teams_status,
+    )
+
+
+@admin_bp.post("/networking/open-lobby")
+@admin_required
+def networking_open_lobby():
+    """Membuka atau menyiapkan sesi lobby Pos Networking untuk kelompok tertentu."""
+    net_station = db.session.scalar(db.select(Station).where(Station.name == "Networking"))
+    if not net_station:
+        flash("Pos Networking tidak ditemukan.", "danger")
+        return redirect(url_for("admin.dashboard"))
+
+    group_id = request.form.get("group_id", type=int)
+    rotation = request.form.get("rotation", default=1, type=int)
+    set_id = request.form.get("set_id", type=int)
+
+    group = db.session.get(Group, group_id)
+    if not group:
+        flash("Kelompok tidak valid.", "danger")
+        return redirect(url_for("admin.networking_lobby"))
+
+    # Cek apakah sesi aktif sudah ada
+    existing = db.session.scalar(
+        db.select(CompetitionSession).where(
+            CompetitionSession.station_id == net_station.id,
+            CompetitionSession.group_id == group.id,
+            CompetitionSession.status.in_((SessionStatus.WAITING, SessionStatus.RUNNING)),
+        )
+    )
+    if existing:
+        flash(f"Lobby sesi untuk Kelompok {group.code} sudah aktif (Sesi #{existing.id}).", "info")
+        return redirect(url_for("admin.networking_lobby", group_id=group.id, rotation=rotation))
+
+    new_session = CompetitionSession(
+        station_id=net_station.id,
+        group_id=group.id,
+        question_set_id=set_id,
+        rotation_number=rotation,
+        status=SessionStatus.WAITING,
+        duration_seconds=1800,  # 30 menit default
+    )
+    db.session.add(new_session)
+    db.session.commit()
+    flash(f"Lobby sesi untuk Kelompok {group.code} berhasil disiapkan! Silakan mulai sesi saat tim telah siap.", "success")
+    return redirect(url_for("admin.networking_lobby", group_id=group.id, rotation=rotation))
+
+
+@admin_bp.get("/networking/monitor/<int:session_id>")
+@admin_required
+def networking_monitor(session_id: int):
+    """Layar Live Monitoring sesi Pos Networking tanpa membocorkan kunci jawaban."""
+    session_obj = db.session.get(CompetitionSession, session_id)
+    if not session_obj or session_obj.station.name.lower() != "networking":
+        flash("Sesi Pos Networking tidak ditemukan.", "danger")
+        return redirect(url_for("admin.networking_lobby"))
+
+    from services.networking_service import get_stage_questions, get_stage_timer_info
+
+    teams = db.session.scalars(
+        db.select(Team).where(Team.group_id == session_obj.group_id, Team.is_active.is_(True)).order_by(Team.team_code.asc())
+    ).all()
+
+    subs = db.session.scalars(
+        db.select(Submission).where(Submission.session_id == session_id)
+    ).all()
+    subs_map = {s.team_id: s for s in subs}
+
+    team_monitors = []
+    for t in teams:
+        sub = subs_map.get(t.id)
+        net_sub = sub.networking_submission if sub else None
+
+        current_st = net_sub.current_stage if net_sub else 1
+        timer_info = get_stage_timer_info(net_sub, current_st) if net_sub else {"remaining_seconds": 0, "is_locked": True}
+
+        # Hitung jumlah soal tahap
+        stage_questions = get_stage_questions(session_obj, current_st if current_st <= 3 else 3)
+        q_ids = {q.id for q in stage_questions}
+
+        answered_count = 0
+        if sub:
+            ans = db.session.scalars(
+                db.select(Answer).where(Answer.submission_id == sub.id, Answer.question_id.in_(q_ids))
+            ).all()
+            answered_count = sum(1 for a in ans if (a.selected_answer or a.text_answer))
+
+        total_q = len(stage_questions) or 10
+        prog_pct = min(100, int((answered_count / total_q) * 100))
+
+        team_monitors.append({
+            "team": t,
+            "sub": sub,
+            "net_sub": net_sub,
+            "timer_info": timer_info,
+            "answered_count": answered_count,
+            "stage_total_questions": total_q,
+            "progress_percent": prog_pct,
+        })
+
+    pending_review_count = db.session.scalar(
+        db.select(db.func.count())
+        .select_from(Answer)
+        .join(Submission, Answer.submission_id == Submission.id)
+        .where(Submission.session_id == session_id, Answer.review_status == "NEEDS_REVIEW")
+    ) or 0
+
+    return render_template(
+        "admin/networking/monitor.html",
+        session_obj=session_obj,
+        team_monitors=team_monitors,
+        pending_review_count=pending_review_count,
+    )
+
+
+@admin_bp.get("/networking/verify/<int:session_id>")
+@admin_required
+def networking_verify(session_id: int):
+    """Antrean verifikasi jawaban isian singkat dan kelayakan Stamp Pos Networking."""
+    session_obj = db.session.get(CompetitionSession, session_id)
+    if not session_obj or session_obj.station.name.lower() != "networking":
+        flash("Sesi Pos Networking tidak ditemukan.", "danger")
+        return redirect(url_for("admin.networking_lobby"))
+
+    from services.networking_service import get_facilitator_review_queue
+
+    review_queue = get_facilitator_review_queue(session_id)
+
+    # Rekapitulasi nilai & Stamp tim
+    teams = db.session.scalars(
+        db.select(Team).where(Team.group_id == session_obj.group_id, Team.is_active.is_(True)).order_by(Team.team_code.asc())
+    ).all()
+
+    subs = db.session.scalars(
+        db.select(Submission).where(Submission.session_id == session_id)
+    ).all()
+    subs_map = {s.team_id: s for s in subs}
+
+    team_summaries = []
+    for t in teams:
+        sub = subs_map.get(t.id)
+        net_sub = sub.networking_submission if sub else None
+        team_summaries.append({
+            "team": t,
+            "sub": sub,
+            "net_sub": net_sub,
+        })
+
+    return render_template(
+        "admin/networking/verify.html",
+        session_obj=session_obj,
+        review_queue=review_queue,
+        team_summaries=team_summaries,
+    )
+
+
+@admin_bp.post("/networking/review-answer")
+@admin_required
+def networking_review_answer():
+    """Fasilitator memutuskan penerimaan jawaban isian singkat (ACCEPT / REJECT)."""
+    answer_id = request.form.get("answer_id", type=int)
+    session_id = request.form.get("session_id", type=int)
+    action = request.form.get("action", default="REJECT")
+    notes = request.form.get("notes", default="")
+
+    from services.networking_service import review_answer_by_facilitator
+
+    ok, msg = review_answer_by_facilitator(answer_id, g.current_admin.id, action, notes)
+    if ok:
+        flash("Keputusan verifikasi berhasil disimpan.", "success")
+    else:
+        flash(msg or "Gagal memproses verifikasi jawaban.", "danger")
+
+    return redirect(url_for("admin.networking_verify", session_id=session_id))
+
+
+@admin_bp.post("/networking/finalize-session/<int:session_id>")
+@admin_required
+def networking_finalize_session(session_id: int):
+    """Finalisasi nilai seluruh tim pada sesi Pos Networking dan pengiriman ke leaderboard."""
+    session_obj = db.session.get(CompetitionSession, session_id)
+    if not session_obj:
+        flash("Sesi tidak ditemukan.", "danger")
+        return redirect(url_for("admin.networking_lobby"))
+
+    from services.networking_service import finalize_networking_submission
+
+    subs = db.session.scalars(
+        db.select(Submission).where(Submission.session_id == session_id)
+    ).all()
+
+    finalized_count = 0
+    for sub in subs:
+        if sub.networking_submission:
+            ok, msg, _ = finalize_networking_submission(
+                sub.networking_submission.id,
+                g.current_admin.id,
+                "Finalisasi massal sesi pos networking oleh fasilitator",
+            )
+            if ok:
+                finalized_count += 1
+
+    session_obj.status = SessionStatus.FINISHED
+    db.session.commit()
+
+    flash(f"Berhasil memfinalisasi skor dan Stamp untuk {finalized_count} tim! Hasil telah dipublikasikan ke Leaderboard.", "success")
+    return redirect(url_for("admin.networking_verify", session_id=session_id))
+
+
+@admin_bp.post("/networking/control")
+@admin_required
+def networking_control():
+    """Endpoint penanganan kontrol fasilitator (START_SESSION, ADD_TIME, FORCE_SUBMIT, ALLOW_RECONNECT)."""
+    session_id = request.form.get("session_id", type=int)
+    action = request.form.get("action", "").strip()
+    reason = request.form.get("reason", "").strip()
+    team_id = request.form.get("team_id", type=int)
+    extra_seconds = request.form.get("extra_seconds", default=0, type=int)
+    stage_num = request.form.get("stage_num", default=1, type=int)
+
+    from services.networking_service import facilitator_control_action
+
+    ok, msg = facilitator_control_action(
+        session_id=session_id,
+        action=action,
+        admin_id=g.current_admin.id,
+        reason=reason,
+        team_id=team_id,
+        extra_seconds=extra_seconds,
+        stage_num=stage_num,
+    )
+
+    if ok:
+        flash(msg or "Tindakan kontrol berhasil dijalankan.", "success")
+    else:
+        flash(msg or "Gagal menjalankan aksi kontrol.", "danger")
+
+    if action == "START_SESSION":
+        return redirect(url_for("admin.networking_monitor", session_id=session_id))
+    return redirect(url_for("admin.networking_monitor", session_id=session_id))
 
 
 # ==============================================================================

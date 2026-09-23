@@ -1,0 +1,171 @@
+ IT QUIZ BATTLE ADVENTURE
+
+TEMA • BENTUK PENGERJAAN • MATERI • KEBUTUHAN
+
+MATERI
+
+Networking
+
+POSISI
+
+Pos 3 (dari 4 Pos rotasi: Software Engineering, Hardware, Networking, Cyber Security)
+
+1.  TEMA
+
+Networking - Jaringan Komputer & Internet (konsep dasar, PAN/LAN/MAN/WAN, media konektivitas, perangkat jaringan, dan topologi) sesuai pokok bahasan mapel Informatika SMA/SMK.
+
+2.  BENTUK PENGERJAAN
+
+Alur / Mekanisme Pengerjaan :
+
+Tahap 1 – "Signal Check" (± 5 menit)
+
+10 soal pilihan ganda ditayangkan lewat QuizWhizzer di layar/proyektor pos. Ketiga anggota tim berkumpul di 1 laptop tim, join dengan kode game yang sama, mendiskusikan jawaban dengan cepat lalu klik jawaban sebelum waktu habis; skor (ketepatan + kecepatan jawab) otomatis langsung jadi skor tim karena hanya ada 1 entry per tim.
+
+Tahap 2 – "True or Trap" (± 10 menit)
+
+masih di laptop tim yang sama, 10 soal Benar-Salah ditayangkan berurutan; beberapa di antaranya diselingi slide studi kasus mini (skenario singkat) sebelum pernyataan yang harus dinilai Benar/Salah, sehingga tim tidak bisa asal tebak tanpa memahami konteksnya.
+
+Tahap 3 – "Case Signal" (± 15 menit)
+
+5 soal isian singkat (Short Text Answer) berbasis 5 studi kasus berbeda (bertema sama dengan Babak Final Prompt Battle) ditampilkan satu per satu. Tim berdiskusi lebih lama untuk tiap soal, lalu salah satu anggota mengetik jawaban hasil kesepakatan tim di laptop yang sama.
+
+Tahap 4 – Verifikasi & Stamp (± 5 menit)
+
+fasilitator merekap skor dari laporan/report QuizWhizzer, memberi Stamp jika standar ketepatan minimal terpenuhi, mencatat sisa waktu untuk Bonus Kecepatan, lalu tim bergeser ke pos berikutnya sesuai pola rotasi melingkar.
+
+Durasi :
+
+35-40 menit
+
+Jumlah Peserta :
+
+3 orang/tim (satu tim aktif per giliran rotasi). Seluruh 25 soal (Tahap 1–3) dikerjakan BERSAMA di 1 laptop tim, bukan per HP individu; ketiga anggota berdiskusi di depan layar yang sama, salah satu bertugas klik/mengetik jawaban hasil kesepakatan tim.ss
+
+3.  CONTOH MATERI DAN SOAL
+
+Total 25 soal berjenjang dari mudah hingga sulit.
+
+Materi / Kisi-Kisi Soal :
+
+Konsep dasar jaringan komputer: pengertian, manfaat, perbedaan jaringan lokal vs internet
+
+Jenis jaringan berdasarkan jangkauan geografis: PAN, LAN, MAN, WAN
+
+Media konektivitas: kabel (UTP, Coaxial, Fiber Optik) vs nirkabel (WiFi, GPRS, satelit)
+
+Perangkat jaringan: Switch/Hub, Router, Access Point, NIC, Firewall
+
+Topologi jaringan: Bus, Star, Ring, Mesh
+
+Studi kasus penerapan konsep jaringan pada 5 sektor: pertanian, kesehatan, ketahanan pangan, ekonomi sirkular/sampah, dan pariwisata (tema yang sama dengan Babak Final Prompt Battle)
+
+Soal :
+
+TAHAP 1  Pilihan Ganda, dikerjakan bersama di 1 laptop tim via QuizWhizzer (10 soal, @1 poin, ± 5 menit)
+
+1. Pengertian jaringan komputer yang paling tepat adalah… A. Sekumpulan komputer otonom yang saling terhubung menggunakan protokol komunikasi untuk berbagi data, sumber daya, dan layanan  B. Kumpulan kabel listrik dalam satu gedung  C. Sistem operasi untuk mengelola file  D. Aplikasi pengolah kata  E. Perangkat penyimpanan data eksternal
+
+2. Jaringan yang menghubungkan HP dengan earphone/speaker lewat Bluetooth dalam jarak sangat dekat disebut… A. PAN  B. LAN  C. MAN  D. WAN  E. VPN
+
+3. Jaringan yang mencakup satu ruangan, satu rumah, atau satu gedung sekolah disebut… A. PAN  B. LAN  C. MAN  D. WAN  E. GAN
+
+4. Jaringan yang menghubungkan beberapa LAN dalam cakupan satu kota disebut… A. PAN  B. LAN  C. MAN  D. WAN  E. SAN
+
+5. Jaringan yang mencakup wilayah sangat luas (antar kota/negara/benua) dan menggunakan router disebut… A. PAN  B. LAN  C. MAN  D. WAN  E. HAN
+
+6. Media kabel yang memanfaatkan cahaya untuk mengirim data dengan kecepatan sangat tinggi dan jarak jauh adalah… A. Kabel UTP  B. Kabel Coaxial  C. Fiber Optik  D. Kabel Telepon  E. Kabel Listrik
+
+7. Perangkat yang berfungsi menghubungkan beberapa komputer dalam satu jaringan LAN disebut… A. Router  B. Switch/Hub  C. Modem  D. Firewall  E. NIC
+
+8. Perangkat yang mengatur jalur (routing) pengiriman data antar jaringan yang berbeda, misalnya dari LAN ke internet, disebut… A. Switch  B. Access Point  C. Router  D. NIC  E. Hub
+
+9. Kartu yang dipasang pada komputer agar dapat terhubung ke jaringan disebut… A. Firewall  B. NIC (Network Interface Card)  C. Access Point  D. Switch  E. Modem
+
+10. Topologi jaringan di mana setiap komputer terhubung langsung ke semua komputer lain, sehingga sangat andal namun mahal, disebut topologi… A. Bus  B. Star  C. Ring  D. Mesh  E. Tree
+
+TAHAP 2  Benar-Salah, dikerjakan bersama di 1 laptop tim via QuizWhizzer (10 soal, @1 poin, ± 10 menit; No.8 & 9 diselingi studi kasus mini)
+
+1. Internet adalah jaringan privat yang hanya bisa diakses oleh satu sekolah saja. (B/S)
+
+2. LAN biasanya mencakup wilayah yang lebih kecil dibanding MAN. (B/S)
+
+3. Kabel UTP termasuk media jaringan nirkabel. (B/S)
+
+4. Access Point berfungsi memancarkan sinyal WiFi agar perangkat bisa terhubung secara nirkabel. (B/S)
+
+5. Firewall berfungsi mempercepat kecepatan koneksi internet. (B/S)
+
+6. Pada topologi Bus, seluruh komputer terhubung ke satu kabel utama secara berurutan. (B/S)
+
+7. Pada topologi Star, jika satu kabel dari komputer ke switch putus, seluruh jaringan otomatis ikut mati total. (B/S)
+
+8. (Studi kasus mini) Sebuah lab sekolah menghubungkan 20 komputer memakai 1 switch di tengah ruangan, dan tiap komputer punya kabel sendiri langsung ke switch tersebut. Topologi yang dipakai lab ini adalah topologi Ring. (B/S)
+
+9. (Studi kasus mini) Sebuah kios kecil menghubungkan komputer kasir ke printer struk tanpa kabel dari jarak sekitar 2 meter memakai Bluetooth. Jenis jaringan yang terbentuk ini disebut PAN. (B/S)
+
+10. Router hanya bisa dipakai untuk jaringan berskala LAN dan tidak berperan apa pun dalam koneksi ke internet. (B/S)
+
+TAHAP 3  Isian Singkat (Short Text Answer), dikerjakan bersama di 1 laptop tim via QuizWhizzer (5 soal, 5 studi kasus berbeda, ± 15 menit; tema sama dengan Babak Final Prompt Battle)
+
+1. [Tema: Pertanian] Sebuah startup smart farming memasang banyak sensor kelembapan tanah di satu petak sawah. Sensor-sensor ini saling terhubung dalam kelompok kecil berjarak kurang dari 10 meter satu sama lain sebelum datanya dikumpulkan ke satu alat pengumpul (gateway) di pinggir sawah. Jenis jaringan antar-sensor yang berjarak sangat dekat ini disebut ___
+
+2. [Tema: Kesehatan] Sebuah klinik di desa terpencil ingin melakukan konsultasi video secara langsung dengan dokter spesialis yang bertugas di rumah sakit besar di kota lain, bahkan berbeda pulau. Meski sinyal HP di desa tersebut sering naik-turun, komunikasi video tetap harus bisa tersambung lintas pulau. Jenis jaringan berskala sangat luas yang dibutuhkan agar komunikasi ini bisa berjalan disebut ___
+
+3. [Tema: Ketahanan Pangan] Sebuah gudang penyimpanan pangan nasional memasang belasan kamera CCTV. Seluruh kamera tersebut disambungkan lewat kabel ke satu alat pusat yang diletakkan di tengah ruangan kontrol, sehingga jika salah satu kabel kamera putus, kamera-kamera lain tetap merekam normal tanpa terganggu. Topologi jaringan CCTV gudang ini disebut topologi ___
+
+4. [Tema: Ekonomi Sirkular/Sampah] Aplikasi bank sampah digital di suatu kota diakses oleh ribuan warga dari berbagai kecamatan secara bersamaan lewat internet untuk mencatat transaksi tukar sampah menjadi saldo. Agar data transaksi dan saldo warga tidak bisa diretas atau diakses sembarang orang dari luar, perangkat/sistem keamanan jaringan yang wajib dipasang di server aplikasi tersebut adalah ___
+
+5. [Tema: Pariwisata] Pengelola sebuah destinasi wisata baru ingin menyediakan akses WiFi gratis ke seluruh area terbuka objek wisata yang cukup luas, tanpa harus menarik kabel LAN ke setiap sudut area. Perangkat yang perlu dipasang di beberapa titik untuk memancarkan sinyal WiFi ke seluruh area terbuka tersebut disebut ___
+
+Kunci Jawaban :
+
+Pilihan Ganda (Tahap 1): 1-A, 2-A, 3-B, 4-C, 5-D, 6-C, 7-B, 8-C, 9-B, 10-D. 
+
+Benar-Salah (Tahap 2): 1-Salah, 2-Benar, 3-Salah, 4-Benar, 5-Salah, 6-Benar, 7-Salah, 8-Salah (topologinya Star, bukan Ring), 9-Benar, 10-Salah (router justru menghubungkan LAN ke internet/WAN).
+
+Isian Singkat (Tahap 3) — atur beberapa varian jawaban yang diterima di pengaturan soal QuizWhizzer:
+
+No.1 (Pertanian): PAN (terima juga: "Personal Area Network")
+
+No.2 (Kesehatan): WAN (terima juga: "Wide Area Network", "internet")
+
+No.3 (Ketahanan Pangan): Star (terima juga: "topologi star", "bintang", "topologi bintang")
+
+No.4 (Ekonomi Sirkular/Sampah): Firewall (terima juga: "firewall jaringan")
+
+No.5 (Pariwisata): Access Point (terima juga: "AP", "access point WiFi", "pemancar WiFi")
+
+Standar Stamp: tim menjawab benar minimal 4 dari 5 soal Tahap 3 (skor otomatis dari laporan QuizWhizzer). Karena soal berjenjang, tim yang banyak salah di Tahap 1–2 pada praktiknya juga akan kesulitan menjawab Tahap 3 dengan tepat, jadi fasilitator tidak perlu menilai keterkaitan antar tahap secara manual, cukup lihat skor akhir dari laporan QuizWhizzer.
+
+4.  KEBUTUHAN
+
+Seluruh perangkat, software, koneksi, dan perlengkapan lain yang dibutuhkan di Pos Networking.
+
+Device / Perangkat :
+
+1 unit laptop/tablet/ pc untuk 1 tim
+
+1 unit laptop/PC/tablet terpisah untuk fasilitator sebagai host QuizWhizzer + proyektor kecil atau layar untuk menampilkan soal & leaderboard secara live
+
+Olor/terminal listrik cadangan
+
+Alat Tulis / Perlengkapan :
+
+Timer/stopwatch terlihat jelas (fisik atau bawaan QuizWhizzer)
+
+Stempel/alat verifikasi Stamp 
+
+Software / Aplikasi :
+
+QuizWhizzer (https://quizwhizzer.com/ untuk membuat & meng-host soal, quizwhizzer.com/play untuk tim bergabung), paket Free sudah mencakup seluruh tipe soal yang dipakai (pilihan ganda, true/false, short text answer), tanpa perlu upgrade berbayar
+
+Browser modern di laptop tim & laptop host, tanpa instalasi aplikasi tambahan
+
+Kebutuhan Lain :
+
+Koneksi internet stabil di titik Pos Networking (untuk 3 tahap kuis digital berturut-turut)
+
+Signage nama "Pos Networking"
+
+Meja & kursi untuk 3 peserta per tim + 1 fasilitator, ditata agar ketiga anggota tim leluasa melihat 1 layar laptop bersama

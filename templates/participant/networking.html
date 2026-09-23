@@ -1,0 +1,607 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Pos Networking - IT Quiz Adventure{% endblock %}
+
+{% block extra_head %}
+<style>
+  .net-hero-card {
+    background: #ffffff;
+    border: 3px solid #111;
+    box-shadow: 6px 6px 0px #111;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .net-stage-badge {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border: 2px solid #111;
+    border-radius: 6px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .stage-active {
+    background: #00d26a;
+    color: #111;
+    box-shadow: 3px 3px 0px #111;
+  }
+  .stage-done {
+    background: #e2e8f0;
+    color: #475569;
+    border-color: #94a3b8;
+  }
+  .stage-upcoming {
+    background: #f8fafc;
+    color: #94a3b8;
+    border-style: dashed;
+  }
+  .net-timer-box {
+    background: #ffea79;
+    border: 3px solid #111;
+    box-shadow: 4px 4px 0px #111;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    font-size: 1.75rem;
+    font-weight: 900;
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .net-timer-warning {
+    background: #ff4757 !important;
+    color: #ffffff !important;
+    animation: pulseWarning 1s infinite alternate;
+  }
+  @keyframes pulseWarning {
+    from { transform: scale(1); }
+    to { transform: scale(1.03); }
+  }
+  .net-q-card {
+    background: #ffffff;
+    border: 3px solid #111;
+    box-shadow: 5px 5px 0px #111;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.15s ease-in-out;
+  }
+  .case-study-banner {
+    background: #f1f5f9;
+    border-left: 6px solid #2563eb;
+    border-top: 2px solid #111;
+    border-right: 2px solid #111;
+    border-bottom: 2px solid #111;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .opt-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #ffffff;
+    border: 2px solid #111;
+    box-shadow: 3px 3px 0px #111;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.05s, box-shadow 0.05s, background 0.15s;
+  }
+  .opt-btn:hover {
+    background: #f8fafc;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0px #111;
+  }
+  .opt-btn.selected {
+    background: #3b82f6 !important;
+    color: #ffffff !important;
+    box-shadow: 2px 2px 0px #111;
+    transform: translate(1px, 1px);
+  }
+  .tf-btn-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .tf-btn {
+    border: 3px solid #111;
+    box-shadow: 4px 4px 0px #111;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tf-btn-true {
+    background: #ffffff;
+    color: #166534;
+  }
+  .tf-btn-true:hover {
+    background: #dcfce7;
+  }
+  .tf-btn-true.selected {
+    background: #22c55e !important;
+    color: #ffffff !important;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #111;
+  }
+  .tf-btn-false {
+    background: #ffffff;
+    color: #991b1b;
+  }
+  .tf-btn-false:hover {
+    background: #fee2e2;
+  }
+  .tf-btn-false.selected {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #111;
+  }
+  .short-text-input {
+    width: 100%;
+    border: 3px solid #111;
+    box-shadow: 4px 4px 0px #111;
+    border-radius: 6px;
+    padding: 0.85rem 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: inherit;
+    outline: none;
+    margin-top: 0.5rem;
+  }
+  .short-text-input:focus {
+    border-color: #2563eb;
+    background: #eff6ff;
+  }
+  .save-status-pill {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.25rem 0.65rem;
+    border: 2px solid #111;
+    border-radius: 20px;
+    background: #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .save-status-saved {
+    background: #bbf7d0;
+    color: #166534;
+  }
+  .save-status-saving {
+    background: #fef08a;
+    color: #854d0e;
+  }
+  .action-btn {
+    border: 3px solid #111;
+    box-shadow: 5px 5px 0px #111;
+    border-radius: 8px;
+    padding: 0.85rem 1.75rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.1s ease;
+  }
+  .action-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0px #111;
+  }
+  .action-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px #111;
+  }
+  .action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 2px 2px 0px #111;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Header Card -->
+  <div class="net-hero-card">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <span class="badge bg-dark text-white px-3 py-2 text-uppercase mb-2" style="border: 2px solid #111;">
+          🌐 POS 3: NETWORKING
+        </span>
+        <h2 class="fw-black mb-1">
+          {{ team.team_name }} <span class="fs-5 text-muted">({{ team.team_code }})</span>
+        </h2>
+        <div class="small fw-bold text-muted">
+          🏫 {{ team.school }} &nbsp;|&nbsp; 👥 Kelompok {{ group.code }} &nbsp;|&nbsp; 📋 {{ competition_session.question_set.name if competition_session.question_set else 'Set Soal' }}
+        </div>
+      </div>
+
+      {% if current_stage < 4 %}
+      <div class="text-end">
+        <div class="small fw-bold text-muted mb-1">SISA WAKTU TAHAP {{ current_stage }}</div>
+        <div id="stageTimerBox" class="net-timer-box {% if timer_info.remaining_seconds < 60 %}net-timer-warning{% endif %}">
+          ⏱️ <span id="timerDisplay">--:--</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Stage Progress Indicator -->
+    <div class="mt-3 pt-3 border-top border-2 border-dark d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex flex-wrap gap-2">
+        <span class="net-stage-badge {% if current_stage == 1 %}stage-active{% elif current_stage > 1 %}stage-done{% else %}stage-upcoming{% endif %}">
+          1. Signal Check {% if current_stage > 1 %}✓{% endif %}
+        </span>
+        <span class="net-stage-badge {% if current_stage == 2 %}stage-active{% elif current_stage > 2 %}stage-done{% else %}stage-upcoming{% endif %}">
+          2. True or Trap {% if current_stage > 2 %}✓{% endif %}
+        </span>
+        <span class="net-stage-badge {% if current_stage == 3 %}stage-active{% elif current_stage > 3 %}stage-done{% else %}stage-upcoming{% endif %}">
+          3. Case Signal {% if current_stage > 3 %}✓{% endif %}
+        </span>
+        <span class="net-stage-badge {% if current_stage == 4 %}stage-active{% else %}stage-upcoming{% endif %}">
+          4. Verifikasi & Stamp
+        </span>
+      </div>
+
+      <div>
+        <span id="saveStatusIndicator" class="save-status-pill save-status-saved">
+          <span class="status-dot">●</span> Tersimpan di Server
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 4: WAITING FOR VERIFICATION -->
+  {% if current_stage == 4 %}
+  <div class="net-q-card text-center py-5">
+    <div style="font-size: 3.5rem;">⏳</div>
+    <h3 class="fw-black mt-3">Seluruh Tahap Kuis Selesai Dikumpulkan!</h3>
+    <p class="text-muted fw-bold col-md-8 mx-auto">
+      Jawaban Tahap 1, 2, dan 3 telah tersimpan secara aman di server.
+      Sistem saat ini sedang menunggu proses pemeriksaan jawaban isian singkat dan finalisasi skor oleh Fasilitator Pos Networking.
+    </p>
+
+    <div class="d-inline-block p-4 my-3 text-start" style="background: #eff6ff; border: 3px solid #111; box-shadow: 4px 4px 0px #111; border-radius: 8px;">
+      <h5 class="fw-black mb-2 text-primary">Status Pengerjaan Tim:</h5>
+      <ul class="mb-0 fw-bold small">
+        <li>Tahap 1 (Signal Check): <span class="badge bg-success">Terkunci & Dinilai</span></li>
+        <li>Tahap 2 (True or Trap): <span class="badge bg-success">Terkunci & Dinilai</span></li>
+        <li>Tahap 3 (Case Signal): <span class="badge bg-warning text-dark">Dalam Antrean Verifikasi</span></li>
+        <li>Status Stamp: <span class="badge bg-secondary">Menunggu Finalisasi (Syarat >= 4 Benar Tahap 3)</span></li>
+      </ul>
+    </div>
+
+    <div class="mt-4">
+      <div class="spinner-border text-dark mb-2" role="status">
+        <span class="visually-hidden">Memeriksa status...</span>
+      </div>
+      <p class="small fw-bold text-muted">Halaman ini akan otomatis beralih saat nilai selesai difinalisasi...</p>
+    </div>
+  </div>
+
+  <script>
+    // Polling status finalisasi setiap 5 detik
+    setInterval(() => {
+      window.location.reload();
+    }, 5000);
+  </script>
+
+  <!-- STAGE 1, 2, 3: QUIZ VIEW -->
+  {% else %}
+
+    <!-- Guidance Banner -->
+    <div class="alert alert-info border-3 border-dark fw-bold mb-4 shadow-sm" style="box-shadow: 3px 3px 0px #111;">
+      {% if current_stage == 1 %}
+        💡 <strong>Tahap 1: Signal Check</strong> — 10 Soal Pilihan Ganda (A–E). Diskusikan bersama tim di laptop ini, lalu pilih jawaban terbaik. Jawaban tersimpan otomatis.
+      {% elif current_stage == 2 %}
+        💡 <strong>Tahap 2: True or Trap</strong> — 10 Soal Benar/Salah. Cermati pernyataan atau studi kasus mini sebelum memutuskan Benar atau Salah!
+      {% elif current_stage == 3 %}
+        💡 <strong>Tahap 3: Case Signal</strong> — 5 Soal Isian Singkat Studi Kasus. Diskusikan solusi kasus dan ketik jawaban secara ringkas dan tepat.
+      {% endif %}
+    </div>
+
+    <!-- Questions Form -->
+    <form id="stageSubmitForm" method="POST" action="{{ url_for('participant.networking_submit_stage') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="stage_num" value="{{ current_stage }}">
+
+      {% for q in questions %}
+      <div class="net-q-card" id="q-card-{{ q.id }}">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <span class="badge bg-dark text-white fs-6 px-3 py-2" style="border: 2px solid #111;">
+            Soal #{{ q.order_number }}
+          </span>
+          {% if q.category %}
+          <span class="badge bg-light text-dark border border-dark fw-bold">
+            {{ q.category }}
+          </span>
+          {% endif %}
+        </div>
+
+        {% if q.case_study %}
+        <div class="case-study-banner">
+          <strong class="d-block text-primary text-uppercase mb-1">📖 Studi Kasus:</strong>
+          {{ q.case_study }}
+        </div>
+        {% endif %}
+
+        <h5 class="fw-bold mb-3 lh-base">{{ q.text }}</h5>
+
+        <!-- TAHAP 1: MULTIPLE CHOICE A-E -->
+        {% if current_stage == 1 %}
+        <div class="options-container">
+          {% set cur_ans = answers_map.get(q.id, '') %}
+          {% for opt_key, opt_text in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d), ('E', q.option_e)] %}
+            {% if opt_text %}
+            <button type="button"
+                    class="opt-btn {% if cur_ans == opt_key %}selected{% endif %}"
+                    data-qid="{{ q.id }}"
+                    data-ans="{{ opt_key }}"
+                    onclick="handleOptionSelect(this)">
+              <span class="badge bg-dark text-white me-2 px-2 py-1">{{ opt_key }}</span>
+              {{ opt_text }}
+            </button>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- TAHAP 2: TRUE OR FALSE -->
+        {% elif current_stage == 2 %}
+        {% set cur_ans = answers_map.get(q.id, '') %}
+        <div class="tf-btn-container">
+          <button type="button"
+                  class="tf-btn tf-btn-true {% if cur_ans == 'Benar' %}selected{% endif %}"
+                  data-qid="{{ q.id }}"
+                  data-ans="Benar"
+                  onclick="handleOptionSelect(this)">
+            ✓ BENAR
+          </button>
+          <button type="button"
+                  class="tf-btn tf-btn-false {% if cur_ans == 'Salah' %}selected{% endif %}"
+                  data-qid="{{ q.id }}"
+                  data-ans="Salah"
+                  onclick="handleOptionSelect(this)">
+            ✗ SALAH
+          </button>
+        </div>
+
+        <!-- TAHAP 3: SHORT TEXT -->
+        {% elif current_stage == 3 %}
+        {% set cur_ans = answers_map.get(q.id, '') %}
+        <div>
+          <label class="form-label small fw-bold text-muted">Ketik jawaban hasil diskusi tim:</label>
+          <input type="text"
+                 class="short-text-input"
+                 value="{{ cur_ans }}"
+                 placeholder="Contoh: PAN, Access Point, Switch..."
+                 data-qid="{{ q.id }}"
+                 oninput="handleShortTextInput(this)"
+                 autocomplete="off">
+          <div class="form-text small fw-bold mt-2 text-muted">
+            ℹ️ Sistem menerima beberapa variasi penulisan jawaban standar. Disimpan otomatis saat mengetik.
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+
+      <!-- Stage Submit Footer -->
+      <div class="net-hero-card d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <h5 class="fw-black mb-1">Konfirmasi Selesai Tahap {{ current_stage }}</h5>
+          <p class="small fw-bold text-muted mb-0">
+            Pastikan seluruh soal pada Tahap {{ current_stage }} telah terisi. Tahap ini akan langsung dikunci setelah dikumpulkan.
+          </p>
+        </div>
+
+        <div>
+          <button type="submit"
+                  id="submitStageBtn"
+                  class="action-btn bg-warning text-dark"
+                  onclick="return confirmSubmitStage(event)">
+            {% if current_stage == 1 %}
+              Selesaikan Tahap 1 & Lanjut ke Tahap 2 ➔
+            {% elif current_stage == 2 %}
+              Selesaikan Tahap 2 & Lanjut ke Tahap 3 ➔
+            {% elif current_stage == 3 %}
+              Kumpulkan Seluruh Jawaban Kuis ➔
+            {% endif %}
+          </button>
+        </div>
+      </div>
+    </form>
+
+  {% endif %}
+
+</div>
+
+<!-- Client-side Configuration Payload -->
+<script id="networking-quiz-data" type="application/json">
+{
+  "csrfToken": {{ csrf_token() | tojson }},
+  "saveUrl": {{ url_for('participant.networking_save_answer') | tojson }},
+  "remainingSec": {{ (timer_info.remaining_seconds | default(0)) | int }},
+  "isTimerLocked": {{ 'true' if timer_info.is_locked else 'false' }},
+  "currentStage": {{ (current_stage | default(1)) | int }}
+}
+</script>
+
+<!-- Client-side Logic for Timers, Autosave, and Double-Click Guard -->
+<script>
+  const quizDataEl = document.getElementById("networking-quiz-data");
+  const quizConfig = quizDataEl ? JSON.parse(quizDataEl.textContent || "{}") : {};
+
+  const CSRF_TOKEN = quizConfig.csrfToken || "";
+  const SAVE_URL = quizConfig.saveUrl || "";
+  const SUBMIT_FORM = document.getElementById("stageSubmitForm");
+  const SUBMIT_BTN = document.getElementById("submitStageBtn");
+  const SAVE_INDICATOR = document.getElementById("saveStatusIndicator");
+
+  let remainingSec = Number(quizConfig.remainingSec || 0);
+  let isTimerLocked = Boolean(quizConfig.isTimerLocked);
+  let currentStageNum = Number(quizConfig.currentStage || 1);
+  let isSubmitting = false;
+
+  // Format MM:SS
+  function formatTime(totalSec) {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+
+  // Timer Tick
+  const timerDisplay = document.getElementById("timerDisplay");
+  const timerBox = document.getElementById("stageTimerBox");
+
+  if (timerDisplay && !isTimerLocked) {
+    timerDisplay.innerText = formatTime(remainingSec);
+
+    const timerInterval = setInterval(() => {
+      if (remainingSec <= 0) {
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        autoSubmitOnTimeout();
+        return;
+      }
+      remainingSec--;
+      timerDisplay.innerText = formatTime(remainingSec);
+
+      if (remainingSec < 60 && timerBox) {
+        timerBox.classList.add("net-timer-warning");
+      }
+    }, 1000);
+  }
+
+  // Timeout Autosubmit
+  function autoSubmitOnTimeout() {
+    if (isSubmitting || !SUBMIT_FORM) return;
+    isSubmitting = true;
+    if (SUBMIT_BTN) {
+      SUBMIT_BTN.disabled = true;
+      SUBMIT_BTN.innerText = "WAKTU HABIS, MENGIRIM JAWABAN...";
+    }
+    alert("Waktu pengerjaan tahap ini telah habis! Jawaban Anda sedang dikumpulkan otomatis oleh server.");
+    SUBMIT_FORM.submit();
+  }
+
+  // Event handler adapters for buttons and inputs
+  function handleOptionSelect(btnElement) {
+    if (isTimerLocked || isSubmitting) return;
+    const qid = btnElement.getAttribute("data-qid");
+    const ans = btnElement.getAttribute("data-ans");
+    selectOption(btnElement, qid, ans);
+  }
+
+  // Option selection (Tahap 1 & 2)
+  function selectOption(btnElement, questionId, answerVal) {
+    if (isTimerLocked || isSubmitting) return;
+
+    // Highlight selected button
+    const container = btnElement.parentElement;
+    container.querySelectorAll("button").forEach(b => b.classList.remove("selected"));
+    btnElement.classList.add("selected");
+
+    // Save immediately
+    sendAnswerToServer(questionId, answerVal);
+  }
+
+  // Debounced input (Tahap 3)
+  let inputDebounceTimers = {};
+  function handleShortTextInput(inputElem) {
+    if (isTimerLocked || isSubmitting) return;
+
+    const questionId = inputElem.getAttribute("data-qid");
+    clearTimeout(inputDebounceTimers[questionId]);
+    setSaveStatus("saving");
+
+    inputDebounceTimers[questionId] = setTimeout(() => {
+      sendAnswerToServer(questionId, inputElem.value);
+    }, 500);
+  }
+
+  function setSaveStatus(state) {
+    if (!SAVE_INDICATOR) return;
+    if (state === "saving") {
+      SAVE_INDICATOR.className = "save-status-pill save-status-saving";
+      SAVE_INDICATOR.innerHTML = '<span class="status-dot">⏳</span> Menyimpan...';
+    } else if (state === "saved") {
+      SAVE_INDICATOR.className = "save-status-pill save-status-saved";
+      SAVE_INDICATOR.innerHTML = '<span class="status-dot">●</span> Tersimpan di Server';
+    } else {
+      SAVE_INDICATOR.className = "save-status-pill bg-danger text-white";
+      SAVE_INDICATOR.innerHTML = '<span class="status-dot">⚠️</span> Gagal Simpan';
+    }
+  }
+
+  // AJAX answer submission
+  function sendAnswerToServer(questionId, answerValue) {
+    setSaveStatus("saving");
+
+    fetch(SAVE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": CSRF_TOKEN,
+      },
+      body: JSON.stringify({
+        question_id: questionId,
+        answer_value: answerValue,
+      }),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        setSaveStatus("saved");
+      } else {
+        setSaveStatus("error");
+        console.error("Gagal simpan:", data.message);
+      }
+    })
+    .catch(err => {
+      setSaveStatus("error");
+      console.error("Network error:", err);
+    });
+  }
+
+  // Submit confirmation dialog & double-click protection
+  function confirmSubmitStage(e) {
+    if (isSubmitting) {
+      e.preventDefault();
+      return false;
+    }
+    const stageNum = currentStageNum;
+    let confirmMsg = "Apakah Anda yakin ingin menyelesaikan Tahap " + stageNum + "?\nSetelah dikumpulkan, jawaban pada tahap ini tidak dapat diubah kembali.";
+    if (stageNum === 3) {
+      confirmMsg = "Apakah Anda yakin ingin mengumpulkan seluruh pengerjaan Pos Networking?\nJawaban akan dikirim ke antrean verifikasi fasilitator.";
+    }
+
+    if (!confirm(confirmMsg)) {
+      e.preventDefault();
+      return false;
+    }
+
+    isSubmitting = true;
+    if (SUBMIT_BTN) {
+      SUBMIT_BTN.disabled = true;
+      SUBMIT_BTN.innerText = "SEDANG MENGIRIM JAWABAN...";
+    }
+    return true;
+  }
+</script>
+{% endblock %}

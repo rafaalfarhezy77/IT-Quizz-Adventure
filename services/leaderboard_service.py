@@ -107,7 +107,103 @@ def get_session_leaderboard(session_id: int) -> dict[str, Any]:
 
     for team in all_teams:
         sub = submissions_by_team.get(team.id)
-        if sub and sub.status in (
+        is_hardware = (sub and sub.hardware_submission is not None)
+        is_networking = (sub and getattr(sub, "networking_submission", None) is not None) or (session_obj.station.name.lower() == "networking")
+
+        if is_networking:
+            net = sub.networking_submission if sub else None
+            is_finalized = (net and net.verification_status == "FINALIZED" and sub.score is not None)
+            if is_finalized:
+                score = sub.score
+                completed_data.append({
+                    "submission_id": sub.id,
+                    "team_id": team.id,
+                    "team_code": team.team_code,
+                    "team_name": team.team_name,
+                    "school": team.school,
+                    "station_name": session_obj.station.name,
+                    "group_code": session_obj.group.code,
+                    "raw_score": score.raw_score,
+                    "time_bonus": score.time_bonus,
+                    "final_score": score.final_score,
+                    "status": "FINALIZED",
+                    "has_stamp": net.has_stamp,
+                    "stage_3_correct": net.stage_3_correct_count,
+                    "submitted_at": score.submitted_at or sub.submitted_at,
+                })
+            else:
+                if net:
+                    if net.verification_status in ("SUBMITTED", "NEEDS_REVIEW"):
+                        status_label = "Menunggu Verifikasi"
+                    elif net.verification_status == "VERIFIED":
+                        status_label = "Terverifikasi"
+                    elif net.current_stage in (1, 2, 3):
+                        status_label = f"Tahap {net.current_stage}"
+                    else:
+                        status_label = "Mengerjakan Kuis"
+                else:
+                    status_label = "Belum Mulai"
+
+                uncompleted_data.append({
+                    "submission_id": sub.id if sub else None,
+                    "team_id": team.id,
+                    "team_code": team.team_code,
+                    "team_name": team.team_name,
+                    "school": team.school,
+                    "station_name": session_obj.station.name,
+                    "group_code": session_obj.group.code,
+                    "raw_score": None,
+                    "time_bonus": None,
+                    "final_score": None,
+                    "status": status_label,
+                    "has_stamp": False,
+                    "submitted_at": None,
+                    "rank": "-",
+                })
+
+        elif is_hardware:
+            hw = sub.hardware_submission
+            is_verified = hw.verification_status in ("VERIFIED", "SCORED") and sub.score is not None
+            if is_verified:
+                score = sub.score
+                completed_data.append({
+                    "submission_id": sub.id,
+                    "team_id": team.id,
+                    "team_code": team.team_code,
+                    "team_name": team.team_name,
+                    "school": team.school,
+                    "station_name": session_obj.station.name,
+                    "group_code": session_obj.group.code,
+                    "raw_score": score.raw_score,
+                    "time_bonus": score.time_bonus,
+                    "final_score": score.final_score,
+                    "status": hw.verification_status,
+                    "submitted_at": score.submitted_at or sub.submitted_at,
+                })
+            else:
+                if hw.verification_status in ("SUBMITTED", "NEEDS_REVIEW"):
+                    status_label = "Menunggu Verifikasi"
+                elif hw.verification_status == "REJECTED":
+                    status_label = "Ditolak Panitia"
+                else:
+                    status_label = "Mengerjakan Tantangan"
+
+                uncompleted_data.append({
+                    "submission_id": sub.id if sub else None,
+                    "team_id": team.id,
+                    "team_code": team.team_code,
+                    "team_name": team.team_name,
+                    "school": team.school,
+                    "station_name": session_obj.station.name,
+                    "group_code": session_obj.group.code,
+                    "raw_score": None,
+                    "time_bonus": None,
+                    "final_score": None,
+                    "status": status_label,
+                    "submitted_at": None,
+                    "rank": "-",
+                })
+        elif sub and sub.status in (
             SubmissionStatus.SUBMITTED,
             SubmissionStatus.TIMED_OUT,
             SubmissionStatus.GRADED,

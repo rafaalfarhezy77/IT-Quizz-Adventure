@@ -9,7 +9,7 @@
       <div class="chip-label">// {{ 'EDIT SESI KOMPETISI' if is_edit else 'FORM PENYIAPAN SESI' }}</div>
       <h1 class="page-title">{{ 'EDIT SESI #' ~ session.id if is_edit else 'BUAT SESI BARU' }}</h1>
       <p class="page-subtitle">
-        Tentukan pos perlombaan, kelompok peserta (A-D), bank soal siap uji (READY), dan batas waktu pengerjaan.
+        Tentukan pos, kelompok, materi yang sesuai metodenya, dan durasi. Networking disiapkan dari Konsol Pos Networking agar rotasi dan tahapnya tercatat.
       </p>
     </div>
     <div class="page-actions">
@@ -53,13 +53,13 @@
         <!-- Bank Soal -->
         <div class="nb-form-group">
           <label for="question_set_id" class="nb-label">
-            BANK SOAL (STATUS READY) <span class="text-danger">*</span>
+            BANK SOAL / PAKET STUDI KASUS
           </label>
           {{ form.question_set_id(class="nb-input select-input " + ("input-error" if form.question_set_id.errors else ""), id="session_question_set_id") }}
           {% for error in form.question_set_id.errors %}
             <div class="field-error-text">{{ error }}</div>
           {% endfor %}
-          <span class="field-helper-text">Hanya bank soal dengan status READY yang dapat digunakan.</span>
+          <span class="field-helper-text">Kuis: pilih set READY milik pos. Hardware: pilih “Tanpa bank soal”, lalu pastikan paket studi kasus aktif sudah dipetakan ke kelompok. Set LOCKED tidak dapat dipilih untuk sesi baru.</span>
         </div>
 
         <!-- Durasi -->
@@ -84,4 +84,23 @@
     </form>
   </div>
 </div>
+<script>
+  (function () {
+    const station = document.getElementById('session_station_id');
+    const material = document.getElementById('session_question_set_id');
+    if (!station || !material) return;
+    function filterMaterials() {
+      const name = station.options[station.selectedIndex]?.textContent.split(' (')[0].trim() || '';
+      const hardware = name.toLowerCase() === 'hardware';
+      for (const option of material.options) {
+        option.hidden = option.value === '0' ? !hardware : !option.textContent.startsWith(name + ' —');
+      }
+      if (material.selectedOptions[0]?.hidden) {
+        material.value = hardware ? '0' : (Array.from(material.options).find(o => !o.hidden)?.value || '0');
+      }
+    }
+    station.addEventListener('change', filterMaterials);
+    filterMaterials();
+  })();
+</script>
 {% endblock %}

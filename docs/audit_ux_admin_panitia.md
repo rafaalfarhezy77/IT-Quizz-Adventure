@@ -1,0 +1,47 @@
+# Audit UX admin dan panitia — 16 September 2026
+
+## Ruang lingkup yang diperiksa
+
+Kode rute `routes/admin.py`, `routes/api.py`, `routes/participant.py`; model database; layanan sesi, skor, impor, Hardware, Networking; formulir; template panel; CSS dan timer JavaScript. Verifikasi otomatis menggunakan SQLite sementara. Database lomba di `instance/` tidak diubah oleh audit.
+
+Metode yang sudah ada: Software Engineering memakai `MEMBER_ROTATION`; Cyber Security kuis biasa; Networking kuis tiga tahap dengan lobby, timer tahap dan verifikasi manual; Hardware memakai paket studi kasus, unggah bukti dan verifikasi juri. `QuestionSet` mendukung DRAFT/READY/LOCKED; paket studi kasus mendukung DRAFT/ACTIVE/LOCKED/ARCHIVED. Rotasi anggota hanya berlaku di pos dengan `MEMBER_ROTATION`. Nomor rotasi sesi sudah tersimpan, tetapi formulir sesi umum belum menyediakan pengaturannya; Networking mengaturnya lewat lobby.
+
+## Temuan menurut dampak
+
+| Prioritas | Jenis | Lokasi dan langkah reproduksi | Dampak | Rekomendasi / status |
+|---|---|---|---|---|
+| Kritis | Hambatan fungsional | `sessions/create`: pilih Hardware. Sebelumnya formulir selalu meminta set soal READY, padahal Hardware tidak memiliki set kuis. | Admin tidak dapat menyiapkan sesi Hardware dari formulir umum. | Izinkan pilihan tanpa set untuk Hardware dan jelaskan kewajiban pemetaan paket. **Diperbaiki.** |
+| Kritis | Hambatan fungsional | `sessions` dan `sessions/<id>`: buka sesi Hardware yang `question_set_id` kosong. | Akses `question_set.code/name` membuat layar gagal; panitia kehilangan kontrol sesi. | Tampilkan paket atau petunjuk pemetaan bila belum ada. **Diperbaiki.** |
+| Kritis | Fitur belum ada | Masuk dengan akun admin lalu buka menu konfigurasi, hapus histori, skor, dan kontrol sesi. Model `Admin` hanya berisi username/password/is_active; semua rute memakai `admin_required`. | Petugas pos memiliki seluruh hak admin bila diberi akun; memilih pos hanya mengubah filter, bukan izin. | Tentukan matriks kewenangan, tambahkan role dan penugasan pos di database, lalu terapkan pemeriksaan di setiap rute mutasi dan API. Jangan mengandalkan penyembunyian tombol. **Belum diimplementasikan; perlu keputusan peran dan migrasi.** |
+| Tinggi | Fitur ada tetapi membingungkan | Buka dashboard global lalu cari sesi berjalan. Angka agregat dan banyak tautan modul tampil, tetapi daftar sesi aktif, kelompok, rotasi, tim tertinggal dan sisa waktu tidak menjadi fokus utama. | Petugas baru harus mencari sesi di menu lain saat acara berlangsung. | Tambahkan panel sesi berjalan/menunggu yang dapat langsung dibuka, diurutkan menurut pos dan rotasi. **Panel ringkas ditambahkan**; data panel mengikuti pemuatan halaman, bukan push langsung. |
+| Tinggi | Hambatan fungsional | Buka sesi WAITING di dua perangkat lalu tekan Mulai hampir bersamaan. Pemeriksaan status awal saja berpotensi memakai keadaan ORM yang sama. | Timer mulai dapat ditulis ulang dan peserta melihat waktu berbeda. | Klaim perubahan WAITING→RUNNING dengan pembaruan bersyarat di database. **Diperbaiki untuk sesi yang sama**; konflik dua sesi berbeda untuk pos/kelompok sama masih memerlukan batasan database. |
+| Tinggi | Hambatan fungsional | Biarkan timer sesi habis, lalu buka detail sesi. Status efektif FINISHED tetapi status tersimpan RUNNING; tombol Akhiri sebelumnya tersembunyi. | Sesi tidak bisa ditutup dari UI dan halaman timer dapat memuat ulang terus. | Tampilkan tombol Tutup Sesi dan hentikan siklus refresh setelah waktu habis. **Diperbaiki.** |
+| Tinggi | Fitur ada tetapi membingungkan | `sessions/<id>`: biarkan layar terbuka saat tim lain mengumpulkan atau Wi-Fi putus. Sebelumnya tabel tim tetap pada nilai saat halaman dimuat dan kegagalan sinkronisasi timer hanya masuk konsol browser. | Panitia bisa mengakhiri sesi berdasarkan jumlah tim yang salah. | Segarkan status tim berkala; tampilkan gangguan koneksi dan sinkron ulang saat pulih. **Diperbaiki di layar sesi umum** melalui refresh 15 detik dan peringatan jaringan. |
+| Tinggi | Fitur belum ada | Tim salah memilih identitas pada pos kuis biasa atau berganti perangkat. Cari tindakan koreksi di `sessions/<id>` dan `results/detail`. | Panitia tidak punya alur pemulihan resmi dengan alasan dan jejak audit; pembetulan langsung di DB berisiko. | Desain prosedur klaim ulang identitas, pembukaan ulang bila diizinkan, dan audit actor/alasan/perubahan. Networking sudah punya `ALLOW_RECONNECT` beralasan; perlu keputusan untuk pos lain. |
+| Tinggi | Fitur belum ada | Sesi kuis umum/Hardware selesai; cari tindakan ubah skor atau reset yang tercatat. | Koreksi tidak tersedia secara seragam. Hardware dan Networking memiliki audit penilaian tersendiri; kuis umum belum punya alur koreksi yang jelas. | Tentukan siapa boleh mengoreksi, kapan skor final, dan dampak leaderboard sebelum menambah aksi. |
+| Sedang | Fitur ada tetapi membingungkan | `sessions/create`: pilih Networking. Formulir umum tidak meminta rotasi/tahap; lobby khusus sudah menyediakannya. | Sesi Networking bisa disiapkan lewat jalur yang salah. | Arahkan ke lobby khusus; layanan pembuatan sesi umum kini menolak Networking dengan petunjuk. **Diperbaiki pada server**, navigasi form masih dapat ditingkatkan. |
+| Sedang | Fitur ada tetapi membingungkan | `sessions/<id>` untuk Hardware/Networking: lihat tabel skor umum dan label kuis. | Skor sementara bisa dianggap final sebelum verifikasi manual. | Tampilkan alur pos dan tautan ke verifikasi khusus; bedakan hasil sementara/final di seluruh hasil dan ekspor. **Petunjuk pada detail sesi ditambahkan**; pelabelan seluruh leaderboard masih perlu audit lanjutan. |
+| Sedang | Fitur ada tetapi membingungkan | `sessions/index`: tekan Hapus histori atau Akhiri saat tim masih mengerjakan. Ada konfirmasi bawaan browser tetapi konteks pengaruh ke jawaban/leaderboard kurang kuat. | Salah klik bisa menghentikan waktu atau menghapus hasil. | Tampilkan jumlah tim tertinggal dan konsekuensi tepat pada konfirmasi; pertimbangkan dialog konfirmasi kedua untuk hapus massal. **Konfirmasi Akhiri pada detail diperjelas.** |
+| Sedang | Fitur ada tetapi membingungkan | `teams/import`, `questions/import`: unggah CSV/JSON salah format. Validator menampilkan detail, tetapi beberapa pesan token sementara/CSRF tidak menjelaskan unggah ulang; set LOCKED melarang impor dengan pesan yang sudah spesifik. | Operator kesulitan memulihkan impor yang terputus. | Tambahkan petunjuk unggah ulang setelah token kedaluwarsa dan tautan unduh contoh pada pesan gagal. |
+| Sedang | Fitur ada tetapi membingungkan | `results/index`: baca judul “peringkat resmi” ketika sesi masih berjalan atau Hardware/Networking menunggu review. | Nilai sementara dapat diumumkan sebagai final. | Beri status publikasi per sesi dan kolom komponen skor yang jelas; pisahkan sementara dan final sesuai metode pos. |
+| Rendah | Fitur ada tetapi membingungkan | Sidebar dan tabel memakai campuran istilah START/FINISH/SUBMITTED/WAITING dan bahasa Indonesia, serta beberapa ikon/teks kecil. | Petugas baru butuh waktu memahami status. | Gunakan label tindakan bahasa Indonesia, teks status terbaca, dan keterangan singkat; status inti di detail sesi sudah diperjelas. |
+
+## Peta alur yang disarankan
+
+**Admin sebelum lomba:** masuk → periksa pos dan metode → siapkan set soal READY atau paket studi kasus ACTIVE → cek kunci/bobot atau rubrik penilaian manual → impor `team.csv` dan tinjau pratinjau → periksa tim per kelompok → petakan paket → siapkan sesi/rotasi (Networking lewat lobby) → lakukan cek kesiapan sebelum Mulai.
+
+**Panitia pos sebelum sesi:** masuk dengan hak pos yang ditugaskan (fitur role belum ada) → pilih pos/rotasi/kelompok → lihat tim dan materi yang berlaku → cek kesiapan peserta → buka sesi WAITING. **Saat sesi:** tekan Mulai sekali → pantau timer server dan status tiap tim → tangani koneksi/identitas sesuai prosedur pos → catat tindakan khusus. **Sesudah sesi:** cek tim belum mengumpulkan → akhiri saat aturan mengizinkan → lakukan verifikasi manual Hardware/Networking → periksa komponen skor dan status publikasi → lanjut ke rotasi berikutnya.
+
+**Admin saat masalah:** cari pos → sesi/rotasi → tim → lihat status, jawaban dan audit → pilih tindakan dengan alasan → baca dampak pada timer, skor dan leaderboard → verifikasi hasil sesudah tindakan.
+
+## Keputusan aturan lomba yang diperlukan
+
+1. Siapa yang boleh menjadi admin global, operator pos, dan juri; pos mana yang boleh dikelola tiap akun?
+2. Apakah tim yang salah memilih identitas boleh dipindahkan setelah sesi mulai, dan apa nasib jawaban/timer lama?
+3. Apakah peserta yang terlambat mendapat sisa waktu sesi atau durasi penuh? Apakah berlaku sama pada tiap pos?
+4. Kapan skor tiap pos dianggap final dan kapan leaderboard boleh dipublikasikan? Siapa boleh mengubah skor serta berapa lama setelah final?
+5. Apakah nomor rotasi wajib untuk semua pos, dan bolehkah sesi berikutnya dibuat sebelum review sesi sebelumnya selesai?
+
+## Verifikasi dan batasnya
+
+`verify_admin_ux.py` menguji formulir sesi Hardware, render daftar/detail/edit tanpa set soal, tiga tim membuat submission, mulai ulang tanpa mengubah `started_at`, refresh melalui GET halaman/API, pengumpulan, waktu habis, dan penutupan sesi. `verify_step6.py`, `verify_hardware_module.py`, dan `verify_networking_module.py` juga lulus: **62 pengujian**. Gangguan Wi-Fi dan dua browser fisik belum diuji di jaringan kampus; pengujian otomatis hanya memastikan status dari server tetap konsisten setelah pemuatan ulang dan jalur kegagalan sinkronisasi memiliki pesan di UI.

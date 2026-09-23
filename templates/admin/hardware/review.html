@@ -1,0 +1,331 @@
+{% extends "admin/base.html" %}
+{% block title %}Review Submission · {{ team.team_code }}{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">VERIFIKASI JURI // POS HARDWARE</div>
+    <h1>Review Build PC: {{ team.team_code }} — {{ team.team_name }}</h1>
+    <p class="welcome-text">{{ team.school }} · Kelompok {{ group.code }} · Paket: {{ package.package_code if package else '-' }}</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.hardware_submissions_index') }}" class="btn btn-outline">
+      <span>← Kembali ke Daftar</span>
+    </a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+  <!-- Left Column: Data Build Peserta vs Batasan Paket -->
+  <div>
+    <!-- Bukti & Link BuildCores -->
+    <div class="nb-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+      <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        🔗 BUKTI HASIL BUILDCORES
+      </h3>
+      <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div>
+          <span class="mono-label">LINK BUILD PESERTA:</span><br>
+          {% if hw_sub.buildcores_url %}
+            <a href="{{ hw_sub.buildcores_url }}" target="_blank" rel="noopener noreferrer" style="font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: #000; word-break: break-all;">
+              {{ hw_sub.buildcores_url }} ↗
+            </a>
+          {% else %}
+            <span class="mono-sub" style="color: #999;">Tidak ada URL</span>
+          {% endif %}
+        </div>
+        {% if hw_sub.buildcores_url %}
+          <a href="{{ hw_sub.buildcores_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-neon btn-sm">
+            <span>Buka Link BuildCores ↗</span>
+          </a>
+        {% endif %}
+      </div>
+
+      <!-- Screenshot Preview -->
+      <div style="margin-top: 1.25rem;">
+        <span class="mono-label">TANGKAPAN LAYAR BUKTI (SCREENSHOT):</span>
+        {% if hw_sub.screenshot_path %}
+          <div style="margin-top: 0.5rem;">
+            <a href="{{ url_for('uploaded_hardware_file', filename=hw_sub.screenshot_path) }}" target="_blank" title="Klik untuk memperbesar">
+              <img src="{{ url_for('uploaded_hardware_file', filename=hw_sub.screenshot_path) }}"
+                   alt="Bukti Screenshot BuildCores"
+                   style="max-width: 100%; max-height: 400px; border: 3px solid #000; box-shadow: 4px 4px 0 #000; display: block; object-fit: contain; background: #222;">
+            </a>
+            <small class="field-hint">Klik gambar untuk melihat resolusi penuh pada tab baru.</small>
+          </div>
+        {% else %}
+          <div style="padding: 1rem; background: #fee2e2; border: 2px solid #b91c1c; margin-top: 0.5rem; font-weight: 700; color: #991b1b;">
+            ⚠ Tidak ada file screenshot yang diunggah oleh peserta!
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Perbandingan Spesifikasi: Peserta vs Batasan Paket -->
+    <div class="nb-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+      <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        ⚖ PERBANDINGAN DATA SUBMISSION VS BATASAN KASUS
+      </h3>
+      <div class="nb-table-wrap">
+        <table class="nb-table">
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Data Peserta</th>
+              <th>Batasan Studi Kasus</th>
+              <th style="width: 100px; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Budget -->
+            {% set budget_ok = (hw_sub.total_price and hw_sub.total_price <= rules.get('max_budget', 0)) %}
+            <tr>
+              <td><strong>Total Harga</strong></td>
+              <td><span class="mono-highlight">${{ "%.2f"|format(hw_sub.total_price or 0) }}</span></td>
+              <td>Maksimal ${{ rules.get('max_budget', 0) }}</td>
+              <td style="text-align: center;">
+                <span class="nb-badge {{ 'badge-neon' if budget_ok else 'badge-danger' }} badge-xs">
+                  {{ 'SESUAI ✓' if budget_ok else 'OVER BUDGET ✕' }}
+                </span>
+              </td>
+            </tr>
+
+            <!-- CPU -->
+            {% set cpu_ok = (hw_sub.cpu_score and hw_sub.cpu_score >= rules.get('min_cpu_score', 0)) %}
+            <tr>
+              <td><strong>Processor (CPU)</strong></td>
+              <td>
+                <strong>{{ hw_sub.cpu_name or '-' }}</strong><br>
+                <small class="mono-sub">Score: {{ hw_sub.cpu_score or 0 }}</small>
+              </td>
+              <td>Target Min Score: {{ rules.get('min_cpu_score', 0) }}</td>
+              <td style="text-align: center;">
+                <span class="nb-badge {{ 'badge-neon' if cpu_ok else 'badge-warning' }} badge-xs">
+                  {{ 'CAPAI ✓' if cpu_ok else 'KURANG ✕' }}
+                </span>
+              </td>
+            </tr>
+
+            <!-- GPU -->
+            {% set gpu_ok = (hw_sub.gpu_score and hw_sub.gpu_score >= rules.get('min_gpu_score', 0)) %}
+            <tr>
+              <td><strong>Kartu Grafis (GPU)</strong></td>
+              <td>
+                <strong>{{ hw_sub.gpu_name or '-' }}</strong><br>
+                <small class="mono-sub">Score: {{ hw_sub.gpu_score or 0 }}</small>
+              </td>
+              <td>Target Min Score: {{ rules.get('min_gpu_score', 0) }}</td>
+              <td style="text-align: center;">
+                <span class="nb-badge {{ 'badge-neon' if gpu_ok else 'badge-warning' }} badge-xs">
+                  {{ 'CAPAI ✓' if gpu_ok else 'KURANG ✕' }}
+                </span>
+              </td>
+            </tr>
+
+            <!-- RAM -->
+            {% set ram_ok = (hw_sub.ram_capacity_gb and hw_sub.ram_capacity_gb >= rules.get('min_ram_gb', 0)) %}
+            <tr>
+              <td><strong>Kapasitas RAM</strong></td>
+              <td>{{ hw_sub.ram_capacity_gb or 0 }} GB</td>
+              <td>Minimal {{ rules.get('min_ram_gb', 0) }} GB</td>
+              <td style="text-align: center;">
+                <span class="nb-badge {{ 'badge-neon' if ram_ok else 'badge-danger' }} badge-xs">
+                  {{ 'SESUAI ✓' if ram_ok else 'KURANG ✕' }}
+                </span>
+              </td>
+            </tr>
+
+            <!-- Storage -->
+            {% set storage_ok = (hw_sub.storage_capacity_gb and hw_sub.storage_capacity_gb >= rules.get('min_storage_gb', 0)) %}
+            <tr>
+              <td><strong>Kapasitas Storage</strong></td>
+              <td>{{ hw_sub.storage_capacity_gb or 0 }} GB</td>
+              <td>Minimal {{ rules.get('min_storage_gb', 0) }} GB</td>
+              <td style="text-align: center;">
+                <span class="nb-badge {{ 'badge-neon' if storage_ok else 'badge-danger' }} badge-xs">
+                  {{ 'SESUAI ✓' if storage_ok else 'KURANG ✕' }}
+                </span>
+              </td>
+            </tr>
+
+            <!-- PSU -->
+            <tr>
+              <td><strong>Power Supply (PSU)</strong></td>
+              <td>{{ hw_sub.psu_name or '-' }}</td>
+              <td>{{ rules.get('min_psu_watt') or '-' }} Watt</td>
+              <td style="text-align: center;"><span class="nb-badge badge-neutral badge-xs">CEK</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Detail Ringkasan Komponen & Alasan Build -->
+      <div style="margin-top: 1.25rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div style="background: #fafafa; padding: 0.75rem; border: 2px solid #000;">
+          <span class="mono-label">RINGKASAN KOMPONEN PESERTA:</span>
+          <p style="font-size: 0.85rem; line-height: 1.5; white-space: pre-line; margin-top: 0.25rem;">{{ hw_sub.components_summary or '-' }}</p>
+        </div>
+        <div style="background: #fafafa; padding: 0.75rem; border: 2px solid #000;">
+          <span class="mono-label">ALASAN MEMILIH BUILD:</span>
+          <p style="font-size: 0.85rem; line-height: 1.5; white-space: pre-line; margin-top: 0.25rem;">{{ hw_sub.build_rationale or '-' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Verification & Scoring Panel -->
+  <div>
+    <!-- Skor & Breakdown Saat Ini -->
+    <div class="nb-card" style="margin-bottom: 1.5rem; padding: 1.25rem; background: #fff;">
+      <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        📊 KALKULASI SKOR
+      </h3>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <span class="mono-label">SKOR TERVERIFIKASI:</span>
+          <div style="font-size: 2rem; font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #047857;">
+            {{ "%.2f"|format(hw_sub.verified_score if hw_sub.verified_score is not none else hw_sub.provisional_score) }}
+          </div>
+        </div>
+        <div>
+          <span class="nb-badge {{ 'badge-neon' if hw_sub.verification_status in ['VERIFIED', 'SCORED'] else 'badge-warning' }}">
+            {{ hw_sub.verification_status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Itemized Breakdown -->
+      {% if hw_sub.score_breakdown %}
+        {% set bd = hw_sub.score_breakdown %}
+        <div style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; border-top: 1px dashed #000; padding-top: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Kompatibilitas:</span>
+            <strong>{{ bd.get('compatibility', {}).get('achieved', 0) }} / {{ bd.get('compatibility', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Budget:</span>
+            <strong>{{ bd.get('budget', {}).get('achieved', 0) }} / {{ bd.get('budget', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Target CPU:</span>
+            <strong>{{ bd.get('cpu', {}).get('achieved', 0) }} / {{ bd.get('cpu', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Target GPU:</span>
+            <strong>{{ bd.get('gpu', {}).get('achieved', 0) }} / {{ bd.get('gpu', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Kelengkapan:</span>
+            <strong>{{ bd.get('completeness', {}).get('achieved', 0) }} / {{ bd.get('completeness', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Efisiensi:</span>
+            <strong>{{ bd.get('efficiency', {}).get('achieved', 0) }} / {{ bd.get('efficiency', {}).get('weight', 0) }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 2px 0;">
+            <span>Bonus Waktu:</span>
+            <strong>{{ bd.get('time_bonus', {}).get('achieved', 0) }} / {{ bd.get('time_bonus', {}).get('weight', 0) }}</strong>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Form Verifikasi & Aksi Juri -->
+    <form method="post" class="nb-card" style="padding: 1.25rem;" novalidate>
+      {{ form.hidden_tag() }}
+      <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        ⚖ AKSI VERIFIKASI & KOREKSI
+      </h3>
+
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        {{ form.is_compatible.label(class="field-label") }}
+        {{ form.is_compatible(class="nb-input") }}
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        {{ form.corrected_price.label(class="field-label") }}
+        {{ form.corrected_price(class="nb-input", step="any") }}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+        <div class="form-group">
+          {{ form.corrected_cpu_score.label(class="field-label") }}
+          {{ form.corrected_cpu_score(class="nb-input", step="any") }}
+        </div>
+        <div class="form-group">
+          {{ form.corrected_gpu_score.label(class="field-label") }}
+          {{ form.corrected_gpu_score(class="nb-input", step="any") }}
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0.75rem;">
+        {{ form.reviewer_notes.label(class="field-label") }}
+        {{ form.reviewer_notes(class="nb-input", rows=2) }}
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        {{ form.reason.label(class="field-label") }}
+        {{ form.reason(class="nb-input", rows=2, placeholder="Alasan keputusan atau koreksi juri...") }}
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <button type="submit" name="action" value="VERIFY" class="btn btn-neon btn-block" onclick="document.getElementById('action').value='VERIFY';">
+          <span>✓ VERIFIKASI SUBMISSION (VERIFIED)</span>
+        </button>
+
+        <button type="submit" name="action" value="SCORE" class="btn btn-block" style="background: #a7f3d0; border: 3px solid #000;" onclick="document.getElementById('action').value='SCORE';">
+          <span>🔒 KUNCI NILAI FINAL (SCORED)</span>
+        </button>
+
+        <button type="submit" name="action" value="REQUEST_REVIEW" class="btn btn-outline btn-block" onclick="document.getElementById('action').value='REQUEST_REVIEW';">
+          <span>⏳ MINTA REVIEW ULANG</span>
+        </button>
+
+        <button type="submit" name="action" value="REJECT" class="btn btn-block" style="background: #fee2e2; color: #b91c1c; border: 3px solid #b91c1c;" onclick="document.getElementById('action').value='REJECT'; return confirm('Yakin ingin menolak submission tim ini?');">
+          <span>✕ TOLAK SUBMISSION (REJECTED)</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Riwayat Audit Verifikasi Juri -->
+{% if audits %}
+<section class="nb-card" style="padding: 1.25rem;">
+  <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+    📜 RIWAYAT AUDIT KOREKSI & PERUBAHAN
+  </h3>
+  <div class="nb-table-wrap">
+    <table class="nb-table">
+      <thead>
+        <tr>
+          <th style="width: 160px;">Waktu</th>
+          <th style="width: 140px;">Admin/Juri</th>
+          <th style="width: 140px;">Aksi</th>
+          <th>Alasan Perubahan</th>
+          <th>Rincian Perubahan (Old vs New)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in audits %}
+          <tr>
+            <td><small class="mono-val">{{ a.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+            <td><strong>{{ a.admin.username if a.admin else '-' }}</strong></td>
+            <td><span class="nb-badge badge-neutral badge-xs">{{ a.action }}</span></td>
+            <td>{{ a.reason or '-' }}</td>
+            <td>
+              <small class="mono-sub">
+                Status: {{ (a.old_values or {}).get('verification_status') }} → {{ (a.new_values or {}).get('verification_status') }} |
+                Skor: {{ (a.old_values or {}).get('verified_score') or '-' }} → {{ (a.new_values or {}).get('verified_score') or '-' }}
+              </small>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

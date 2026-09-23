@@ -37,36 +37,165 @@
       </div>
     </div>
 
-    <!-- Score Showcase Card -->
-    <div class="score-showcase-box nb-card">
-      <div class="score-breakdown-row">
-        <div class="score-col">
-          <span class="score-lbl">JAWABAN BENAR</span>
-          <span class="score-num text-white">{{ summary.correct_count }} / {{ summary.total_questions }}</span>
-          <span class="score-sub">{{ summary.unanswered_count }} Soal Kosong</span>
+    {% if summary.is_networking %}
+      <!-- Pos Networking 3-Stage Score & Stamp Showcase -->
+      <div class="score-showcase-box nb-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <span class="mono-label">STATUS VERIFIKASI FASILITATOR:</span>
+            {% if summary.verification_status == 'FINALIZED' %}
+              <span class="nb-badge badge-neon" style="font-size: 0.95rem;">HASIL RESMI DIFINALISASI ✓</span>
+            {% else %}
+              <span class="nb-badge badge-warning" style="font-size: 0.95rem;">DALAM PENINJAUAN FASILITATOR ⏳</span>
+            {% endif %}
+          </div>
         </div>
 
-        <div class="score-col">
-          <span class="score-lbl">NILAI MURNI (RAW)</span>
-          <span class="score-num text-accent">{{ summary.raw_score }}</span>
-          <span class="score-sub">Total Bobot Soal Benar</span>
+        <!-- Per-Stage Breakdown -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; font-family: var(--font-mono);">
+          <div style="background: var(--nb-black); color: var(--nb-white); padding: 0.75rem; border: var(--nb-border); box-shadow: var(--nb-shadow-xs);">
+            <span style="color: #bbb; font-size: 0.72rem; font-weight: 700;">TAHAP 1 (SIGNAL CHECK)</span><br>
+            <strong style="color: var(--nb-neon); font-size: 1.25rem;">{{ summary.stage_1_score }}</strong> <span style="font-size: 0.75rem;">/ 10 Poin</span>
+          </div>
+          <div style="background: var(--nb-black); color: var(--nb-white); padding: 0.75rem; border: var(--nb-border); box-shadow: var(--nb-shadow-xs);">
+            <span style="color: #bbb; font-size: 0.72rem; font-weight: 700;">TAHAP 2 (TRUE OR TRAP)</span><br>
+            <strong style="color: var(--nb-neon); font-size: 1.25rem;">{{ summary.stage_2_score }}</strong> <span style="font-size: 0.75rem;">/ 10 Poin</span>
+          </div>
+          <div style="background: var(--nb-black); color: var(--nb-white); padding: 0.75rem; border: var(--nb-border); box-shadow: var(--nb-shadow-xs);">
+            <span style="color: #bbb; font-size: 0.72rem; font-weight: 700;">TAHAP 3 (CASE SIGNAL)</span><br>
+            <strong style="color: var(--nb-neon); font-size: 1.25rem;">{{ summary.stage_3_score }}</strong> <span style="font-size: 0.75rem;">/ 5 Poin</span><br>
+            <span style="color: #93c5fd; font-size: 0.72rem; font-weight: 700;">{{ summary.stage_3_correct_count }} Benar</span>
+          </div>
+          <div style="background: var(--nb-black); color: var(--nb-white); padding: 0.75rem; border: var(--nb-border); box-shadow: var(--nb-shadow-xs);">
+            <span style="color: #bbb; font-size: 0.72rem; font-weight: 700;">BONUS WAKTU</span><br>
+            <strong style="color: #fde047; font-size: 1.25rem;">+{{ summary.time_bonus }}</strong> <span style="font-size: 0.75rem;">Poin</span>
+          </div>
         </div>
 
-        <div class="score-col">
-          <span class="score-lbl">BONUS SISA WAKTU</span>
-          <span class="score-num text-accent">+{{ summary.time_bonus }}</span>
-          <span class="score-sub">{{ 'Waktu Tersisa' if summary.time_bonus > 0 else 'Tidak Ada Bonus' }}</span>
+        <!-- Stamp Showcase (Independent from Total Score) -->
+        <div class="stamp-box-{{ 'granted' if summary.has_stamp else 'denied' }}" style="border: var(--nb-border); box-shadow: var(--nb-shadow); padding: 1.25rem; margin-bottom: 1.25rem; background: {{ '#dcfce7' if summary.has_stamp else '#fee2e2' }};">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <div class="mono-label" style="color: #000; font-weight: 900; margin-bottom: 0.35rem;">STATUS STAMP POS NETWORKING:</div>
+              {% if summary.has_stamp %}
+                <span class="nb-badge" style="background: #15803d; color: #ffffff; font-size: 1.05rem; border: 2px solid #000; box-shadow: 2px 2px 0px #000; padding: 0.4rem 0.85rem;">
+                  ★ STAMP DIPEROLEH ★
+                </span>
+                <p style="margin-top: 0.5rem; margin-bottom: 0; font-weight: 700; color: #166534; font-size: 0.88rem;">
+                  Lulus Standar: Menjawab benar minimal 4 dari 5 soal pada Tahap 3 (Perolehan: {{ summary.stage_3_correct_count }}/5 benar).
+                </p>
+              {% else %}
+                <span class="nb-badge" style="background: #b91c1c; color: #ffffff; font-size: 1.05rem; border: 2px solid #000; box-shadow: 2px 2px 0px #000; padding: 0.4rem 0.85rem;">
+                  STAMP TIDAK DIPEROLEH
+                </span>
+                <p style="margin-top: 0.5rem; margin-bottom: 0; font-weight: 700; color: #991b1b; font-size: 0.88rem;">
+                  Belum Memenuhi Standar: Menjawab benar {{ summary.stage_3_correct_count }} dari 5 soal pada Tahap 3 (Dibutuhkan minimal 4 benar).
+                </p>
+              {% endif %}
+            </div>
+            <div style="text-align: right; font-size: 0.8rem; font-weight: 800; color: #475569; font-family: var(--font-mono);">
+              * Status Stamp terpisah dari Skor Total.
+            </div>
+          </div>
+        </div>
+
+        <!-- Final Score Row -->
+        <div class="final-score-row" style="background: #111; padding: 1rem; border: 2px solid #000;">
+          <div class="final-score-label">
+            {{ 'TOTAL SKOR AKHIR RESMI:' if summary.verification_status == 'FINALIZED' else 'ESTIMASI SKOR SEMENTARA:' }}
+          </div>
+          <div class="final-score-val-wrap">
+            <span class="final-score-digits" style="color: var(--accent-neon);">
+              {{ summary.final_score }}
+            </span>
+            <span class="score-pts-tag">POIN</span>
+          </div>
         </div>
       </div>
+    {% elif summary.is_hardware %}
+      <!-- Hardware Build Challenge Score Showcase -->
+      <div class="score-showcase-box nb-card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <span class="mono-label">STATUS VERIFIKASI JURI:</span>
+            {% if summary.verification_status in ['VERIFIED', 'SCORED'] %}
+              <span class="nb-badge badge-neon" style="font-size: 0.95rem;">TERVERIFIKASI ✓</span>
+            {% elif summary.verification_status == 'REJECTED' %}
+              <span class="nb-badge badge-danger" style="font-size: 0.95rem;">DITOLAK ✕</span>
+            {% else %}
+              <span class="nb-badge badge-warning" style="font-size: 0.95rem;">MENUNGGU VERIFIKASI JURI ⏳</span>
+            {% endif %}
+          </div>
+          {% if summary.hw_sub and summary.hw_sub.buildcores_url %}
+            <a href="{{ summary.hw_sub.buildcores_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-xs">
+              <span>Buka BuildCores ↗</span>
+            </a>
+          {% endif %}
+        </div>
 
-      <div class="final-score-row">
-        <div class="final-score-label">TOTAL SKOR AKHIR:</div>
-        <div class="final-score-val-wrap">
-          <span class="final-score-digits">{{ summary.final_score }}</span>
-          <span class="score-pts-tag">POIN</span>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+          <div style="background: #222; color: #fff; padding: 0.5rem; border: 1px solid #444;">
+            <span style="color: #aaa; font-size: 0.75rem;">TOTAL HARGA</span><br>
+            <strong style="color: var(--accent-neon);">${{ "%.2f"|format(summary.hw_sub.total_price or 0) }}</strong>
+          </div>
+          <div style="background: #222; color: #fff; padding: 0.5rem; border: 1px solid #444;">
+            <span style="color: #aaa; font-size: 0.75rem;">CPU SCORE</span><br>
+            <strong>{{ summary.hw_sub.cpu_score or '-' }}</strong>
+          </div>
+          <div style="background: #222; color: #fff; padding: 0.5rem; border: 1px solid #444;">
+            <span style="color: #aaa; font-size: 0.75rem;">GPU SCORE</span><br>
+            <strong>{{ summary.hw_sub.gpu_score or '-' }}</strong>
+          </div>
+          <div style="background: #222; color: #fff; padding: 0.5rem; border: 1px solid #444;">
+            <span style="color: #aaa; font-size: 0.75rem;">RAM / STORAGE</span><br>
+            <strong>{{ summary.hw_sub.ram_capacity_gb or 0 }}G / {{ summary.hw_sub.storage_capacity_gb or 0 }}G</strong>
+          </div>
+        </div>
+
+        <div class="final-score-row" style="background: #111; padding: 1rem; border: 2px solid #000;">
+          <div class="final-score-label">
+            {{ 'TOTAL SKOR RESMI FINAL:' if summary.verification_status in ['VERIFIED', 'SCORED'] else 'ESTIMASI SKOR PROVISIONAL:' }}
+          </div>
+          <div class="final-score-val-wrap">
+            <span class="final-score-digits" style="color: var(--accent-neon);">
+              {{ "%.2f"|format(summary.final_score if summary.verification_status in ['VERIFIED', 'SCORED'] else summary.provisional_score) }}
+            </span>
+            <span class="score-pts-tag">POIN</span>
+          </div>
         </div>
       </div>
-    </div>
+    {% else %}
+      <!-- Score Showcase Card (Quiz) -->
+      <div class="score-showcase-box nb-card">
+        <div class="score-breakdown-row">
+          <div class="score-col">
+            <span class="score-lbl">JAWABAN BENAR</span>
+            <span class="score-num text-white">{{ summary.correct_count }} / {{ summary.total_questions }}</span>
+            <span class="score-sub">{{ summary.unanswered_count }} Soal Kosong</span>
+          </div>
+
+          <div class="score-col">
+            <span class="score-lbl">NILAI MURNI (RAW)</span>
+            <span class="score-num text-accent">{{ summary.raw_score }}</span>
+            <span class="score-sub">Total Bobot Soal Benar</span>
+          </div>
+
+          <div class="score-col">
+            <span class="score-lbl">BONUS SISA WAKTU</span>
+            <span class="score-num text-accent">+{{ summary.time_bonus }}</span>
+            <span class="score-sub">{{ 'Waktu Tersisa' if summary.time_bonus > 0 else 'Tidak Ada Bonus' }}</span>
+          </div>
+        </div>
+
+        <div class="final-score-row">
+          <div class="final-score-label">TOTAL SKOR AKHIR:</div>
+          <div class="final-score-val-wrap">
+            <span class="final-score-digits">{{ summary.final_score }}</span>
+            <span class="score-pts-tag">POIN</span>
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
     <!-- Confidentiality Notice -->
     <div class="result-notice nb-card">

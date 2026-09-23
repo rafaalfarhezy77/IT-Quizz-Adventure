@@ -74,15 +74,15 @@
       </div>
     </div>
 
-    <div class="filter-actions-row" style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+    <div class="filter-actions-row" style="margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
       <button type="submit" class="btn btn-primary btn-sm">
         <span>🔍 TERAPKAN FILTER</span>
       </button>
       <a href="{{ url_for('admin.results_index') }}" class="btn btn-outline btn-sm">
         <span>RESET FILTER</span>
       </a>
-      <span class="filter-count text-muted" style="margin-left: auto; align-self: center; font-size: 0.85rem;">
-        Menampilkan <strong>{{ results | length }}</strong> data hasil
+      <span class="filter-count text-muted" style="margin-left: auto; align-self: center; font-size: 0.88rem; font-family: var(--font-mono);">
+        Menampilkan <span style="font-weight: 800; color: #000; font-size: 1.05rem;">{{ results | length }}</span> data hasil
       </span>
     </div>
   </form>

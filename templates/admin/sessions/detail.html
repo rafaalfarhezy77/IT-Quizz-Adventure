@@ -9,7 +9,8 @@
       <div class="chip-label">// KONTROL SESI AKTIF</div>
       <h1 class="page-title">SESI #{{ session.id }} · {{ session.station.name }}</h1>
       <p class="page-subtitle">
-        Kelompok {{ session.group.code }} · Bank Soal Set {{ session.question_set.code }}
+        Kelompok {{ session.group.code }} · Rotasi {{ session.rotation_number or 'belum ditetapkan' }} ·
+        {% if session.question_set %}Bank Soal Set {{ session.question_set.code }}{% elif session.package %}{{ session.package.package_code }}{% else %}Paket belum dipetakan{% endif %}
       </p>
     </div>
     <div class="page-actions">
@@ -18,6 +19,21 @@
       </a>
     </div>
   </div>
+
+  {% if session.station.name.lower() == 'hardware' %}
+    <div class="nb-card session-guidance">
+      <strong>Alur pos Hardware</strong>
+      <p>Periksa paket studi kasus dan pemetaan kelompok sebelum mulai. Setelah tim mengirim bukti, verifikasi manual sebelum menganggap skor final.</p>
+      <a class="btn btn-outline btn-sm" href="{{ url_for('admin.packages_mapping', station_id=session.station_id) }}">Periksa pemetaan paket</a>
+      <a class="btn btn-outline btn-sm" href="{{ url_for('admin.hardware_submissions_index') }}">Buka verifikasi Hardware</a>
+    </div>
+  {% elif session.station.name.lower() == 'networking' %}
+    <div class="nb-card session-guidance">
+      <strong>Alur pos Networking</strong>
+      <p>Gunakan konsol khusus untuk rotasi, timer tiap tahap, verifikasi jawaban, dan finalisasi skor.</p>
+      <a class="btn btn-outline btn-sm" href="{{ url_for('admin.networking_monitor', session_id=session.id) }}">Buka monitor Networking</a>
+    </div>
+  {% endif %}
 
   <div class="session-detail-layout">
     <!-- Live Timer Card -->
@@ -65,7 +81,7 @@
         {% if session.status.value == 'WAITING' %}
           <form method="post" action="{{ url_for('admin.sessions_start', session_id=session.id) }}">
             {{ action_form.hidden_tag() }}
-            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('Mulai sesi #{{ session.id }} sekarang? Soal akan dikunci (LOCKED) dan seluruh peserta di ruang tunggu akan otomatis diarahkan ke quiz!');">
+            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('Mulai sesi #{{ session.id }} untuk Pos {{ session.station.name }} / Kelompok {{ session.group.code }} sekarang? Timer resmi mulai dan materi terkait dikunci.');">
               <span>▶ MULAI SESI SEKARANG (START)</span>
             </button>
           </form>
@@ -81,11 +97,11 @@
             </button>
           </form>
 
-        {% elif session.status.value == 'RUNNING' and effective_status.value == 'RUNNING' %}
+        {% elif session.status.value == 'RUNNING' %}
           <form method="post" action="{{ url_for('admin.sessions_finish', session_id=session.id) }}">
             {{ action_form.hidden_tag() }}
-            <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Akhiri sesi #{{ session.id }} sekarang sebelum waktu habis?');">
-              <span>■ SELESAIKAN SESI (FINISH MANUAL)</span>
+            <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Akhiri sesi #{{ session.id }} sekarang? {{ monitoring.summary.not_started + monitoring.summary.in_progress }} tim belum mengumpulkan. Waktu resmi akan berhenti; periksa jawaban dan verifikasi manual sesudahnya.');">
+              <span>{{ 'TUTUP SESI YANG WAKTUNYA HABIS' if effective_status.value == 'FINISHED' else '■ AKHIRI SESI SEKARANG' }}</span>
             </button>
           </form>
         {% elif session.status.value in ['FINISHED', 'CANCELLED'] %}
@@ -115,8 +131,16 @@
 
       <div class="nb-card meta-box">
         <span class="meta-box-label">BANK SOAL</span>
-        <span class="meta-box-val">Set {{ session.question_set.code }}</span>
-        <span class="meta-box-sub">{{ session.question_set.name }} ({{ session.question_set.questions | selectattr('is_active') | list | length }} Soal)</span>
+        {% if session.question_set %}
+          <span class="meta-box-val">Set {{ session.question_set.code }}</span>
+          <span class="meta-box-sub">{{ session.question_set.name }} ({{ session.question_set.questions | selectattr('is_active') | list | length }} soal)</span>
+        {% elif session.package %}
+          <span class="meta-box-val">{{ session.package.package_code }}</span>
+          <span class="meta-box-sub">{{ session.package.title }} · {{ session.package.status.value }}</span>
+        {% else %}
+          <span class="meta-box-val">Belum dipetakan</span>
+          <span class="meta-box-sub">Pilih paket untuk kelompok ini sebelum memulai sesi.</span>
+        {% endif %}
       </div>
 
       <div class="nb-card meta-box">
@@ -145,9 +169,9 @@
           {% if monitoring.summary.waiting_for_host is defined and monitoring.summary.waiting_for_host > 0 %}
             <span class="nb-badge badge-waiting"><span class="dot-pulse-mini"></span> Waiting Host: {{ monitoring.summary.waiting_for_host }}</span>
           {% endif %}
-          <span class="nb-badge badge-neon">Submitted: {{ monitoring.summary.submitted }}</span>
-          <span class="nb-badge badge-warning">In Progress: {{ monitoring.summary.in_progress }}</span>
-          <span class="nb-badge badge-danger">Timeout: {{ monitoring.summary.timed_out }}</span>
+          <span class="nb-badge badge-neon">Terkumpul: {{ monitoring.summary.submitted }}</span>
+          <span class="nb-badge badge-warning">Mengerjakan: {{ monitoring.summary.in_progress }}</span>
+          <span class="nb-badge badge-danger">Waktu habis: {{ monitoring.summary.timed_out }}</span>
           <span class="nb-badge badge-neutral">Belum Mulai: {{ monitoring.summary.not_started }}</span>
         </div>
       </div>
@@ -179,11 +203,11 @@
                 </td>
                 <td class="text-center">
                   {% if t.status == 'SUBMITTED' %}
-                    <span class="nb-badge badge-neon">SUBMITTED</span>
+                    <span class="nb-badge badge-neon">Terkumpul</span>
                   {% elif t.status == 'TIMED_OUT' %}
-                    <span class="nb-badge badge-danger">TIMED_OUT</span>
+                    <span class="nb-badge badge-danger">Waktu habis</span>
                   {% elif t.status == 'IN_PROGRESS' %}
-                    <span class="nb-badge badge-warning">IN_PROGRESS</span>
+                    <span class="nb-badge badge-warning">Mengerjakan</span>
                   {% elif t.status == 'WAITING_FOR_HOST' %}
                     <span class="nb-badge badge-waiting">
                       <span class="dot-pulse-mini"></span> WAITING FOR HOST

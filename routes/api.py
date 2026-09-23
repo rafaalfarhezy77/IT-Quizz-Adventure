@@ -228,3 +228,32 @@ def admin_session_monitoring_api(session_id: int):
 
     data = get_session_monitoring_data(session_obj)
     return no_store_json(data)
+
+
+@api_bp.post("/participant/hardware/draft")
+def participant_hardware_draft_api():
+    """Endpoint AJAX autosave draft pengerjaan Pos Hardware peserta."""
+    ctx = get_participant_context()
+    if not ctx["authorized"] or not ctx["station"] or not ctx["group"] or not ctx["team"]:
+        return no_store_json({"error": "Akses peserta tidak valid."}, 403)
+
+    if not ctx["rules_accepted"]:
+        return no_store_json({"error": "Aturan pos belum disetujui."}, 403)
+
+    session_obj = find_participant_session(ctx["station"].id, ctx["group"].id)
+    if not session_obj:
+        return no_store_json({"error": "Tidak ada sesi lomba yang aktif."}, 400)
+
+    effective_status = get_effective_status(session_obj)
+    if effective_status != SessionStatus.RUNNING:
+        return no_store_json({"error": "Sesi lomba sudah selesai atau belum dimulai."}, 400)
+
+    from services.hardware_service import save_hardware_draft
+    data = request.get_json() if request.is_json else request.form.to_dict()
+    screenshot_file = request.files.get("screenshot")
+
+    ok, msg = save_hardware_draft(session_obj.id, ctx["team"].id, data, screenshot_file)
+    if not ok:
+        return no_store_json({"error": msg}, 400)
+
+    return no_store_json({"success": True, "message": msg})

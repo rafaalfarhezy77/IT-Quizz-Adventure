@@ -15,7 +15,7 @@ from forms.participant import (
     ParticipantTeamForm,
     SelectionForm,
 )
-from models import Group, Station, StationMode, Team, db
+from models import Group, Station, StationMode, Submission, SubmissionStatus, Team, db
 from utils.participant_session import (
     KEY_AUTHORIZED,
     KEY_CONFIRMED,
@@ -442,7 +442,155 @@ def quiz():
         flash("Sesi perlombaan ini dibatalkan oleh panitia.", "warning")
         return redirect(url_for("participant.waiting"))
 
-    from models import SubmissionStatus
+    # Deteksi metode pengerjaan (Hardware Build Challenge vs Quiz)
+    from services.package_mapping_service import get_assigned_package_for_group
+    package = session_obj.package or get_assigned_package_for_group(station.id, group.id, session_obj.id)
+    is_hardware = (package and package.challenge_type == "hardware_build_challenge") or (station.name.lower() == "hardware")
+
+    if is_hardware:
+        from services.hardware_service import get_or_create_hardware_submission
+        from forms.hardware import HardwareSubmissionForm
+
+        if not package:
+            flash("Paket studi kasus belum dipetakan untuk kelompok Anda. Silakan hubungi panitia pos.", "warning")
+            return redirect(url_for("participant.waiting"))
+
+        submission, hw_sub = get_or_create_hardware_submission(session_obj.id, team.id)
+
+        # Jika submission sudah difinalisasi, langsung alihkan ke hasil
+        if submission.status in (
+            SubmissionStatus.SUBMITTED,
+            SubmissionStatus.TIMED_OUT,
+            SubmissionStatus.GRADED,
+        ):
+            return redirect(url_for("participant.result"))
+
+        remaining_seconds = get_remaining_seconds(session_obj)
+
+        if effective_status.value == "FINISHED" or remaining_seconds <= 0:
+            submission.status = SubmissionStatus.TIMED_OUT
+            hw_sub.verification_status = "SUBMITTED"
+            db.session.commit()
+            return redirect(url_for("participant.result"))
+
+        form = HardwareSubmissionForm()
+        if request.method == "GET":
+            form.buildcores_url.data = hw_sub.buildcores_url or ""
+            form.total_price.data = hw_sub.total_price
+            form.cpu_name.data = hw_sub.cpu_name or ""
+            form.cpu_score.data = hw_sub.cpu_score
+            form.gpu_name.data = hw_sub.gpu_name or ""
+            form.gpu_score.data = hw_sub.gpu_score
+            form.ram_capacity_gb.data = hw_sub.ram_capacity_gb
+            form.storage_capacity_gb.data = hw_sub.storage_capacity_gb
+            form.psu_name.data = hw_sub.psu_name or ""
+            form.components_summary.data = hw_sub.components_summary or ""
+            form.build_rationale.data = hw_sub.build_rationale or ""
+            form.confirmation_checked.data = hw_sub.confirmation_checked
+
+        rules_cfg = package.rules_config or {}
+        scoring_cfg = package.scoring_config or {}
+
+        return render_template(
+            "participant/hardware.html",
+            station=station,
+            group=group,
+            team=team,
+            competition_session=session_obj,
+            submission=submission,
+            hw_sub=hw_sub,
+            package=package,
+            rules_config=rules_cfg,
+            scoring_config=scoring_cfg,
+            form=form,
+            remaining_seconds=remaining_seconds,
+            ctx=ctx,
+        )
+
+    # Deteksi metode pengerjaan Pos Networking (3 Tahap + Verifikasi Juri)
+    is_networking = (station.name.lower() == "networking")
+    if is_networking:
+        from services.networking_service import (
+            get_or_create_networking_submission,
+            get_stage_questions,
+            get_stage_timer_info,
+            submit_stage,
+        )
+
+        client_token = session.get("participant_quiz_token")
+        if not client_token:
+            import uuid
+            client_token = uuid.uuid4().hex
+            session["participant_quiz_token"] = client_token
+
+        submission, net_sub, token_conflict = get_or_create_networking_submission(
+            session_obj.id, team.id, client_token
+        )
+
+        if token_conflict:
+            flash(
+                "Tim Anda sudah memiliki sesi aktif di perangkat atau jendela lain. Hubungi panitia pos jika ingin meminta izin masuk kembali (Allow Reconnect).",
+                "danger",
+            )
+            return redirect(url_for("participant.waiting"))
+
+        # Jika sudah difinalisasi, langsung ke halaman hasil
+        if net_sub.verification_status == "FINALIZED" and submission.score is not None:
+            return redirect(url_for("participant.result"))
+
+        # Jika tahap 4 (menunggu verifikasi / submit selesai)
+        if net_sub.current_stage >= 4 or submission.status in (
+            SubmissionStatus.SUBMITTED,
+            SubmissionStatus.TIMED_OUT,
+            SubmissionStatus.GRADED,
+        ):
+            return render_template(
+                "participant/networking.html",
+                station=station,
+                group=group,
+                team=team,
+                competition_session=session_obj,
+                submission=submission,
+                net_sub=net_sub,
+                current_stage=4,
+                timer_info={"remaining_seconds": 0, "is_locked": True},
+                questions=[],
+                answers_map={},
+                ctx=ctx,
+            )
+
+        # Periksa timer tahap saat ini
+        timer_info = get_stage_timer_info(net_sub, net_sub.current_stage)
+        if timer_info["is_expired"] and not timer_info["is_locked"]:
+            # Auto submit tahap karena waktu habis
+            submit_stage(submission.id, net_sub.current_stage, is_timeout=True)
+            return redirect(url_for("participant.quiz"))
+
+        questions = get_stage_questions(session_obj, net_sub.current_stage)
+        from models import Answer
+        answers = db.session.scalars(
+            db.select(Answer).where(Answer.submission_id == submission.id)
+        ).all()
+        answers_map = {
+            a.question_id: (a.text_answer or a.selected_answer or "")
+            for a in answers
+        }
+
+        return render_template(
+            "participant/networking.html",
+            station=station,
+            group=group,
+            team=team,
+            competition_session=session_obj,
+            submission=submission,
+            net_sub=net_sub,
+            current_stage=net_sub.current_stage,
+            timer_info=timer_info,
+            questions=questions,
+            answers_map=answers_map,
+            ctx=ctx,
+        )
+
     from services.quiz_service import (
         get_or_create_submission,
         get_session_questions,
@@ -508,6 +656,144 @@ def quiz():
     )
 
 
+@participant_bp.post("/hardware/draft")
+@require_participant_stage("rules_accepted")
+def hardware_draft():
+    """Simpan draft pengerjaan Pos Hardware (Autosave / Tombol Simpan Draft)."""
+    ctx = get_participant_context()
+    session_obj = find_participant_session(ctx["station"].id, ctx["group"].id)
+    if not session_obj:
+        if request.is_json:
+            return {"success": False, "error": "Sesi tidak ditemukan."}, 400
+        flash("Sesi perlombaan tidak ditemukan.", "danger")
+        return redirect(url_for("participant.waiting"))
+
+    form_data = request.get_json() if request.is_json else request.form.to_dict()
+    screenshot_file = request.files.get("screenshot")
+
+    from services.hardware_service import save_hardware_draft
+    ok, msg = save_hardware_draft(session_obj.id, ctx["team"].id, form_data, screenshot_file)
+
+    is_json_request = (
+        request.is_json
+        or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in (request.headers.get("Accept") or "")
+        or request.form.get("format") == "json"
+    )
+
+    if is_json_request:
+        return {"success": ok, "message": msg}, (200 if ok else 400)
+
+    if ok:
+        flash(msg, "success")
+    else:
+        flash(msg, "danger")
+    return redirect(url_for("participant.quiz"))
+
+
+@participant_bp.post("/hardware/submit")
+@require_participant_stage("rules_accepted")
+def hardware_submit():
+    """Final submit hasil pengerjaan Pos Hardware oleh peserta."""
+    ctx = get_participant_context()
+    session_obj = find_participant_session(ctx["station"].id, ctx["group"].id)
+    if not session_obj:
+        flash("Sesi perlombaan tidak ditemukan.", "danger")
+        return redirect(url_for("participant.waiting"))
+
+    from forms.hardware import HardwareSubmissionForm
+    from services.hardware_service import submit_hardware_challenge
+
+    form = HardwareSubmissionForm()
+    screenshot_file = request.files.get("screenshot")
+
+    form_data = request.form.to_dict()
+    ok, msg = submit_hardware_challenge(
+        session_id=session_obj.id,
+        team_id=ctx["team"].id,
+        form_data=form_data,
+        screenshot_file=screenshot_file,
+    )
+
+    if ok:
+        flash(msg, "success")
+        return redirect(url_for("participant.result"))
+    else:
+        flash(msg, "danger")
+        return redirect(url_for("participant.quiz"))
+
+
+@participant_bp.post("/networking/save-answer")
+@require_participant_stage("rules_accepted")
+def networking_save_answer():
+    """Endpoint penyimpanan realtime jawaban Pos Networking (AJAX / Form)."""
+    ctx = get_participant_context()
+    session_obj = find_participant_session(ctx["station"].id, ctx["group"].id)
+    if not session_obj:
+        return {"success": False, "message": "Sesi tidak ditemukan."}, 404
+
+    from services.networking_service import get_or_create_networking_submission, save_networking_answer
+
+    client_token = session.get("participant_quiz_token")
+    submission, net_sub, token_conflict = get_or_create_networking_submission(
+        session_obj.id, ctx["team"].id, client_token
+    )
+    if token_conflict:
+        return {"success": False, "message": "Konflik sesi ganda terdeteksi."}, 403
+
+    if request.is_json:
+        data = request.get_json() or {}
+        question_id = data.get("question_id")
+        answer_value = data.get("answer_value")
+    else:
+        question_id = request.form.get("question_id")
+        answer_value = request.form.get("answer_value")
+
+    try:
+        qid = int(question_id)
+    except (ValueError, TypeError):
+        return {"success": False, "message": "ID soal tidak valid."}, 400
+
+    ok, err, status = save_networking_answer(submission.id, qid, answer_value)
+    if ok:
+        return {"success": True, "review_status": status}, 200
+    return {"success": False, "message": err or "Gagal menyimpan jawaban."}, 400
+
+
+@participant_bp.post("/networking/submit-stage")
+@require_participant_stage("rules_accepted")
+def networking_submit_stage():
+    """Submit dan kunci tahap pengerjaan Pos Networking (Tahap 1, 2, atau 3)."""
+    ctx = get_participant_context()
+    session_obj = find_participant_session(ctx["station"].id, ctx["group"].id)
+    if not session_obj:
+        flash("Sesi perlombaan tidak ditemukan.", "danger")
+        return redirect(url_for("participant.waiting"))
+
+    from services.networking_service import get_or_create_networking_submission, submit_stage
+
+    client_token = session.get("participant_quiz_token")
+    submission, net_sub, token_conflict = get_or_create_networking_submission(
+        session_obj.id, ctx["team"].id, client_token
+    )
+    if token_conflict:
+        flash("Konflik sesi ganda terdeteksi.", "danger")
+        return redirect(url_for("participant.waiting"))
+
+    stage_num = request.form.get("stage_num", type=int) or net_sub.current_stage
+    ok, err, next_stage = submit_stage(submission.id, stage_num)
+
+    if ok:
+        if next_stage >= 4:
+            flash("Seluruh tahap kuis Pos Networking berhasil dikumpulkan! Menunggu proses verifikasi.", "success")
+        else:
+            flash(f"Tahap {stage_num} berhasil diselesaikan! Melanjutkan ke Tahap {next_stage}.", "success")
+    else:
+        flash(err or "Gagal mengumpulkan tahap pengerjaan.", "danger")
+
+    return redirect(url_for("participant.quiz"))
+
+
 @participant_bp.post("/quiz/submit")
 @require_participant_stage("rules_accepted")
 def quiz_submit():
@@ -523,7 +809,6 @@ def quiz_submit():
         flash("Sesi perlombaan tidak ditemukan.", "danger")
         return redirect(url_for("participant.waiting"))
 
-    from models import SubmissionStatus
     from services.quiz_service import get_or_create_submission
     from services.scoring_service import finalize_submission
 
@@ -561,7 +846,6 @@ def member_submit():
     if not session_obj:
         return redirect(url_for("participant.waiting"))
 
-    from models import SubmissionStatus
     from services.quiz_service import advance_member_rotation, get_or_create_submission
     from services.scoring_service import finalize_submission
 
@@ -590,7 +874,6 @@ def member_transition():
     if not session_obj:
         return redirect(url_for("participant.waiting"))
 
-    from models import SubmissionStatus
     from services.quiz_service import get_or_create_submission
 
     submission = get_or_create_submission(session_obj.id, ctx["team"].id)
@@ -647,7 +930,50 @@ def result():
         # Masih berjalan dan belum submit -> kembalikan ke kuis
         return redirect(url_for("participant.quiz"))
 
-    summary = get_submission_summary(submission)
+    if submission.networking_submission:
+        net = submission.networking_submission
+        score_obj = submission.score
+        summary = {
+            "team_name": submission.team.team_name,
+            "team_code": submission.team.team_code,
+            "school": submission.team.school,
+            "station_name": session_obj.station.name,
+            "group_code": session_obj.group.code,
+            "is_networking": True,
+            "net_sub": net,
+            "stage_1_score": net.stage_1_score,
+            "stage_2_score": net.stage_2_score,
+            "stage_3_score": net.stage_3_score,
+            "stage_3_correct_count": net.stage_3_correct_count,
+            "has_stamp": net.has_stamp,
+            "verification_status": net.verification_status,
+            "raw_score": score_obj.raw_score if score_obj else net.provisional_score,
+            "time_bonus": score_obj.time_bonus if score_obj else net.time_bonus,
+            "final_score": score_obj.final_score if score_obj else (net.final_score or net.provisional_score),
+            "status": net.verification_status,
+            "submitted_at": submission.submitted_at or net.created_at,
+        }
+    elif submission.hardware_submission:
+        hw = submission.hardware_submission
+        score_obj = submission.score
+        summary = {
+            "team_name": submission.team.team_name,
+            "team_code": submission.team.team_code,
+            "school": submission.team.school,
+            "station_name": session_obj.station.name,
+            "group_code": session_obj.group.code,
+            "is_hardware": True,
+            "hw_sub": hw,
+            "verification_status": hw.verification_status,
+            "provisional_score": hw.provisional_score,
+            "raw_score": score_obj.raw_score if score_obj else 0.0,
+            "time_bonus": score_obj.time_bonus if score_obj else 0.0,
+            "final_score": score_obj.final_score if score_obj else 0.0,
+            "status": hw.verification_status,
+            "submitted_at": submission.submitted_at or hw.created_at,
+        }
+    else:
+        summary = get_submission_summary(submission)
 
     return render_template(
         "participant/result.html",

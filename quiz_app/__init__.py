@@ -34,22 +34,13 @@ def create_app(config_class=Config):
     db.init_app(app)
     csrf.init_app(app)
 
-    # Migrasi otomatis kolom baru Question jika belum ada
-    with app.app_context():
-        try:
-            with db.engine.connect() as conn:
-                res = conn.execute(db.text("PRAGMA table_info(questions);")).fetchall()
-                if res:
-                    existing_cols = {row[1] for row in res}
-                    if "external_id" not in existing_cols:
-                        conn.execute(db.text("ALTER TABLE questions ADD COLUMN external_id VARCHAR(64);"))
-                    if "category" not in existing_cols:
-                        conn.execute(db.text("ALTER TABLE questions ADD COLUMN category VARCHAR(100);"))
-                    if "member_number" not in existing_cols:
-                        conn.execute(db.text("ALTER TABLE questions ADD COLUMN member_number INTEGER;"))
-                    conn.commit()
-        except Exception:
-            pass
+    # Pastikan folder instance dan uploads tersedia
+    upload_dir = Path(app.config.get("UPLOAD_FOLDER", Path(app.instance_path) / "uploads")) / "hardware"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # Jalankan migrasi dan penambahan skema baru secara aman & idempotent
+    from migrations.upgrade_schema import upgrade_database_schema
+    upgrade_database_schema(app)
 
     from routes.admin import admin_bp
     from routes.api import api_bp
@@ -58,6 +49,13 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(participant_bp)
     app.register_blueprint(api_bp)
+
+    from flask import send_from_directory
+
+    @app.get("/uploads/hardware/<path:filename>")
+    def uploaded_hardware_file(filename):
+        safe_dir = Path(app.config.get("UPLOAD_FOLDER", Path(app.instance_path) / "uploads")) / "hardware"
+        return send_from_directory(str(safe_dir), filename)
 
     @app.get("/")
     def index():

@@ -17,7 +17,6 @@ class SessionForm(FlaskForm):
     question_set_id = SelectField(
         "Bank Soal",
         coerce=int,
-        validators=[DataRequired(message="Bank soal wajib dipilih.")],
     )
     duration_minutes = IntegerField(
         "Durasi Pengerjaan (Menit)",

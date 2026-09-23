@@ -9,20 +9,37 @@
     <h1>Manajemen Soal</h1>
     <p class="welcome-text">Kelola paket soal (Set A–D) untuk setiap pos perlombaan IT Quest Adventure.</p>
   </div>
-  <div class="heading-actions">
+  <div class="heading-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
     <a href="{{ url_for('admin.questions_import') }}" class="btn btn-primary">
       <span>📥 IMPORT JSON</span>
     </a>
     <!-- Filter Pos / Station -->
-    <form method="get" action="{{ url_for('admin.questions_index') }}" class="station-filter-form">
-      <label for="station_select" class="filter-label">FILTER POS:</label>
-      <select name="station_id" id="station_select" class="nb-select" onchange="this.form.submit()">
+    <form method="get" action="{{ url_for('admin.questions_index') }}" class="station-filter-form" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+      <label for="station_select" class="filter-label" style="margin: 0; white-space: nowrap; font-weight: 800; font-family: var(--font-mono); font-size: 0.85rem;">FILTER POS:</label>
+      <select name="station_id" id="station_select" class="nb-select" style="min-height: 42px; padding: 6px 12px; width: auto;" onchange="this.form.submit()">
         <option value="">Semua Pos ({{ all_stations|length }})</option>
         {% for st in all_stations %}
           <option value="{{ st.id }}" {{ 'selected' if selected_station_id == st.id }}>{{ st.name }}</option>
         {% endfor %}
       </select>
     </form>
+  </div>
+</div>
+
+<!-- Sub Menu Modul Bank Soal -->
+<div class="module-subnav nb-card">
+  <span class="subnav-label">SUB MENU:</span>
+  <div class="subnav-links">
+    <a href="{{ url_for('admin.questions_index', station_id=selected_station_id if selected_station_id else None) }}"
+       class="subnav-item active">
+      <span class="subnav-badge">01</span>
+      <span>📝 Daftar Bank Soal (Kuis PG)</span>
+    </a>
+    <a href="{{ url_for('admin.questions_import') }}"
+       class="subnav-item">
+      <span class="subnav-badge">02</span>
+      <span>📥 Import JSON Soal</span>
+    </a>
   </div>
 </div>
 
@@ -72,18 +89,18 @@
               </div>
             </div>
 
-            <div class="set-card-actions" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="set-card-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
+              <a href="{{ url_for('admin.question_create', set_id=qs.id) }}" class="btn btn-primary btn-sm btn-block" style="text-align: center; justify-content: center;" title="Tambah Soal ke Set {{ qs.code }}">
+                <span>+ TAMBAH SOAL</span>
+              </a>
               <div style="display: flex; gap: 6px;">
-                <a href="{{ url_for('admin.question_create', set_id=qs.id) }}" class="btn btn-primary btn-sm" style="flex: 1; text-align: center;" title="Tambah Soal ke Set {{ qs.code }}">
-                  <span>+ TAMBAH SOAL</span>
-                </a>
-                <a href="{{ url_for('admin.question_set_preview', set_id=qs.id) }}" class="btn btn-secondary btn-sm" title="Preview Tampilan Soal">
+                <a href="{{ url_for('admin.question_set_preview', set_id=qs.id) }}" class="btn btn-secondary btn-sm" style="flex: 1; text-align: center; justify-content: center;" title="Preview Tampilan Soal">
                   <span>👁 PREVIEW</span>
                 </a>
+                <a href="{{ url_for('admin.question_set_detail', set_id=qs.id) }}" class="btn btn-outline btn-sm" style="flex: 1.2; text-align: center; justify-content: center;" title="Kelola & Hapus Soal">
+                  <span>KELOLA ➔</span>
+                </a>
               </div>
-              <a href="{{ url_for('admin.question_set_detail', set_id=qs.id) }}" class="btn btn-outline btn-sm btn-block" style="text-align: center;">
-                <span>KELOLA & HAPUS SOAL ➔</span>
-              </a>
             </div>
           </article>
         {% else %}

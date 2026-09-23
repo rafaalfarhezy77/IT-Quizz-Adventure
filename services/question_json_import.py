@@ -230,27 +230,38 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 sets_summary[set_code]["error_count"] += 1
                 continue
 
+            # Cek apakah pos target adalah Pos Networking
+            is_networking = (station.name.lower() == "networking")
+
             # Ekstrak data soal dengan toleransi alias
             order_num_val = _extract_val(q_raw, "order_number", "nomor", "no", "urutan")
             member_val = _extract_val(q_raw, "member", "member_number", "anggota", "giliran")
             category_val = _extract_val(q_raw, "category", "kategori", "topik", default="")
             text_val = _extract_val(q_raw, "text", "pertanyaan", "soal", "question", default="")
             correct_val = _extract_val(q_raw, "correct_answer", "kunci", "kunci_jawaban", "jawaban", "answer", default="")
-            weight_val = _extract_val(q_raw, "weight", "bobot", "nilai", "poin", default=10.0)
+            weight_val = _extract_val(q_raw, "weight", "bobot", "nilai", "poin", default=1.0 if is_networking else 10.0)
             ext_id_val = _extract_val(q_raw, "external_id", "id_eksternal", "kode_soal", default=None)
 
-            # Ekstrak pilihan A-D (mendukung opsi nested 'options' atau flat 'option_a')
+            # Metadata khusus Networking
+            stage_val = _extract_val(q_raw, "stage", "tahap")
+            case_study_val = _extract_val(q_raw, "case_study", "studi_kasus", "skenario", default=None)
+            accepted_answers_val = _extract_val(q_raw, "accepted_answers", "jawaban_diterima", "variasi_jawaban", default=None)
+            q_type_val = _extract_val(q_raw, "question_type", "type", "tipe")
+
+            # Ekstrak pilihan A-E (mendukung opsi nested 'options' atau flat 'option_a')
             options_dict = _extract_val(q_raw, "options", "pilihan", "opsi")
             if isinstance(options_dict, dict):
                 opt_a = _extract_val(options_dict, "A", "option_a", default="")
                 opt_b = _extract_val(options_dict, "B", "option_b", default="")
                 opt_c = _extract_val(options_dict, "C", "option_c", default="")
                 opt_d = _extract_val(options_dict, "D", "option_d", default="")
+                opt_e = _extract_val(options_dict, "E", "option_e", default="")
             else:
                 opt_a = _extract_val(q_raw, "option_a", "pilihan_a", "opsi_a", default="")
                 opt_b = _extract_val(q_raw, "option_b", "pilihan_b", "opsi_b", default="")
                 opt_c = _extract_val(q_raw, "option_c", "pilihan_c", "opsi_c", default="")
                 opt_d = _extract_val(q_raw, "option_d", "pilihan_d", "opsi_d", default="")
+                opt_e = _extract_val(q_raw, "option_e", "pilihan_e", "opsi_e", default="")
 
             # Validasi Order Number
             try:
@@ -270,57 +281,125 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 row_errors.append(f"{loc_prefix}: Nomor urut #{order_number} duplikat dalam Set {set_code}.")
             seen_set_order_numbers.add(order_number)
 
-            # Validasi Member & Pembagian Anggota (1-3 -> Anggota 1, 4-6 -> Anggota 2, 7-9 -> Anggota 3)
-            try:
-                member_num = int(member_val) if member_val is not None else None
-            except (TypeError, ValueError):
-                member_num = None
-                row_errors.append(f"{loc_prefix}: Nilai anggota '{member_val}' tidak valid (harus 1, 2, atau 3).")
-
-            if member_num is not None:
-                if member_num not in (1, 2, 3):
-                    row_errors.append(f"{loc_prefix}: Anggota ({member_num}) harus bernilai 1, 2, atau 3.")
-                else:
-                    # Validasi ketat aturan pembagian giliran anggota
-                    if 1 <= order_number <= 3 and member_num != 1:
-                        row_errors.append(
-                            f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 1–3 harus untuk Anggota 1, ditemukan Anggota {member_num})."
-                        )
-                    elif 4 <= order_number <= 6 and member_num != 2:
-                        row_errors.append(
-                            f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 4–6 harus untuk Anggota 2, ditemukan Anggota {member_num})."
-                        )
-                    elif 7 <= order_number <= 9 and member_num != 3:
-                        row_errors.append(
-                            f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 7–9 harus untuk Anggota 3, ditemukan Anggota {member_num})."
-                        )
-            else:
-                row_errors.append(f"{loc_prefix}: Kolom 'anggota' / 'member' (1–3) wajib diisi.")
-
             # Validasi Teks Pertanyaan
             text_str = str(text_val).strip() if text_val is not None else ""
             if not text_str:
                 row_errors.append(f"{loc_prefix}: Teks pertanyaan tidak boleh kosong.")
 
-            # Validasi Pilihan A, B, C, D
+            # Penentuan dan Validasi Khusus Networking vs Legacy Station
             opt_a_str = str(opt_a).strip() if opt_a is not None else ""
             opt_b_str = str(opt_b).strip() if opt_b is not None else ""
             opt_c_str = str(opt_c).strip() if opt_c is not None else ""
             opt_d_str = str(opt_d).strip() if opt_d is not None else ""
+            opt_e_str = str(opt_e).strip() if opt_e is not None else ""
+            correct_clean = str(correct_val).strip() if correct_val is not None else ""
+            accepted_answers_list = None
+            stage_num = 1
+            question_type = "multiple_choice"
+            member_num = None
 
-            if not opt_a_str:
-                row_errors.append(f"{loc_prefix}: Pilihan A belum diisi atau kosong.")
-            if not opt_b_str:
-                row_errors.append(f"{loc_prefix}: Pilihan B belum diisi atau kosong.")
-            if not opt_c_str:
-                row_errors.append(f"{loc_prefix}: Pilihan C belum diisi atau kosong.")
-            if not opt_d_str:
-                row_errors.append(f"{loc_prefix}: Pilihan D belum diisi atau kosong.")
+            if is_networking:
+                # Tentukan stage
+                if stage_val is not None:
+                    try:
+                        stage_num = int(stage_val)
+                        if stage_num not in (1, 2, 3):
+                            row_errors.append(f"{loc_prefix}: Nilai tahap ({stage_num}) harus 1, 2, atau 3.")
+                    except (ValueError, TypeError):
+                        row_errors.append(f"{loc_prefix}: Nilai tahap '{stage_val}' tidak valid.")
+                else:
+                    if order_number <= 10:
+                        stage_num = 1
+                    elif order_number <= 20:
+                        stage_num = 2
+                    else:
+                        stage_num = 3
 
-            # Validasi Kunci Jawaban (Wajib A, B, C, atau D)
-            correct_clean = str(correct_val).strip().upper() if correct_val is not None else ""
-            if correct_clean not in ("A", "B", "C", "D"):
-                row_errors.append(f"{loc_prefix}: Kunci jawaban '{correct_val}' tidak valid (harus A, B, C, atau D).")
+                # Deteksi question_type
+                if q_type_val:
+                    question_type = str(q_type_val).strip().lower()
+                elif stage_num == 1:
+                    question_type = "multiple_choice"
+                elif stage_num == 2:
+                    question_type = "true_false"
+                elif stage_num == 3:
+                    question_type = "short_text"
+
+                if question_type not in ("multiple_choice", "true_false", "short_text"):
+                    row_errors.append(f"{loc_prefix}: Tipe soal '{question_type}' tidak valid. Harus multiple_choice, true_false, atau short_text.")
+
+                # Validasi per tipe soal di Pos Networking
+                if question_type == "multiple_choice":
+                    # Mendukung minimal 2 dan maksimal 5 pilihan
+                    opts_present = {
+                        "A": opt_a_str,
+                        "B": opt_b_str,
+                        "C": opt_c_str,
+                        "D": opt_d_str,
+                        "E": opt_e_str,
+                    }
+                    filled_opts = {k: v for k, v in opts_present.items() if v}
+                    if len(filled_opts) < 2:
+                        row_errors.append(f"{loc_prefix}: Pilihan ganda harus memiliki minimal 2 opsi (ditemukan {len(filled_opts)}).")
+                    corr_upper = correct_clean.upper()
+                    if corr_upper not in ("A", "B", "C", "D", "E") or corr_upper not in filled_opts:
+                        row_errors.append(f"{loc_prefix}: Kunci jawaban '{correct_clean}' harus salah satu dari pilihan yang tersedia ({', '.join(sorted(filled_opts.keys()))}).")
+                    correct_clean = corr_upper
+
+                elif question_type == "true_false":
+                    corr_lower = correct_clean.lower()
+                    if corr_lower in ("benar", "true", "b", "t"):
+                        correct_clean = "Benar"
+                    elif corr_lower in ("salah", "false", "s", "f"):
+                        correct_clean = "Salah"
+                    else:
+                        row_errors.append(f"{loc_prefix}: Kunci jawaban benar-salah harus 'Benar' atau 'Salah' (ditemukan '{correct_clean}').")
+
+                elif question_type == "short_text":
+                    if accepted_answers_val:
+                        if isinstance(accepted_answers_val, list):
+                            accepted_answers_list = [str(x).strip() for x in accepted_answers_val if str(x).strip()]
+                        elif isinstance(accepted_answers_val, str):
+                            accepted_answers_list = [str(accepted_answers_val).strip()]
+                    elif correct_clean:
+                        accepted_answers_list = [correct_clean]
+
+                    if not accepted_answers_list:
+                        row_errors.append(f"{loc_prefix}: Soal isian singkat wajib menyertakan minimal 1 variasi 'accepted_answers'.")
+
+            else:
+                # Validasi Standar untuk Pos Legacy (Software Engineering, Cyber Security, dll)
+                try:
+                    member_num = int(member_val) if member_val is not None else None
+                except (TypeError, ValueError):
+                    member_num = None
+                    row_errors.append(f"{loc_prefix}: Nilai anggota '{member_val}' tidak valid (harus 1, 2, atau 3).")
+
+                if member_num is not None:
+                    if member_num not in (1, 2, 3):
+                        row_errors.append(f"{loc_prefix}: Anggota ({member_num}) harus bernilai 1, 2, atau 3.")
+                    else:
+                        if 1 <= order_number <= 3 and member_num != 1:
+                            row_errors.append(f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 1–3 harus untuk Anggota 1, ditemukan Anggota {member_num}).")
+                        elif 4 <= order_number <= 6 and member_num != 2:
+                            row_errors.append(f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 4–6 harus untuk Anggota 2, ditemukan Anggota {member_num}).")
+                        elif 7 <= order_number <= 9 and member_num != 3:
+                            row_errors.append(f"{loc_prefix}: Pembagian anggota tidak sesuai (nomor 7–9 harus untuk Anggota 3, ditemukan Anggota {member_num}).")
+                else:
+                    row_errors.append(f"{loc_prefix}: Kolom 'anggota' / 'member' (1–3) wajib diisi.")
+
+                if not opt_a_str:
+                    row_errors.append(f"{loc_prefix}: Pilihan A belum diisi atau kosong.")
+                if not opt_b_str:
+                    row_errors.append(f"{loc_prefix}: Pilihan B belum diisi atau kosong.")
+                if not opt_c_str:
+                    row_errors.append(f"{loc_prefix}: Pilihan C belum diisi atau kosong.")
+                if not opt_d_str:
+                    row_errors.append(f"{loc_prefix}: Pilihan D belum diisi atau kosong.")
+
+                correct_clean = correct_clean.upper()
+                if correct_clean not in ("A", "B", "C", "D"):
+                    row_errors.append(f"{loc_prefix}: Kunci jawaban '{correct_val}' tidak valid (harus A, B, C, atau D).")
 
             # Validasi Bobot Nilai
             try:
@@ -328,7 +407,7 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 if weight_float <= 0:
                     row_errors.append(f"{loc_prefix}: Bobot nilai ({weight_float}) harus lebih besar dari 0.")
             except (TypeError, ValueError):
-                weight_float = 10.0
+                weight_float = 1.0 if is_networking else 10.0
                 row_errors.append(f"{loc_prefix}: Bobot nilai '{weight_val}' tidak valid (harus angka).")
 
             # Validasi Mode ADD vs UPDATE & external_id
@@ -368,13 +447,18 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 "set_id": db_qs.id,
                 "order_number": order_number,
                 "member": member_num,
+                "stage": stage_num,
+                "question_type": question_type,
+                "case_study": str(case_study_val).strip() if case_study_val else None,
                 "category": str(category_val).strip() if category_val else "",
                 "text": text_str,
-                "option_a": opt_a_str,
-                "option_b": opt_b_str,
-                "option_c": opt_c_str,
-                "option_d": opt_d_str,
+                "option_a": opt_a_str or None,
+                "option_b": opt_b_str or None,
+                "option_c": opt_c_str or None,
+                "option_d": opt_d_str or None,
+                "option_e": opt_e_str or None,
                 "correct_answer": correct_clean,
+                "accepted_answers": accepted_answers_list,
                 "weight": weight_float,
                 "external_id": ext_id_clean,
                 "status": status_row,
@@ -450,15 +534,20 @@ def execute_question_import(file_token: str, station_id: int, mode: str = "ADD")
                 if existing_question is not None:
                     # Perbarui data soal yang sudah ada
                     existing_question.text = q_data["text"]
+                    existing_question.case_study = q_data.get("case_study")
                     existing_question.option_a = q_data["option_a"]
                     existing_question.option_b = q_data["option_b"]
                     existing_question.option_c = q_data["option_c"]
                     existing_question.option_d = q_data["option_d"]
+                    existing_question.option_e = q_data.get("option_e")
                     existing_question.correct_answer = q_data["correct_answer"]
+                    existing_question.accepted_answers = q_data.get("accepted_answers")
                     existing_question.weight = q_data["weight"]
                     existing_question.order_number = q_data["order_number"]
                     existing_question.category = q_data["category"]
                     existing_question.member_number = q_data["member"]
+                    existing_question.question_type = q_data.get("question_type", "multiple_choice")
+                    existing_question.stage = q_data.get("stage", 1)
                     existing_question.is_active = True
                     updated_count += 1
                 else:
@@ -466,16 +555,21 @@ def execute_question_import(file_token: str, station_id: int, mode: str = "ADD")
                     new_q = Question(
                         question_set_id=set_id,
                         text=q_data["text"],
+                        case_study=q_data.get("case_study"),
                         option_a=q_data["option_a"],
                         option_b=q_data["option_b"],
                         option_c=q_data["option_c"],
                         option_d=q_data["option_d"],
+                        option_e=q_data.get("option_e"),
                         correct_answer=q_data["correct_answer"],
+                        accepted_answers=q_data.get("accepted_answers"),
                         weight=q_data["weight"],
                         order_number=q_data["order_number"],
                         external_id=ext_id,
                         category=q_data["category"],
                         member_number=q_data["member"],
+                        question_type=q_data.get("question_type", "multiple_choice"),
+                        stage=q_data.get("stage", 1),
                         is_active=True,
                     )
                     db.session.add(new_q)
@@ -485,16 +579,21 @@ def execute_question_import(file_token: str, station_id: int, mode: str = "ADD")
                 new_q = Question(
                     question_set_id=set_id,
                     text=q_data["text"],
+                    case_study=q_data.get("case_study"),
                     option_a=q_data["option_a"],
                     option_b=q_data["option_b"],
                     option_c=q_data["option_c"],
                     option_d=q_data["option_d"],
+                    option_e=q_data.get("option_e"),
                     correct_answer=q_data["correct_answer"],
+                    accepted_answers=q_data.get("accepted_answers"),
                     weight=q_data["weight"],
                     order_number=q_data["order_number"],
                     external_id=q_data["external_id"],
                     category=q_data["category"],
                     member_number=q_data["member"],
+                    question_type=q_data.get("question_type", "multiple_choice"),
+                    stage=q_data.get("stage", 1),
                     is_active=True,
                 )
                 db.session.add(new_q)

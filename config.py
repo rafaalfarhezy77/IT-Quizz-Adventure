@@ -25,3 +25,5 @@ class Config:
     PARTICIPANT_ACCESS_CODE = os.environ.get("PARTICIPANT_ACCESS_CODE", "QUEST2026")
     TIME_BONUS_PER_SECOND = float(os.environ.get("TIME_BONUS_PER_SECOND", "1.0"))
     MEMBER_ROTATION_COUNT = int(os.environ.get("MEMBER_ROTATION_COUNT", "3"))
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", str(BASE_DIR / "instance" / "uploads"))
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max request payload

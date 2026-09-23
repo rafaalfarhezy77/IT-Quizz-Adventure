@@ -1,0 +1,253 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit Paket' if is_edit else 'Tambah Paket Baru' }} · Pos Hardware{% endblock %}
+
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">MODUL POS HARDWARE // BUILDCORES</div>
+    <h1>{{ 'Edit Paket Tantangan Hardware' if is_edit else 'Tambah Paket Tantangan Hardware' }}</h1>
+    <p class="welcome-text">Konfigurasikan studi kasus perakitan PC, batasan build numerik, dan parameter pembobotan penilaian.</p>
+  </div>
+  <div class="heading-actions">
+    <a href="{{ url_for('admin.packages_index', station_id=selected_station_id) }}" class="btn btn-outline">
+      <span>← Kembali ke Daftar Paket</span>
+    </a>
+  </div>
+</div>
+
+<form method="post" class="nb-form-layout" novalidate>
+  {{ form.hidden_tag() }}
+
+  <!-- Section 1: Identitas Paket & Narasi Kasus -->
+  <fieldset class="nb-card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+    <legend class="mono-label" style="font-size: 1rem; font-weight: 800; background: var(--accent-neon); padding: 0.2rem 0.6rem; border: 2px solid #000;">
+      1. IDENTITAS & STUDI KASUS
+    </legend>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.station_id.label(class="field-label") }}
+        {{ form.station_id(class="nb-input") }}
+        {% for error in form.station_id.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.package_code.label(class="field-label") }}
+        {{ form.package_code(class="nb-input", placeholder="Contoh: Paket 01") }}
+        <small class="field-hint">Gunakan penamaan 'Paket 01', 'Paket 02', dst.</small>
+        {% for error in form.package_code.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      {{ form.title.label(class="field-label") }}
+      {{ form.title(class="nb-input", placeholder="Contoh: Workstation AI & Rendering Entry-Level") }}
+      {% for error in form.title.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      {{ form.description.label(class="field-label") }}
+      {{ form.description(class="nb-input", rows=4, placeholder="Tuliskan latar belakang skenario, kebutuhan performa klien, alur kerja aplikasi yang digunakan...") }}
+      {% for error in form.description.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      {{ form.instructions.label(class="field-label") }}
+      {{ form.instructions(class="nb-input", rows=3, placeholder="Langkah peserta: Buka BuildCores, pilih part sesuai kompatibilitas, salin link build, dan kumpulkan screenshot...") }}
+      {% for error in form.instructions.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.external_tool_url.label(class="field-label") }}
+        {{ form.external_tool_url(class="nb-input") }}
+        {% for error in form.external_tool_url.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.duration_minutes.label(class="field-label") }}
+        {{ form.duration_minutes(class="nb-input", type="number") }}
+        {% for error in form.duration_minutes.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.status.label(class="field-label") }}
+        {{ form.status(class="nb-input") }}
+        {% for error in form.status.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Section 2: Batasan Build PC Numerik -->
+  <fieldset class="nb-card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+    <legend class="mono-label" style="font-size: 1rem; font-weight: 800; background: #ffcc00; padding: 0.2rem 0.6rem; border: 2px solid #000;">
+      2. BATASAN BUILD PC (CONSTRAINTS)
+    </legend>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.max_budget.label(class="field-label") }}
+        {{ form.max_budget(class="nb-input", step="any") }}
+        {% for error in form.max_budget.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+
+      <div class="form-group">
+        {{ form.currency.label(class="field-label") }}
+        {{ form.currency(class="nb-input") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.min_cpu_score.label(class="field-label") }}
+        {{ form.min_cpu_score(class="nb-input", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.min_gpu_score.label(class="field-label") }}
+        {{ form.min_gpu_score(class="nb-input", step="any") }}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.min_ram_gb.label(class="field-label") }}
+        {{ form.min_ram_gb(class="nb-input", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.min_storage_gb.label(class="field-label") }}
+        {{ form.min_storage_gb(class="nb-input", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.min_psu_watt.label(class="field-label") }}
+        {{ form.min_psu_watt(class="nb-input", step="any") }}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.required_components.label(class="field-label") }}
+        {{ form.required_components(class="nb-input", rows=2) }}
+      </div>
+
+      <div class="form-group">
+        {{ form.forbidden_components.label(class="field-label") }}
+        {{ form.forbidden_components(class="nb-input", rows=2) }}
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 2rem; margin-top: 1rem; flex-wrap: wrap;">
+      <label class="nb-checkbox-label">
+        {{ form.used_parts_allowed() }}
+        <span>Boleh Used Parts</span>
+      </label>
+      <label class="nb-checkbox-label">
+        {{ form.custom_price_allowed() }}
+        <span>Boleh Custom Price</span>
+      </label>
+      <label class="nb-checkbox-label">
+        {{ form.discount_allowed() }}
+        <span>Boleh Diskon / Promosi</span>
+      </label>
+    </div>
+
+    <div class="form-group" style="margin-top: 1rem;">
+      {{ form.extra_notes.label(class="field-label") }}
+      {{ form.extra_notes(class="nb-input", rows=2) }}
+    </div>
+  </fieldset>
+
+  <!-- Section 3: Konfigurasi Pembobotan Penilaian -->
+  <fieldset class="nb-card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+    <legend class="mono-label" style="font-size: 1rem; font-weight: 800; background: #60a5fa; color: #000; padding: 0.2rem 0.6rem; border: 2px solid #000;">
+      3. BOBOT PENILAIAN (TOTAL = 100%)
+    </legend>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 1rem;">
+      <div class="form-group">
+        {{ form.weight_compatibility.label(class="field-label") }}
+        {{ form.weight_compatibility(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_budget.label(class="field-label") }}
+        {{ form.weight_budget(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_cpu_target.label(class="field-label") }}
+        {{ form.weight_cpu_target(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_gpu_target.label(class="field-label") }}
+        {{ form.weight_gpu_target(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_completeness.label(class="field-label") }}
+        {{ form.weight_completeness(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_efficiency.label(class="field-label") }}
+        {{ form.weight_efficiency(class="nb-input weight-field", step="any") }}
+      </div>
+
+      <div class="form-group">
+        {{ form.weight_time_bonus.label(class="field-label") }}
+        {{ form.weight_time_bonus(class="nb-input weight-field", step="any") }}
+      </div>
+    </div>
+
+    <!-- Live Total Weight Indicator -->
+    <div style="margin-top: 1.5rem; padding: 0.75rem 1rem; border: 2px solid #000; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+      <span class="mono-label">TOTAL BOBOT SAAT INI:</span>
+      <div id="weight-total-display" style="font-family: 'JetBrains Mono', monospace; font-size: 1.25rem; font-weight: 800;">
+        <span id="weight-sum-value">100.0</span>% 
+        <span id="weight-status-badge" class="nb-badge badge-neon">VALID ✓</span>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- Submit Buttons -->
+  <div style="display: flex; gap: 1rem; justify-content: flex-end; align-items: center; margin-top: 1.5rem;">
+    <a href="{{ url_for('admin.packages_index', station_id=selected_station_id) }}" class="btn btn-outline">
+      <span>Batal</span>
+    </a>
+    <button type="submit" class="btn btn-neon" id="btn-submit-package">
+      <span>💾 {{ 'SIMPAN PERUBAHAN PAKET' if is_edit else 'BUAT PAKET SEKARANG' }}</span>
+    </button>
+  </div>
+</form>
+
+<script>
+(function() {
+  function recalculateWeights() {
+    const fields = document.querySelectorAll('.weight-field');
+    let sum = 0;
+    fields.forEach(f => {
+      const v = parseFloat(f.value) || 0;
+      sum += v;
+    });
+    sum = Math.round(sum * 100) / 100;
+    const sumValElem = document.getElementById('weight-sum-value');
+    const badgeElem = document.getElementById('weight-status-badge');
+    if (sumValElem) sumValElem.textContent = sum.toFixed(1);
+    if (badgeElem) {
+      if (Math.abs(sum - 100.0) < 0.05) {
+        badgeElem.textContent = 'VALID ✓';
+        badgeElem.className = 'nb-badge badge-neon';
+      } else {
+        badgeElem.textContent = 'BELUM 100% (Harus 100%)';
+        badgeElem.className = 'nb-badge badge-danger';
+      }
+    }
+  }
+  document.querySelectorAll('.weight-field').forEach(f => {
+    f.addEventListener('input', recalculateWeights);
+  });
+  recalculateWeights();
+})();
+</script>
+{% endblock %}

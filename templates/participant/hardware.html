@@ -1,0 +1,356 @@
+{% extends "participant/base.html" %}
+
+{% block title %}Tantangan Hardware Build · {{ station.name }}{% endblock %}
+
+{% block content %}
+<div class="hardware-challenge-container" style="max-width: 1200px; margin: 0 auto; padding: 1rem 1rem 4rem;">
+  <!-- Sticky Top Header: Identity + Live Server Timer + BuildCores Launcher -->
+  <header class="quiz-top-sticky nb-panel" style="margin-bottom: 1.5rem;">
+    <div class="quiz-sticky-inner">
+      <div class="quiz-identity-block">
+        <div class="quiz-pos-badge">
+          <span class="pos-icon">💻</span>
+          <span class="pos-name">{{ station.name }}</span>
+          <span class="group-tag">KELOMPOK {{ group.code }}</span>
+          <span class="nb-badge badge-neon">HARDWARE BUILD CHALLENGE</span>
+        </div>
+        <div class="quiz-status-eyebrow" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-neon); letter-spacing: 0.05em; margin-top: 2px;">
+          SESI PERLOMBAAN SEDANG BERLANGSUNG
+        </div>
+        <div class="quiz-team-info">
+          <span class="team-code">{{ team.team_code }}</span>
+          <span class="team-name">{{ team.team_name }} ({{ team.school }})</span>
+        </div>
+      </div>
+
+      <!-- Live Server Countdown Timer -->
+      <div class="quiz-timer-wrap">
+        <div class="timer-mini-label">SISA WAKTU RESMI SERVER</div>
+        <div id="session-timer"
+             class="nb-timer {{ 'timer-normal' if remaining_seconds > 300 else ('timer-warning' if remaining_seconds > 60 else 'timer-critical') }}"
+             data-status="RUNNING"
+             data-remaining="{{ remaining_seconds }}"
+             data-duration="{{ competition_session.duration_seconds }}"
+             data-sync-url="{{ url_for('api.participant_session_status') }}"
+             data-redirect-url="{{ url_for('participant.result') }}">
+          <span class="timer-digits">
+            {{ "%02d:%02d" | format((remaining_seconds // 60), (remaining_seconds % 60)) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- External Tool Launcher Button -->
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <a href="{{ package.external_tool_url or 'https://www.buildcores.com/' }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-neon"
+           style="font-size: 0.95rem; padding: 0.6rem 1.2rem; box-shadow: 4px 4px 0 #000;"
+           title="Buka BuildCores pada tab browser baru">
+          <span>⚡ BUKA BUILDCORES ↗</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout: 2 Columns on Desktop, 1 Column on Mobile -->
+  <div class="hardware-grid-layout">
+    <!-- Left Column: Case Study & Build Constraints Card -->
+    <aside style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <!-- Challenge Header Card -->
+      <div class="nb-card" style="padding: 1.25rem; border-top: 6px solid var(--accent-neon);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span class="nb-badge badge-neon">{{ package.package_code }}</span>
+          <span class="mono-sub">DURASI: {{ package.duration_minutes }} MENIT</span>
+        </div>
+        <h2 style="font-size: 1.4rem; line-height: 1.3; margin-bottom: 0.75rem;">{{ package.title }}</h2>
+        <div class="mono-sub" style="font-size: 0.85rem; color: #444; line-height: 1.6; white-space: pre-line; background: #fafafa; padding: 0.75rem; border: 2px solid #000;">
+          {{ package.description }}
+        </div>
+      </div>
+
+      <!-- Build Constraints Card -->
+      <div class="nb-card" style="padding: 1.25rem;">
+        <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+          ⚙ TABEL BATASAN BUILD PC (RULES)
+        </h3>
+        {% set rules = rules_config or {} %}
+        <div class="nb-table-wrap">
+          <table class="nb-table" style="font-size: 0.85rem;">
+            <tbody>
+              <tr>
+                <td style="font-weight: 700; width: 170px;">Budget Maksimal</td>
+                <td><span class="mono-highlight" style="font-size: 1.05rem; font-weight: 800;">{{ rules.get('currency', 'USD') }} {{ rules.get('max_budget', 0) }}</span></td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">Target CPU Score</td>
+                <td>Minimal <strong>{{ rules.get('min_cpu_score', 0) }}</strong> poin</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">Target GPU Score</td>
+                <td>Minimal <strong>{{ rules.get('min_gpu_score', 0) }}</strong> poin</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">RAM Minimal</td>
+                <td>{{ rules.get('min_ram_gb', 0) }} GB</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">Storage Minimal</td>
+                <td>{{ rules.get('min_storage_gb', 0) }} GB</td>
+              </tr>
+              {% if rules.get('min_psu_watt') %}
+              <tr>
+                <td style="font-weight: 700;">PSU Minimal</td>
+                <td>{{ rules.get('min_psu_watt') }} Watt</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <td style="font-weight: 700;">Komponen Wajib</td>
+                <td>{{ rules.get('required_components') or 'Bebas sesuai kebutuhan studi kasus' }}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">Komponen Terlarang</td>
+                <td>{{ rules.get('forbidden_components') or 'Tidak ada' }}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: 700;">Ketentuan Parts</td>
+                <td>
+                  Used: {{ 'Boleh' if rules.get('used_parts_allowed') else 'Dilarang' }} |
+                  Custom Price: {{ 'Boleh' if rules.get('custom_price_allowed') else 'Dilarang' }} |
+                  Diskon: {{ 'Boleh' if rules.get('discount_allowed') else 'Dilarang' }}
+                </td>
+              </tr>
+              {% if rules.get('extra_notes') %}
+              <tr>
+                <td style="font-weight: 700;">Catatan Tambahan</td>
+                <td><em>{{ rules.get('extra_notes') }}</em></td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Instructions & Scoring Criteria -->
+      <div class="nb-card" style="padding: 1.25rem;">
+        <h3 style="font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+          📌 PETUNJUK & BOBOT PENILAIAN
+        </h3>
+        <div style="font-size: 0.85rem; line-height: 1.6; white-space: pre-line; background: #ecfdf5; padding: 0.75rem; border: 2px solid #000; margin-bottom: 1rem;">
+          {{ package.instructions }}
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.5rem; font-size: 0.75rem; text-align: center;">
+          {% set scoring = scoring_config or {} %}
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Kompatibilitas</span><br><strong>{{ scoring.get('weight_compatibility', 20) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Budget</span><br><strong>{{ scoring.get('weight_budget', 15) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Target CPU</span><br><strong>{{ scoring.get('weight_cpu_target', 15) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Target GPU</span><br><strong>{{ scoring.get('weight_gpu_target', 20) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Kelengkapan</span><br><strong>{{ scoring.get('weight_completeness', 10) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Efisiensi</span><br><strong>{{ scoring.get('weight_efficiency', 15) }}%</strong>
+          </div>
+          <div style="background: #fafafa; border: 1px solid #000; padding: 0.4rem;">
+            <span>Bonus Waktu</span><br><strong>{{ scoring.get('weight_time_bonus', 5) }}%</strong>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Right Column: Submission Form -->
+    <main>
+      <form id="hardware-submission-form"
+            method="post"
+            action="{{ url_for('participant.hardware_submit') }}"
+            enctype="multipart/form-data"
+            class="nb-card"
+            style="padding: 1.5rem; background: #fff;"
+            novalidate>
+        {{ form.hidden_tag() }}
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #000; padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+          <h2 style="font-size: 1.2rem;">FORM PENGUMPULAN HASIL BUILD PC</h2>
+          <div id="autosave-indicator" class="autosave-pill status-saved">
+            <span class="save-dot"></span>
+            <span id="autosave-text">Draft Tersimpan</span>
+          </div>
+        </div>
+
+        <!-- 1. URL BuildCores -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="field-label" for="buildcores_url">
+            URL HASIL BUILD BUILDCORES <span style="color: red;">*</span>
+          </label>
+          {{ form.buildcores_url(class="nb-input", id="buildcores_url", placeholder="https://www.buildcores.com/...") }}
+          <small class="field-hint">Salin URL lengkap build Anda dari situs BuildCores.</small>
+          {% for error in form.buildcores_url.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- 2. Total Harga & Daya PSU -->
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label class="field-label" for="total_price">
+              TOTAL HARGA BUILD ($ / USD) <span style="color: red;">*</span>
+            </label>
+            {{ form.total_price(class="nb-input", id="total_price", type="number", step="0.01", placeholder="Contoh: 1420.50") }}
+            {% for error in form.total_price.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="psu_name">
+              NAMA & DAYA PSU <span style="color: red;">*</span>
+            </label>
+            {{ form.psu_name(class="nb-input", id="psu_name", placeholder="Contoh: Corsair RM750e 750W") }}
+            {% for error in form.psu_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+        </div>
+
+        <!-- 3. Processor (CPU) & Score -->
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label class="field-label" for="cpu_name">
+              NAMA PROCESSOR (CPU) <span style="color: red;">*</span>
+            </label>
+            {{ form.cpu_name(class="nb-input", id="cpu_name", placeholder="Contoh: AMD Ryzen 5 7600X") }}
+            {% for error in form.cpu_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="cpu_score">
+              CPU SCORE <span style="color: red;">*</span>
+            </label>
+            {{ form.cpu_score(class="nb-input", id="cpu_score", type="number", step="any", placeholder="Contoh: 1250") }}
+            {% for error in form.cpu_score.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+        </div>
+
+        <!-- 4. Kartu Grafis (GPU) & Score -->
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label class="field-label" for="gpu_name">
+              NAMA KARTU GRAFIS (GPU) <span style="color: red;">*</span>
+            </label>
+            {{ form.gpu_name(class="nb-input", id="gpu_name", placeholder="Contoh: NVIDIA GeForce RTX 4060 Ti") }}
+            {% for error in form.gpu_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="gpu_score">
+              GPU SCORE <span style="color: red;">*</span>
+            </label>
+            {{ form.gpu_score(class="nb-input", id="gpu_score", type="number", step="any", placeholder="Contoh: 2850") }}
+            {% for error in form.gpu_score.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+        </div>
+
+        <!-- 5. RAM & Storage -->
+        <div class="form-row-2col">
+          <div class="form-group">
+            <label class="field-label" for="ram_capacity_gb">
+              KAPASITAS RAM (GB) <span style="color: red;">*</span>
+            </label>
+            {{ form.ram_capacity_gb(class="nb-input", id="ram_capacity_gb", type="number", step="any", placeholder="Contoh: 32") }}
+            {% for error in form.ram_capacity_gb.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="storage_capacity_gb">
+              KAPASITAS STORAGE (GB) <span style="color: red;">*</span>
+            </label>
+            {{ form.storage_capacity_gb(class="nb-input", id="storage_capacity_gb", type="number", step="any", placeholder="Contoh: 1000") }}
+            {% for error in form.storage_capacity_gb.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+          </div>
+        </div>
+
+        <!-- 6. Ringkasan Komponen -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="field-label" for="components_summary">
+            RINGKASAN KOMPONEN LENGKAP <span style="color: red;">*</span>
+          </label>
+          {{ form.components_summary(class="nb-input", id="components_summary", rows=3, placeholder="Motherboard: MSI B650...\nCooler: Deepcool AK400...\nCasing: Montech Air 100...\nRAM: Corsair Vengeance 32GB...") }}
+          {% for error in form.components_summary.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- 7. Alasan Pemilihan Build -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="field-label" for="build_rationale">
+            PENJELASAN SINGKAT ALASAN MEMILIH BUILD <span style="color: red;">*</span>
+          </label>
+          {{ form.build_rationale(class="nb-input", id="build_rationale", rows=2, placeholder="Jelaskan rasionalisasi kecocokan build terhadap studi kasus yang diminta...") }}
+          {% for error in form.build_rationale.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- 8. Upload Screenshot Bukti -->
+        <div class="form-group" style="margin-bottom: 1.5rem; background: #fafafa; padding: 1rem; border: 2px dashed #000;">
+          <label class="field-label" for="screenshot">
+            UNGGAH SCREENSHOT BUKTI BUILDCORES (PNG, JPG, WEBP - MAKS 5 MB) <span style="color: red;">*</span>
+          </label>
+          {{ form.screenshot(class="nb-input", id="screenshot-input", accept="image/png,image/jpeg,image/webp") }}
+          <small class="field-hint">Tangkapan layar halaman ringkasan komponen & total harga di BuildCores.</small>
+          {% for error in form.screenshot.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+
+          <!-- Image Preview Area -->
+          <div id="image-preview-container" style="margin-top: 0.75rem; display: {{ 'block' if hw_sub.screenshot_path else 'none' }};">
+            <span class="mono-label">PREVIEW SCREENSHOT:</span>
+            <img id="image-preview"
+                 src="{{ url_for('uploaded_hardware_file', filename=hw_sub.screenshot_path) if hw_sub.screenshot_path else '' }}"
+                 alt="Preview Bukti"
+                 style="max-width: 100%; max-height: 250px; border: 2px solid #000; box-shadow: 2px 2px 0 #000; display: block; margin-top: 0.25rem; object-fit: contain; background: #eee;">
+          </div>
+        </div>
+
+        <!-- 9. Checkbox Pernyataan Kesesuaian -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="nb-checkbox-label" style="font-weight: 700; line-height: 1.4;">
+            {{ form.confirmation_checked(id="confirmation_checked") }}
+            <span>Saya menyatakan bahwa data yang diisikan sesuai dengan konfigurasi resmi di BuildCores. <span style="color: red;">*</span></span>
+          </label>
+          {% for error in form.confirmation_checked.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; align-items: center; border-top: 2px solid #000; padding-top: 1.25rem;">
+          <button type="button" id="btn-save-draft" class="btn btn-outline">
+            <span>💾 SIMPAN DRAFT</span>
+          </button>
+          <button type="button" id="btn-submit-trigger" class="btn btn-neon">
+            <span>🚀 KIRIM HASIL PENGERJAAN</span>
+          </button>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Submit -->
+<div id="submit-confirm-modal" class="nb-modal-overlay" style="display: none;">
+  <div class="nb-modal-card nb-card" style="max-width: 480px; padding: 1.5rem; text-align: center;">
+    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚠️</div>
+    <h3 style="margin-bottom: 0.5rem;">Konfirmasi Pengiriman Hasil</h3>
+    <p class="mono-sub" style="margin-bottom: 1.5rem; line-height: 1.5;">
+      Setelah dikirim, hasil pengerjaan tim Anda akan <strong>dikunci permanen</strong> dan diteruskan ke panitia juri untuk diverifikasi. Anda tidak dapat mengubah data kembali.
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+      <button type="button" id="btn-modal-cancel" class="btn btn-outline">
+        <span>Periksa Lagi</span>
+      </button>
+      <button type="button" id="btn-modal-confirm" class="btn btn-neon">
+        <span>Ya, Kirim Sekarang!</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hardware_challenge.js') }}"></script>
+{% endblock %}

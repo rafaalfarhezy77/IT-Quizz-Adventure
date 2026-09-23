@@ -4,21 +4,136 @@
 <div class="page-heading">
   <div class="heading-text">
     <div class="eyebrow">PUSAT KENDALI // LIVE TELEMETRY</div>
-    <h1>Dashboard</h1>
-    <p class="welcome-text">Selamat datang, <strong>{{ g.current_admin.username }}</strong>. Berikut status dan kondisi data lomba saat ini.</p>
+    <h1>Dashboard Perlombaan</h1>
+    <p class="welcome-text">
+      Selamat datang, <strong>{{ g.current_admin.username }}</strong>. 
+      {% if active_station %}
+        Saat ini Anda sedang mengelola <strong>Pos {{ active_station.name }}</strong>.
+      {% else %}
+        Mode tampilan saat ini: <strong>Semua Pos (Mode Global)</strong>.
+      {% endif %}
+    </p>
   </div>
-  <div class="heading-actions">
+  <div class="heading-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+    <a href="{{ url_for('admin.station_select') }}" class="btn btn-outline btn-sm" style="background: #fff; font-weight: 800;">
+      <span>⇄ GANTI POS LOMBA</span>
+    </a>
     <span class="event-badge"><span class="pulse-light"></span>LOCAL SERVER · ONLINE</span>
   </div>
 </div>
 
-<section class="stats-grid" aria-label="Ringkasan data">
+<section class="nb-card session-guidance" aria-labelledby="focus-sessions-heading">
+  <h2 id="focus-sessions-heading">Sesi yang perlu ditangani sekarang</h2>
+  {% if focus_sessions %}
+    <div class="focus-session-list">
+      {% for item in focus_sessions %}
+        {% set s = item.session %}
+        <div class="focus-session-item">
+          <div>
+            <strong>Pos {{ s.station.name }} · Kelompok {{ s.group.code }} · Rotasi {{ s.rotation_number or '-' }}</strong>
+            <span>{{ 'Berjalan' if item.status.value == 'RUNNING' else ('Waktu habis; tutup sesi' if s.status.value == 'RUNNING' else 'Menunggu mulai') }} · {{ item.submitted_count }}/{{ item.team_count }} tim terkumpul</span>
+          </div>
+          <div class="focus-session-actions">
+            <span class="nb-badge {{ 'badge-neon' if item.status.value == 'RUNNING' else 'badge-dark' }}">{{ '%02d:%02d'|format(item.remaining // 60, item.remaining % 60) }}</span>
+            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.networking_monitor', session_id=s.id) if s.station.name.lower() == 'networking' and s.status.value == 'RUNNING' else url_for('admin.sessions_detail', session_id=s.id) }}">Buka sesi</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Belum ada sesi berjalan atau menunggu pada pos ini.</p>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.sessions_index') }}">Lihat semua sesi</a>
+  {% endif %}
+</section>
+
+<!-- Active Station / Station Selection Hub Banner -->
+{% if active_station %}
+  <section class="nb-card {{ 'card-cyan' if active_station.name.lower() == 'hardware' else ('card-green' if active_station.name.lower() == 'networking' else ('card-yellow' if active_station.mode.value == 'member_rotation' else 'card-white')) }}" 
+           style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+        <span class="nb-badge badge-black" style="font-size: 0.72rem;">POS LOMBA AKTIF</span>
+        <span class="nb-badge {{ 'badge-neon' if active_station.name.lower() in ('hardware', 'networking') else 'badge-white' }}" style="font-size: 0.72rem;">
+          {% if active_station.name.lower() == 'hardware' %}
+            BUILDCORES PC CHALLENGE
+          {% elif active_station.name.lower() == 'networking' %}
+            KUIS 3 TAHAP & VERIFIKASI STAMP
+          {% elif active_station.mode.value == 'member_rotation' %}
+            KUIS ROTASI ANGGOTA TIM
+          {% else %}
+            KUIS PILIHAN GANDA STANDAR
+          {% endif %}
+        </span>
+      </div>
+      <h2 style="font-size: 1.8rem; margin: 0.25rem 0; text-transform: uppercase;">
+        Pos {{ active_station.name }}
+      </h2>
+      <p class="mono-sub" style="margin: 0; color: #333; font-size: 0.88rem;">
+        {% if active_station.name.lower() == 'hardware' %}
+          Tantangan rakit PC berbasis studi kasus BuildCores, pengumpulan form & screenshot, serta verifikasi juri.
+        {% elif active_station.name.lower() == 'networking' %}
+          Kuis kolaboratif 3 tahap (Signal Check, True or Trap, Case Signal), antrean verifikasi fasilitator, dan kualifikasi Stamp.
+        {% elif active_station.mode.value == 'member_rotation' %}
+          Tantangan kuis pilihan ganda dengan partisi soal bergiliran antar-anggota tim secara bergantian.
+        {% else %}
+          Tantangan kuis pilihan ganda interaktif dengan leaderboard kompetisi standar.
+        {% endif %}
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+      <a href="{{ url_for('admin.station_select') }}" class="btn btn-outline btn-sm" style="background: #fff; font-weight: 800;">
+        <span>⇄ Pilih Pos Lain</span>
+      </a>
+      <a href="{{ url_for('admin.set_station', station_id=0) }}" class="btn btn-outline btn-sm" style="background: #fff;">
+        <span>🌐 Mode Global</span>
+      </a>
+    </div>
+  </section>
+{% else %}
+  <!-- Station Selector Quick Hub for Global Mode -->
+  <section class="nb-card card-white" style="margin-bottom: 1.5rem; padding: 1.25rem; border: 3px solid #000; box-shadow: 6px 6px 0 #000;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div>
+        <span class="mono-label" style="color: #666;">HUB NAVIGASI POS LOMBA</span>
+        <h2 style="font-size: 1.35rem; margin-top: 0.25rem;">PILIH POS UNTUK MEMULAI PENGATURAN TERFOKUS</h2>
+      </div>
+      <a href="{{ url_for('admin.station_select') }}" class="btn btn-neon btn-sm">
+        <span>Buka Station Hub Lengkap ➔</span>
+      </a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+      {% for st in all_stations %}
+        {% set is_hw = (st.name.lower() == 'hardware') %}
+        {% set is_net = (st.name.lower() == 'networking') %}
+        <div class="nb-card {{ 'card-cyan' if is_hw else ('card-green' if is_net else ('card-yellow' if st.mode.value == 'member_rotation' else 'card-white')) }}" 
+             style="padding: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="font-size: 1.75rem; margin-bottom: 0.25rem;">
+              {{ '🛠️' if is_hw else ('📡' if is_net else ('💻' if st.mode.value == 'member_rotation' else '🛡️')) }}
+            </div>
+            <strong style="font-size: 1.15rem; display: block; margin-bottom: 0.25rem;">Pos {{ st.name }}</strong>
+            <span class="mono-sub" style="font-size: 0.8rem; display: block; color: #444; line-height: 1.4; margin-bottom: 0.75rem;">
+              {{ 'BuildCores PC Challenge & Verifikasi' if is_hw else ('Kuis 3 Tahap & Verifikasi Stamp' if is_net else ('Kuis Rotasi Anggota Tim' if st.mode.value == 'member_rotation' else 'Kuis Pilihan Ganda')) }}
+            </span>
+          </div>
+          <a href="{{ url_for('admin.set_station', station_id=st.id) }}" class="btn btn-outline btn-sm btn-block" style="text-align: center; justify-content: center; font-weight: 800; background: #fff;">
+            <span>Kelola Pos Ini ➔</span>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<!-- Primary Stats Grid (Contains 'Total Station' keyword for compatibility) -->
+<section class="stats-grid" aria-label="Ringkasan data utama">
   {% for key, title, subtitle, color, icon in [
-    ('stations','Total Station','Pos arena lomba','yellow','⬡'),
-    ('groups','Total Group','Kelompok peserta','blue','◈'),
-    ('teams','Total Team','Tim terdaftar aktif','pink','⬢'),
-    ('questions','Total Question','Bank soal siap saji','green','◆'),
-    ('active_sessions','Session Aktif','Status running saat ini','white','◎')
+    ('stations','Pos Lomba','Total Station aktif','yellow','⬡'),
+    ('packages','Paket Terdaftar',('Paket ' ~ active_station.name) if active_station else 'Seluruh pos lomba','green','◈'),
+    ('teams','Tim Terdaftar','Peserta aktif kompetisi','pink','⬢'),
+    ('active_sessions','Sesi Berjalan',('Sesi ' ~ active_station.name) if active_station else 'Status running live','white','◎'),
+    ('hw_pending','Verifikasi Hardware','Menunggu juri PC','cyan','✦')
   ] %}
   <article class="nb-card card-{{ color }}">
     <div class="card-meta">
@@ -31,34 +146,222 @@
   {% endfor %}
 </section>
 
-<section class="quick-section">
+<!-- Hardware & Package Telemetry Panels -->
+{% if not active_station or active_station.name.lower() == 'hardware' %}
+<section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+  <!-- Panel Pemetaan Paket Kelompok -->
+  <article class="nb-card card-blue">
+    <div class="card-meta">
+      <h2>STATUS PEMETAAN PAKET KELOMPOK</h2>
+      <span class="card-icon">🗺</span>
+    </div>
+    <div style="margin: 1rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.8;">
+      <div>▸ Kelompok memiliki paket: <strong>{{ statistics.mapped_groups }} Kelompok</strong></div>
+      <div>▸ Sesi tanpa pemetaan: 
+        {% if statistics.unmapped_sessions > 0 %}
+          <span class="nb-badge badge-danger" style="margin-left: 4px;">{{ statistics.unmapped_sessions }} Sesi Perlu Paket!</span>
+        {% else %}
+          <span class="nb-badge badge-neon" style="margin-left: 4px;">Lengkap (0 Sesi Bermasalah)</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="margin-top: 1rem;">
+      <a href="{{ url_for('admin.packages_mapping', station_id=active_station.id if active_station else None) }}" class="btn btn-outline btn-sm" style="background: #fff;">
+        <span>⚡ Buka Pemetaan Kelompok A–D</span>
+      </a>
+    </div>
+  </article>
+
+  <!-- Panel Telemetri Pos Hardware -->
+  <article class="nb-card card-white">
+    <div class="card-meta">
+      <h2>TELEMETRI SUBMISSION POS HARDWARE</h2>
+      <span class="card-icon">💻</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 1rem 0; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+      <div class="nb-card" style="padding: 0.5rem; background: #fafafa;">
+        <span class="mono-label">DRAFT</span>
+        <strong style="font-size: 1.25rem; display: block;">{{ statistics.hw_draft }}</strong>
+      </div>
+      <div class="nb-card" style="padding: 0.5rem; background: #fffbe6;">
+        <span class="mono-label">TERKIRIM</span>
+        <strong style="font-size: 1.25rem; display: block; color: #b45309;">{{ statistics.hw_submitted }}</strong>
+      </div>
+      <div class="nb-card" style="padding: 0.5rem; background: #ecfdf5;">
+        <span class="mono-label">TERVERIFIKASI</span>
+        <strong style="font-size: 1.25rem; display: block; color: #047857;">{{ statistics.hw_verified + statistics.hw_scored }}</strong>
+      </div>
+      <div class="nb-card" style="padding: 0.5rem; background: #fef2f2;">
+        <span class="mono-label">DITOLAK</span>
+        <strong style="font-size: 1.25rem; display: block; color: #b91c1c;">{{ statistics.hw_rejected }}</strong>
+      </div>
+    </div>
+    <div style="margin-top: 0.5rem;">
+      <a href="{{ url_for('admin.hardware_submissions_index') }}" class="btn btn-neon btn-sm btn-block">
+        <span>🔍 Buka Verifikasi Submission Hardware ({{ statistics.hw_pending }} Menunggu)</span>
+      </a>
+    </div>
+  </article>
+</section>
+{% endif %}
+
+<!-- Networking Telemetry Panel -->
+{% if not active_station or active_station.name.lower() == 'networking' %}
+<section style="margin-top: 1.5rem;">
+  <article class="nb-card card-green" style="border: 3px solid #000; box-shadow: 6px 6px 0 #000;">
+    <div class="card-meta">
+      <h2>TELEMETRI & KONSOL POS NETWORKING</h2>
+      <span class="card-icon">📡</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+      <div class="nb-card" style="padding: 0.75rem; background: #fff;">
+        <span class="mono-label" style="color: #666;">MENUNGGU VERIFIKASI</span>
+        <strong style="font-size: 1.5rem; display: block; color: #b45309;">{{ statistics.net_pending }} Tim</strong>
+        <span class="mono-sub" style="font-size: 0.75rem;">Jawaban isian tahap 3 pending</span>
+      </div>
+      <div class="nb-card" style="padding: 0.75rem; background: #fff;">
+        <span class="mono-label" style="color: #666;">TERFINALISASI</span>
+        <strong style="font-size: 1.5rem; display: block; color: #047857;">{{ statistics.net_finalized }} Tim</strong>
+        <span class="mono-sub" style="font-size: 0.75rem;">Skor resmi masuk leaderboard</span>
+      </div>
+      <div class="nb-card" style="padding: 0.75rem; background: #fff;">
+        <span class="mono-label" style="color: #666;">STAMP DIPEROLEH</span>
+        <strong style="font-size: 1.5rem; display: block; color: #000;">★ {{ statistics.net_stamps }} Tim</strong>
+        <span class="mono-sub" style="font-size: 0.75rem;">Jawaban benar Tahap 3 &ge; 4</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="{{ url_for('admin.networking_lobby') }}" class="btn btn-white btn-sm" style="font-weight: 800;">
+        <span>📡 Buka Konsol Lobby Networking</span>
+      </a>
+      <a href="{{ url_for('admin.results_index', station_id=active_station.id if active_station else None) }}" class="btn btn-outline btn-sm" style="background: #fff;">
+        <span>🏆 Papan Skor & Stamp</span>
+      </a>
+    </div>
+  </article>
+</section>
+{% endif %}
+
+<!-- Quick Navigation Tailored to Active Station -->
+<section class="quick-section" style="margin-top: 2rem;">
   <div class="section-title">
     <div class="title-with-badge">
-      <h2>Navigasi cepat</h2>
-      <span class="count-badge">4 MODUL KERJA</span>
+      <h2>Navigasi Modul Operasional</h2>
+      <span class="count-badge">
+        {% if active_station and active_station.name.lower() == 'hardware' %}
+          6 MODUL HARDWARE
+        {% elif active_station and active_station.name.lower() == 'networking' %}
+          6 MODUL NETWORKING
+        {% elif active_station %}
+          6 MODUL KUIS
+        {% else %}
+          6 MODUL UTAMA
+        {% endif %}
+      </span>
     </div>
-    <span class="section-hint">Pilih area kerja untuk mengelola sistem IT Quest Adventure</span>
+    <span class="section-hint">
+      {% if active_station %}
+        Akses cepat pengaturan dan eksekusi lomba untuk Pos {{ active_station.name }}
+      {% else %}
+        Akses cepat ke seluruh menu operasional panitia IT Quest Adventure
+      {% endif %}
+    </span>
   </div>
+
   <div class="quick-grid">
-    {% for key, number, title, detail in [
-      ('questions','01','Kelola Soal','Bank pertanyaan, opsi jawaban, dan kunci skor'),
-      ('teams','02','Kelola Tim','Data peserta, registrasi kelompok, dan profil tim'),
-      ('sessions','03','Kelola Sesi','Kontrol perlombaan, timer live, dan aktivasi pos'),
-      ('results','04','Lihat Hasil','Kalkulasi nilai, riwayat jawaban, dan leaderboard live')
-    ] %}
-    <a class="quick-link" href="{{ url_for('admin.questions_index') if key == 'questions' else (url_for('admin.teams_index') if key == 'teams' else (url_for('admin.sessions_index') if key == 'sessions' else url_for('admin.placeholder', page=key))) }}">
-      <div class="quick-num-box">
-        <b>{{ number }}</b>
-      </div>
-      <div class="quick-info">
-        <span class="quick-name">{{ title }}</span>
-        <small>{{ detail }}</small>
-      </div>
-      <div class="quick-arrow-box">
-        <i class="quick-arrow">→</i>
-      </div>
-    </a>
-    {% endfor %}
+    {% if active_station and active_station.name.lower() == 'hardware' %}
+      <!-- Hardware Specific Quick Actions -->
+      {% for number, title, detail, endpoint_url in [
+        ('01','Paket Studi Kasus Hardware','Kelola spesifikasi, batasan numerik, dan bobot skor', url_for('admin.packages_index', station_id=active_station.id)),
+        ('02','Pemetaan Kelompok A–D','Atur strategi SAME_FOR_ALL atau BY_GROUP untuk Hardware', url_for('admin.packages_mapping', station_id=active_station.id)),
+        ('03','🛠️ Verifikasi Hasil Build','Periksa URL BuildCores, screenshot, dan validasi nilai juri', url_for('admin.hardware_submissions_index')),
+        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('05','Sesi Pos Hardware','Mulai sesi hardware, pantau timer, dan status peserta', url_for('admin.sessions_index', station_id=active_station.id)),
+        ('06','Leaderboard Hardware','Papan skor hasil build PC terverifikasi dan ekspor CSV', url_for('admin.results_index', station_id=active_station.id))
+      ] %}
+      <a class="quick-link" href="{{ endpoint_url }}">
+        <div class="quick-num-box">
+          <b>{{ number }}</b>
+        </div>
+        <div class="quick-info">
+          <span class="quick-name">{{ title }}</span>
+          <small>{{ detail }}</small>
+        </div>
+        <div class="quick-arrow-box">
+          <i class="quick-arrow">→</i>
+        </div>
+      </a>
+      {% endfor %}
+    {% elif active_station and active_station.name.lower() == 'networking' %}
+      <!-- Networking Specific Quick Actions -->
+      {% for number, title, detail, endpoint_url in [
+        ('01','📡 Lobby & Sesi Networking','Buka lobby, pilih rotasi dan set soal kelompok, pantau live', url_for('admin.networking_lobby')),
+        ('02','📋 Bank Soal Networking','Kelola butir soal 3 tahap (PG A–E, Benar/Salah, Isian)', url_for('admin.questions_index', station_id=active_station.id)),
+        ('03','📥 Import JSON Soal','Import bank soal JSON Pos Networking (Set A–D)', url_for('admin.questions_import')),
+        ('04','🗺️ Pemetaan Set Kelompok','Atur pemetaan Set Soal A–D ke Kelompok A–D', url_for('admin.packages_mapping', station_id=active_station.id)),
+        ('05','👥 Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('06','🏆 Leaderboard & Stamp','Papan peringkat hasil final dan status perolehan Stamp', url_for('admin.results_index', station_id=active_station.id))
+      ] %}
+      <a class="quick-link" href="{{ endpoint_url }}">
+        <div class="quick-num-box">
+          <b>{{ number }}</b>
+        </div>
+        <div class="quick-info">
+          <span class="quick-name">{{ title }}</span>
+          <small>{{ detail }}</small>
+        </div>
+        <div class="quick-arrow-box">
+          <i class="quick-arrow">→</i>
+        </div>
+      </a>
+      {% endfor %}
+    {% elif active_station %}
+      <!-- Quiz Specific Quick Actions (Software Engineering & Cyber Security) -->
+      {% for number, title, detail, endpoint_url in [
+        ('01','📝 Bank Soal (Kuis PG)','Kelola butir soal kuis pilihan ganda pos ini', url_for('admin.questions_index', station_id=active_station.id)),
+        ('02','📥 Import JSON Soal','Import batch soal pilihan ganda dari berkas JSON', url_for('admin.questions_import')),
+        ('03','Paket Soal Kuis','Kelola paket bank soal dan penugasan kelompok', url_for('admin.packages_index', station_id=active_station.id)),
+        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('05','Sesi Pos Kuis','Mulai sesi kuis, pantau countdown timer server', url_for('admin.sessions_index', station_id=active_station.id)),
+        ('06','Leaderboard Kuis','Papan peringkat skor kuis dan rotasi tim', url_for('admin.results_index', station_id=active_station.id))
+      ] %}
+      <a class="quick-link" href="{{ endpoint_url }}">
+        <div class="quick-num-box">
+          <b>{{ number }}</b>
+        </div>
+        <div class="quick-info">
+          <span class="quick-name">{{ title }}</span>
+          <small>{{ detail }}</small>
+        </div>
+        <div class="quick-arrow-box">
+          <i class="quick-arrow">→</i>
+        </div>
+      </a>
+      {% endfor %}
+    {% else %}
+      <!-- Global Mode Quick Actions -->
+      {% for number, title, detail, endpoint_url in [
+        ('01','Paket Soal & Studi Kasus','Kelola paket build PC dan studi kasus per pos', url_for('admin.packages_index')),
+        ('02','Pemetaan Kelompok','Atur paket SAME_FOR_ALL atau BY_GROUP untuk Kelompok A–D', url_for('admin.packages_mapping')),
+        ('03','Verifikasi Hardware','Koreksi data build BuildCores dan validasi nilai final', url_for('admin.hardware_submissions_index')),
+        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('05','Kontrol Sesi Lomba','Mulai sesi, monitor waktu countdown, dan pantau peserta', url_for('admin.sessions_index')),
+        ('06','Hasil & Leaderboard','Papan peringkat terintegrasi dan ekspor CSV', url_for('admin.results_index'))
+      ] %}
+      <a class="quick-link" href="{{ endpoint_url }}">
+        <div class="quick-num-box">
+          <b>{{ number }}</b>
+        </div>
+        <div class="quick-info">
+          <span class="quick-name">{{ title }}</span>
+          <small>{{ detail }}</small>
+        </div>
+        <div class="quick-arrow-box">
+          <i class="quick-arrow">→</i>
+        </div>
+      </a>
+      {% endfor %}
+    {% endif %}
   </div>
 </section>
 {% endblock %}

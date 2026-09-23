@@ -7,6 +7,7 @@
   <div class="waiting-card nb-card">
     <!-- Status Header Banner -->
     <div class="waiting-header">
+      <div class="chip-label" style="margin-bottom: 0.6rem;">// TAHAP 6 DARI 6 · RUANG TUNGGU SESI</div>
       <div class="waiting-status-badge-wrap">
         <div class="status-indicator-live" id="session-status" data-status="WAITING">
           <span class="live-dot-pulse"></span>
@@ -30,8 +31,8 @@
         <div class="identity-field">
           <span class="mono-label">POS PERLOMBAAN</span>
           <span class="mono-val text-bold">{{ station.name }}</span>
-          <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }} badge-xs">
-            {{ 'ROTASI ANGGOTA' if station.mode.value == 'MEMBER_ROTATION' else ('BELUM DIKETAHUI' if station.mode.value == 'BELUM_DIKETAHUI' else 'KERJA SAMA') }}
+          <span class="nb-badge {{ 'badge-neon' if station.mode.value == 'MEMBER_ROTATION' else ('badge-warning' if station.mode.value == 'BELUM_DIKETAHUI' else 'badge-neutral') }}" style="display: inline-block; margin-top: 5px; font-size: 0.72rem; padding: 3px 6px;">
+            MODE: {{ 'ROTASI ANGGOTA' if station.mode.value == 'MEMBER_ROTATION' else ('BELUM DIKETAHUI' if station.mode.value == 'BELUM_DIKETAHUI' else 'KERJA SAMA') }}
           </span>
         </div>
 

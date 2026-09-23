@@ -1,0 +1,247 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Lobby Sesi Pos Networking · Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <span class="badge bg-primary text-white mb-2" style="border: 2px solid #000;">🌐 MODUL POS NETWORKING</span>
+    <h1 class="h3 fw-black mb-1">LOBBY SESI POS NETWORKING</h1>
+    <p class="text-muted small mb-0">Kelola nomor rotasi, kelompok peserta, pemetaan set soal, dan kontrol mulai sesi kuis 3 tahap.</p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if active_session and active_session.status.value == 'RUNNING' %}
+      <a href="{{ url_for('admin.networking_monitor', session_id=active_session.id) }}" class="btn btn-warning fw-bold border-2 border-dark shadow-sm">
+        📡 Live Monitoring
+      </a>
+      <a href="{{ url_for('admin.networking_verify', session_id=active_session.id) }}" class="btn btn-info fw-bold border-2 border-dark shadow-sm text-dark">
+        🔍 Verifikasi & Stamp
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Form Pemilihan Sesi & Rotasi -->
+<div class="card mb-4 border-3 border-dark shadow-sm" style="box-shadow: 5px 5px 0px #000;">
+  <div class="card-header bg-dark text-white fw-bold py-2">
+    ⚙️ PENGATURAN SESI & PEMETAAN SET SOAL
+  </div>
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('admin.networking_lobby') }}" class="row g-3 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label fw-bold small">Nomor Rotasi:</label>
+        <input type="number" name="rotation" class="form-control fw-bold border-2 border-dark" min="1" max="10" value="{{ selected_rotation }}" onchange="this.form.submit()">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-bold small">Kelompok Terjadwal:</label>
+        <select name="group_id" class="form-select fw-bold border-2 border-dark" onchange="updateSetSelection(this.value); this.form.submit();">
+          {% for g in groups %}
+            <option value="{{ g.id }}" data-code="{{ g.code }}" {% if g.id == selected_group.id %}selected{% endif %}>
+              Kelompok {{ g.code }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-bold small">Set Soal (Otomatis Sesuai Kelompok):</label>
+        <select name="set_id" id="questionSetSelect" class="form-select fw-bold border-2 border-dark">
+          {% for qs in question_sets %}
+            <option value="{{ qs.id }}" data-code="{{ qs.code }}" {% if qs.id == selected_set.id %}selected{% endif %}>
+              Set {{ qs.code }} ({{ qs.name }}) - {{ qs.status.value }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-dark w-100 fw-bold border-2 border-dark">
+          Terapkan Filter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Info Status Sesi Aktif -->
+{% if active_session %}
+<div class="alert {% if active_session.status.value == 'RUNNING' %}alert-success{% elif active_session.status.value == 'WAITING' %}alert-warning{% else %}alert-secondary{% endif %} border-3 border-dark mb-4" style="box-shadow: 4px 4px 0px #000;">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <span class="badge bg-dark text-white me-2">SESI #{{ active_session.id }}</span>
+      <strong>Status Sesi:</strong> <span class="badge {% if active_session.status.value == 'RUNNING' %}bg-success{% else %}bg-warning text-dark{% endif %} fs-6">{{ active_session.status.value }}</span>
+      &nbsp;|&nbsp; <strong>Rotasi:</strong> {{ active_session.rotation_number or selected_rotation }}
+      &nbsp;|&nbsp; <strong>Kelompok:</strong> {{ active_session.group.code }}
+      &nbsp;|&nbsp; <strong>Set Soal:</strong> {{ active_session.question_set.name if active_session.question_set else '-' }}
+    </div>
+    <div>
+      {% if active_session.status.value == 'WAITING' %}
+        <button type="button" class="btn btn-success fw-black border-2 border-dark shadow-sm px-4" data-bs-toggle="modal" data-bs-target="#confirmStartModal">
+          ▶ MULAI SESI ROTASI INI
+        </button>
+      {% elif active_session.status.value == 'RUNNING' %}
+        <a href="{{ url_for('admin.networking_monitor', session_id=active_session.id) }}" class="btn btn-dark fw-bold border-2 border-dark">
+          Buka Layar Monitoring ➔
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info border-3 border-dark mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="box-shadow: 4px 4px 0px #000;">
+  <div>
+    <strong>Lobby Sesi Belum Dibuka:</strong> Sesi lomba untuk Kelompok {{ selected_group.code }} belum disiapkan.
+  </div>
+  <form method="POST" action="{{ url_for('admin.networking_open_lobby') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+    <input type="hidden" name="rotation" value="{{ selected_rotation }}">
+    <input type="hidden" name="set_id" value="{{ selected_set.id }}">
+    <button type="submit" class="btn btn-primary fw-bold border-2 border-dark shadow-sm">
+      📥 Buka Lobby Sesi Ini
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Tabel Tim Terjadwal di Kelompok Ini -->
+<div class="card border-3 border-dark shadow-sm mb-4" style="box-shadow: 5px 5px 0px #000;">
+  <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center py-2">
+    <span>📋 TIM DALAM KELOMPOK {{ selected_group.code }} (ROTASI {{ selected_rotation }})</span>
+    <span class="badge bg-light text-dark">{{ teams_status|length }} Tim Terdaftar</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover mb-0 align-middle">
+      <thead class="table-light border-dark">
+        <tr>
+          <th style="width: 5%;">No</th>
+          <th style="width: 12%;">Kode Tim</th>
+          <th style="width: 25%;">Nama Tim</th>
+          <th style="width: 25%;">Asal Sekolah</th>
+          <th style="width: 18%;">Status Peserta</th>
+          <th style="width: 15%;">Aksi Cepat</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in teams_status %}
+        <tr>
+          <td class="text-center fw-bold">{{ loop.index }}</td>
+          <td><span class="badge bg-dark text-white fs-6">{{ item.team.team_code }}</span></td>
+          <td class="fw-bold">{{ item.team.team_name }}</td>
+          <td class="text-muted">{{ item.team.school }}</td>
+          <td>
+            {% if item.net_status == 'BELUM_MASUK' %}
+              <span class="badge bg-secondary">Belum Masuk</span>
+            {% elif item.net_status == 'LOBBY' %}
+              <span class="badge bg-info text-dark">Di Ruang Tunggu</span>
+            {% elif item.net_status == 'IN_PROGRESS' %}
+              <span class="badge bg-primary">Tahap {{ item.current_stage }}</span>
+            {% elif item.net_status == 'NEEDS_REVIEW' %}
+              <span class="badge bg-warning text-dark">Menunggu Verifikasi</span>
+            {% elif item.net_status == 'FINALIZED' %}
+              <span class="badge bg-success">Selesai (Final)</span>
+              {% if item.has_stamp %}
+                <span class="badge bg-warning text-dark ms-1">★ STAMP</span>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-light text-dark border">{{ item.net_status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if active_session and item.has_submission %}
+              <form method="POST" action="{{ url_for('admin.networking_control') }}" class="d-inline" onsubmit="return confirm('Izinkan tim {{ item.team.team_name }} masuk kembali? Token sesi lama akan direset.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="session_id" value="{{ active_session.id }}">
+                <input type="hidden" name="team_id" value="{{ item.team.id }}">
+                <input type="hidden" name="action" value="ALLOW_RECONNECT">
+                <input type="hidden" name="reason" value="Izin masuk kembali dari lobby fasilitator">
+                <button type="submit" class="btn btn-outline-dark btn-sm fw-bold">
+                  🔄 Izinkan Reconnect
+                </button>
+              </form>
+            {% else %}
+              <span class="text-muted small">-</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted fw-bold">
+            Tidak ada tim yang terdaftar pada Kelompok {{ selected_group.code }}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Mulai Sesi -->
+{% if active_session %}
+<div class="modal fade" id="confirmStartModal" tabindex="-1" aria-labelledby="confirmStartModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-3 border-dark" style="box-shadow: 6px 6px 0px #000;">
+      <div class="modal-header bg-success text-white border-bottom border-dark">
+        <h5 class="modal-title fw-black" id="confirmStartModalLabel">🏁 KONFIRMASI MULAI SESI</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fw-bold mb-3">Harap pastikan seluruh parameter sesi berikut sudah sesuai sebelum memulai:</p>
+        <ul class="list-group list-group-flush border border-dark rounded mb-3">
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Pos:</span>
+            <strong>Pos 3 (Networking)</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Nomor Rotasi:</span>
+            <strong>Rotasi {{ active_session.rotation_number or selected_rotation }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Kelompok:</span>
+            <strong>Kelompok {{ active_session.group.code }}</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Jumlah Tim Terjadwal:</span>
+            <strong>{{ teams_status|length }} Tim</strong>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span class="text-muted">Set Soal:</span>
+            <strong class="text-primary">{{ active_session.question_set.name if active_session.question_set else '-' }}</strong>
+          </li>
+        </ul>
+        <div class="alert alert-warning border-2 border-dark small fw-bold mb-0">
+          ⚠️ Saat sesi dimulai, timer Tahap 1 (Signal Check) untuk seluruh tim akan mulai berjalan serentak.
+        </div>
+      </div>
+      <div class="modal-footer border-top border-dark">
+        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+        <form method="POST" action="{{ url_for('admin.networking_control') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="session_id" value="{{ active_session.id }}">
+          <input type="hidden" name="action" value="START_SESSION">
+          <input type="hidden" name="reason" value="Mulai sesi resmi dari konfirmasi lobby">
+          <button type="submit" class="btn btn-success fw-black border-2 border-dark px-4">
+            Mulai Sesi Sekarang!
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  function updateSetSelection(groupId) {
+    // Auto-select question set based on group code
+    const groupSelect = document.querySelector('select[name="group_id"]');
+    const selectedOpt = groupSelect.options[groupSelect.selectedIndex];
+    const groupCode = selectedOpt.getAttribute('data-code');
+
+    const setSelect = document.getElementById('questionSetSelect');
+    for (let i = 0; i < setSelect.options.length; i++) {
+      if (setSelect.options[i].getAttribute('data-code') === groupCode) {
+        setSelect.selectedIndex = i;
+        break;
+      }
+    }
+  }
+</script>
+{% endblock %}

@@ -17,6 +17,18 @@
 
     const digitsEl = timerEl.querySelector('.timer-digits') || timerEl;
     const warningMsgEl = document.getElementById('timer-warning-msg');
+    const isAdminTimer = !redirectUrl;
+    let lastSuccessfulSync = Date.now();
+    let connectionNotice = null;
+
+    if (isAdminTimer) {
+      connectionNotice = document.createElement('p');
+      connectionNotice.className = 'session-connection-notice';
+      connectionNotice.setAttribute('role', 'status');
+      connectionNotice.hidden = true;
+      connectionNotice.textContent = 'Koneksi ke server terputus. Status tim mungkin tertinggal; timer akan disinkronkan kembali saat jaringan pulih.';
+      timerEl.parentElement.appendChild(connectionNotice);
+    }
 
     let localInterval = null;
     let syncInterval = null;
@@ -108,13 +120,20 @@
           },
         });
 
-        if (!resp.ok) return;
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
         const data = await resp.json();
+        lastSuccessfulSync = Date.now();
+        if (connectionNotice) connectionNotice.hidden = true;
+        if (isAdminTimer && data.status !== currentStatus) {
+          window.location.reload();
+          return;
+        }
+        const previousStatus = currentStatus;
         currentStatus = data.status;
 
         if (data.status === 'FINISHED' || (data.remaining_seconds !== undefined && data.remaining_seconds <= 0)) {
-          handleTimeout();
+          if (previousStatus === 'RUNNING') handleTimeout();
           return;
         }
 
@@ -129,6 +148,7 @@
         }
       } catch (e) {
         console.warn('[Timer] Resync error:', e);
+        if (connectionNotice && Date.now() - lastSuccessfulSync > 10000) connectionNotice.hidden = false;
       }
     }
 
@@ -138,7 +158,13 @@
     // If status is RUNNING, kick off countdown and periodic resync
     if (currentStatus === 'RUNNING') {
       localInterval = setInterval(localTick, 1000);
-      syncInterval = setInterval(syncWithServer, 5000);
+    }
+    syncInterval = setInterval(syncWithServer, 5000);
+    if (isAdminTimer) {
+      setInterval(() => {
+        if (currentStatus === 'RUNNING' && !document.hidden && !connectionNotice?.hidden) return;
+        if (currentStatus === 'RUNNING' && !document.hidden) window.location.reload();
+      }, 15000);
     }
 
     // Handle visibility change (tab refocus after throttle/lag)

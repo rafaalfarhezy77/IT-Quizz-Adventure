@@ -1,0 +1,191 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Verifikasi Jawaban & Stamp Pos Networking · Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <span class="badge bg-warning text-dark mb-2" style="border: 2px solid #000;">🔍 TAHAP 4: VERIFIKASI & STAMP</span>
+    <h1 class="h3 fw-black mb-1">PENINJAUAN JAWABAN & FINALISASI STAMP</h1>
+    <p class="text-muted small mb-0">
+      Sesi #{{ session_obj.id }} &nbsp;|&nbsp;
+      Rotasi: <strong>{{ session_obj.rotation_number or '-' }}</strong> &nbsp;|&nbsp;
+      Kelompok: <strong>{{ session_obj.group.code }}</strong> &nbsp;|&nbsp;
+      Set Soal: <strong>{{ session_obj.question_set.name if session_obj.question_set else '-' }}</strong>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('admin.networking_monitor', session_id=session_obj.id) }}" class="btn btn-outline-dark fw-bold border-2 border-dark">
+      ← Ke Layar Monitoring
+    </a>
+    <a href="{{ url_for('admin.networking_lobby') }}" class="btn btn-outline-secondary fw-bold border-2 border-dark">
+      Lobby Sesi
+    </a>
+  </div>
+</div>
+
+<!-- Ketentuan Stamp Banner -->
+<div class="alert alert-light border-3 border-dark mb-4" style="box-shadow: 4px 4px 0px #000;">
+  <div class="d-flex align-items-center gap-3">
+    <div class="fs-1">🎖️</div>
+    <div>
+      <strong class="text-dark d-block">Ketentuan Resmi Perolehan Stamp Pos Networking:</strong>
+      <span class="small fw-bold text-muted">
+        Tim memperoleh <strong>Stamp Networking</strong> apabila menjawab benar <strong>minimal 4 dari 5 soal</strong> pada <strong>Tahap 3 (Case Signal)</strong>.
+        Status perolehan Stamp dicatat terpisah dari akumulasi skor total peserta.
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 1: ANTREAN VERIFIKASI JAWABAN SHORT TEXT -->
+<div class="card border-3 border-dark shadow-sm mb-4" style="box-shadow: 5px 5px 0px #000;">
+  <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center py-2">
+    <span>📝 ANTREAN PENINJAUAN JAWABAN ISIAN SINGKAT (NEEDS_REVIEW)</span>
+    <span class="badge bg-warning text-dark fs-6">{{ review_queue|length }} Menunggu Keputusan</span>
+  </div>
+  <div class="card-body p-0">
+    {% if review_queue %}
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover mb-0 align-middle">
+          <thead class="table-light border-dark">
+            <tr>
+              <th style="width: 15%;">Tim Peserta</th>
+              <th style="width: 25%;">Soal & Kasus</th>
+              <th style="width: 20%;">Jawaban Peserta</th>
+              <th style="width: 20%;">Variasi Jawaban Diterima</th>
+              <th style="width: 20%;">Aksi Keputusan Juri</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in review_queue %}
+            <tr>
+              <td>
+                <span class="badge bg-dark text-white fs-6">{{ item.team_code }}</span>
+                <div class="fw-bold mt-1">{{ item.team_name }}</div>
+                <div class="small text-muted">{{ item.school }}</div>
+              </td>
+              <td>
+                <span class="badge bg-secondary mb-1">Soal #{{ item.order_number }}</span>
+                {% if item.case_study %}
+                  <div class="small text-muted fst-italic mb-1" style="line-height: 1.3;">
+                    "{{ item.case_study[:120] }}..."
+                  </div>
+                {% endif %}
+                <div class="fw-bold small">{{ item.question_text }}</div>
+              </td>
+              <td>
+                <div class="p-2 border border-2 border-dark rounded bg-light font-monospace fw-bold fs-6">
+                  {{ item.participant_answer }}
+                </div>
+              </td>
+              <td>
+                <div class="small fw-bold">
+                  {% for acc in item.accepted_answers %}
+                    <span class="badge bg-light text-dark border border-dark me-1 mb-1">{{ acc }}</span>
+                  {% else %}
+                    <span class="text-muted">-</span>
+                  {% endfor %}
+                </div>
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('admin.networking_review_answer') }}" class="d-flex flex-column gap-2">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="answer_id" value="{{ item.answer_id }}">
+                  <input type="hidden" name="session_id" value="{{ session_obj.id }}">
+
+                  <input type="text" name="notes" class="form-control form-control-sm border-2 border-dark" placeholder="Catatan fasilitator (opsional)">
+
+                  <div class="btn-group btn-group-sm w-100" role="group">
+                    <button type="submit" name="action" value="ACCEPT" class="btn btn-success fw-black border border-dark">
+                      ✓ Terima (+{{ item.weight }} pt)
+                    </button>
+                    <button type="submit" name="action" value="REJECT" class="btn btn-danger fw-black border border-dark">
+                      ✗ Tolak (0 pt)
+                    </button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-4 text-center text-muted fw-bold">
+        ✅ Tidak ada jawaban yang memerlukan peninjauan manual saat ini. Seluruh jawaban isian singkat telah dinilai otomatis atau telah diputuskan.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- SECTION 2: REKAPITULASI SKOR TIM & FINALISASI -->
+<div class="card border-3 border-dark shadow-sm mb-4" style="box-shadow: 5px 5px 0px #000;">
+  <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center py-2">
+    <span>🏆 REKAPITULASI SKOR & KELAYAKAN STAMP TIM</span>
+    <span class="badge bg-light text-dark">{{ team_summaries|length }} Tim</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-bordered table-hover mb-0 align-middle">
+      <thead class="table-light border-dark">
+        <tr>
+          <th style="width: 5%;">No</th>
+          <th style="width: 12%;">Kode Tim</th>
+          <th style="width: 22%;">Nama Tim</th>
+          <th style="width: 10%;">Tahap 1 (PG)</th>
+          <th style="width: 10%;">Tahap 2 (B/S)</th>
+          <th style="width: 12%;">Tahap 3 (Isian)</th>
+          <th style="width: 14%;">Status Stamp</th>
+          <th style="width: 15%;">Status & Skor Final</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ts in team_summaries %}
+        <tr>
+          <td class="text-center fw-bold">{{ loop.index }}</td>
+          <td><span class="badge bg-dark text-white fs-6">{{ ts.team.team_code }}</span></td>
+          <td>
+            <div class="fw-bold">{{ ts.team.team_name }}</div>
+            <div class="small text-muted">{{ ts.team.school }}</div>
+          </td>
+          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_1_score if ts.net_sub else 0 }} / 10</td>
+          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_2_score if ts.net_sub else 0 }} / 10</td>
+          <td class="text-center font-monospace fw-bold">
+            {{ ts.net_sub.stage_3_score if ts.net_sub else 0 }} / 5
+            <div class="small text-primary">({{ ts.net_sub.stage_3_correct_count if ts.net_sub else 0 }}/5 Benar)</div>
+          </td>
+          <td class="text-center">
+            {% if ts.net_sub and ts.net_sub.has_stamp %}
+              <span class="badge bg-success fs-6 border border-dark">★ LAYAK STAMP</span>
+            {% else %}
+              <span class="badge bg-danger fs-6 border border-dark">TIDAK LAYAK</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ts.net_sub and ts.net_sub.verification_status == 'FINALIZED' %}
+              <span class="badge bg-success">DIFINALISASI</span>
+              <strong class="d-block mt-1 fs-5 text-dark font-monospace">{{ ts.net_sub.final_score }} pt</strong>
+            {% else %}
+              <span class="badge bg-warning text-dark">Belum Final</span>
+              <strong class="d-block mt-1 fs-6 text-muted font-monospace">{{ ts.net_sub.provisional_score if ts.net_sub else 0 }} pt (Est.)</strong>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card-footer bg-light border-top border-dark d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
+    <div>
+      <span class="fw-bold text-dark">Finalisasi Skor Sesi:</span>
+      <span class="small text-muted d-block">Memvalidasi skor seluruh tim, mengunci status Stamp, dan mengirim nilai ke Leaderboard resmi.</span>
+    </div>
+    <form method="POST" action="{{ url_for('admin.networking_finalize_session', session_id=session_obj.id) }}" onsubmit="return confirm('Apakah Anda yakin ingin memfinalisasi hasil seluruh tim pada sesi ini?\nHasil yang telah difinalisasi akan langsung dipublikasikan ke leaderboard.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-success fw-black border-2 border-dark shadow-sm px-4 py-2" {% if review_queue %}onclick="return confirm('Perhatian: Masih ada {{ review_queue|length }} jawaban dalam antrean verifikasi. Yakin ingin memfinalisasi sekarang?');"{% endif %}>
+        🏁 FINALISASI HASIL & KIRIM KE LEADERBOARD
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

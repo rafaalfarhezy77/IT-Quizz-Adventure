@@ -33,10 +33,11 @@ body.landing-body {
 }
 
 .landing-chip-row {
-  display: inline-flex;
-  gap: 0.5rem;
+  display: flex;
   flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: center;
+  max-width: 100%;
 }
 
 .landing-hero {
@@ -87,9 +88,9 @@ body.landing-body {
 /* Role Grid */
 .role-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .role-card {
@@ -315,18 +316,28 @@ body.participant-body {
   padding: 0.25rem 0.55rem;
   border: 2px solid transparent;
   color: var(--nb-gray-600);
+  background: transparent;
+  white-space: nowrap;
 }
 
 .step-chip.step-current {
-  background: var(--nb-black);
-  color: var(--nb-white);
-  border-color: var(--nb-black);
-}
-
-.step-chip.step-done {
   background: var(--nb-neon);
   color: var(--nb-black);
   border: 2px solid var(--nb-black);
+  box-shadow: 2px 2px 0px var(--nb-black);
+  font-weight: 800;
+}
+
+.step-chip.step-done {
+  background: var(--nb-white);
+  color: var(--nb-black);
+  border: 2px solid var(--nb-black);
+}
+
+.step-chip.step-done::before {
+  content: '✓ ';
+  color: #15803d;
+  font-weight: 900;
 }
 
 .step-divider {
@@ -432,12 +443,29 @@ body.participant-body {
 
 .access-code-input {
   font-family: var(--font-mono);
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 800;
   text-align: center;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   background: #FAFAFA;
+}
+
+.field-helper-text {
+  display: block;
+  margin-top: 0.65rem;
+  font-size: 0.85rem;
+  color: var(--nb-gray-600);
+  line-height: 1.4;
+}
+
+.field-helper-text code {
+  font-family: var(--font-mono);
+  background: var(--nb-neon);
+  color: var(--nb-black);
+  padding: 1px 6px;
+  border: 1.5px solid var(--nb-black);
+  font-weight: 800;
 }
 
 .access-card-footer {
@@ -978,20 +1006,30 @@ body.participant-body {
   .topbar-inner {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.75rem;
   }
 
   .flow-stepper {
     overflow-x: auto;
     width: 100%;
-    padding-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    -webkit-overflow-scrolling: touch;
   }
 
   .role-grid {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .role-card {
+    padding: 1.5rem;
+    box-shadow: 5px 5px 0 var(--nb-black);
   }
 
   .landing-footer {
     flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
   }
 
   .access-card,
@@ -999,6 +1037,7 @@ body.participant-body {
   .rules-card,
   .waiting-card {
     padding: 1.5rem;
+    box-shadow: 5px 5px 0 var(--nb-black);
   }
 
   .identity-grid {

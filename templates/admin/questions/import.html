@@ -18,6 +18,23 @@
   </div>
 </div>
 
+<!-- Sub Menu Modul Bank Soal -->
+<div class="module-subnav nb-card">
+  <span class="subnav-label">SUB MENU:</span>
+  <div class="subnav-links">
+    <a href="{{ url_for('admin.questions_index') }}"
+       class="subnav-item">
+      <span class="subnav-badge">01</span>
+      <span>📝 Daftar Bank Soal (Kuis PG)</span>
+    </a>
+    <a href="{{ url_for('admin.questions_import') }}"
+       class="subnav-item active">
+      <span class="subnav-badge">02</span>
+      <span>📥 Import JSON Soal</span>
+    </a>
+  </div>
+</div>
+
 <div class="import-container">
   <div class="import-grid">
     <!-- PANEL UPLOAD FORM -->

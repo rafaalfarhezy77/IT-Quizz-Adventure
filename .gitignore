@@ -15,6 +15,9 @@ ENV/
 !.env.example
 
 # SQLite Databases & Local Instance Data (JANGAN UPLOAD)
+*.db
+*.db-wal
+*.db-shm
 instance/*.db
 instance/*.db-wal
 instance/*.db-shm
@@ -23,6 +26,9 @@ instance/competition.db
 instance/uploads/*
 !instance/.gitkeep
 !instance/uploads/.gitkeep
+
+# Scratch & Temporary Dev Files
+scratch/
 
 # IDE & Editor specific files
 .vscode/
