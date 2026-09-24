@@ -143,3 +143,41 @@ class PackageMappingForm(FlaskForm):
     package_group_c = SelectField("Paket Kelompok C", coerce=int, validators=[Optional()])
     package_group_d = SelectField("Paket Kelompok D", coerce=int, validators=[Optional()])
     submit = SubmitField("SIMPAN PEMETAAN PAKET")
+
+
+class QuizPackageForm(FlaskForm):
+    """
+    Form pembuatan & pengeditan Paket Soal Kuis (Software Engineering, Cyber Security, Networking).
+    Terhubung langsung ke QuestionSet dan butir soal kuis (bukan tantangan build PC hardware).
+    """
+    station_id = SelectField("Pos Perlombaan", coerce=int, validators=[DataRequired(message="Pos wajib dipilih.")])
+    package_code = StringField(
+        "Kode Paket / Set",
+        validators=[DataRequired(message="Kode paket wajib diisi."), Length(max=30, message="Maksimal 30 karakter.")],
+        render_kw={"placeholder": "Contoh: Set E atau Paket 01"},
+    )
+    title = StringField(
+        "Judul / Topik Paket Kuis",
+        validators=[DataRequired(message="Judul paket wajib diisi."), Length(max=200, message="Maksimal 200 karakter.")],
+        render_kw={"placeholder": "Contoh: Algoritma & Struktur Data Lanjutan"},
+    )
+    description = TextAreaField(
+        "Deskripsi / Petunjuk Pengerjaan",
+        validators=[DataRequired(message="Deskripsi paket wajib diisi.")],
+        render_kw={"rows": 4, "placeholder": "Tuliskan ringkasan materi, skenario studi kasus, atau petunjuk pengerjaan bagi peserta..."},
+    )
+    duration_minutes = IntegerField(
+        "Durasi Pengerjaan (Menit)",
+        default=30,
+        validators=[
+            DataRequired(message="Durasi wajib diisi."),
+            NumberRange(min=1, max=180, message="Durasi antara 1 hingga 180 menit."),
+        ],
+    )
+    status = SelectField(
+        "Status Paket",
+        choices=[("DRAFT", "DRAFT (Konsep)"), ("ACTIVE", "ACTIVE (Aktif Siap Pakai)"), ("LOCKED", "LOCKED (Terkunci)"), ("ARCHIVED", "ARCHIVED (Diarsipkan)")],
+        default="DRAFT",
+    )
+    submit = SubmitField("SIMPAN PAKET KUIS")
+

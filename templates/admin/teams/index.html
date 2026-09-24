@@ -1,13 +1,13 @@
 {% extends "admin/base.html" %}
-{% block title %}Manajemen Tim{% endblock %}
+{% block title %}Manajemen Tim Peserta (Global){% endblock %}
 
 {% block content %}
 <span style="display:none">Fondasi halaman sudah siap</span>
 <div class="page-heading">
   <div class="heading-text">
-    <div class="eyebrow">PESERTA LOMBA // TEAMS_CATALOG</div>
-    <h1>Manajemen Tim</h1>
-    <p class="welcome-text">Kelola data peserta lomba, pembagian kelompok (Group A–D), dan import massal tim melalui file CSV.</p>
+    <div class="eyebrow">PESERTA LOMBA // MASTER_DATA_GLOBAL</div>
+    <h1>Manajemen Tim Peserta (Global)</h1>
+    <p class="welcome-text">Data tim peserta lomba berlaku secara terpusat untuk SEMUA 4 Pos (Software Engineering, Cyber Security, Hardware, Networking). Tim terbagi dalam Kelompok A–D dan berotasi antar pos.</p>
   </div>
   <div class="heading-actions">
     <a href="{{ url_for('admin.team_create') }}" class="btn btn-primary btn-sm">
@@ -16,6 +16,33 @@
     <a href="{{ url_for('admin.teams_import') }}" class="btn btn-secondary btn-sm">
       📁 IMPORT CSV
     </a>
+  </div>
+</div>
+
+<!-- GLOBAL MASTER CALLOUT BANNER -->
+<div class="nb-panel global-team-banner" style="background: #eef2ff; border: 3px solid #000; box-shadow: 4px 4px 0 #000; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <span style="font-size: 1.8rem;">🌐</span>
+    <div>
+      <div style="font-weight: 800; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: #1e1b4b;">
+        DATA TIM TERHUBUNG SECARA GLOBAL KE SELURUH POS
+      </div>
+      <div style="font-size: 0.84rem; color: #312e81; margin-top: 2px;">
+        Data tim ini bersifat <strong>global</strong>. Seluruh tim di bawah dapat dilihat, dipantau, dan diikutsertakan dalam sesi lomba oleh <strong>semua pos</strong> tanpa perlu input berulang per pos.
+      </div>
+    </div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+    <span class="nb-badge" style="background: #000; color: #fff; font-size: 0.75rem; padding: 5px 10px;">4 POS TERHUBUNG</span>
+    {% if g.active_station %}
+      <span class="nb-badge" style="background: var(--nb-neon, #a3e635); color: #000; border: 2px solid #000; font-weight: 800; font-size: 0.75rem; padding: 4px 8px;">
+        POS AKTIF ANDA: {{ g.active_station.name|upper }}
+      </span>
+    {% else %}
+      <span class="nb-badge" style="background: #6366f1; color: #fff; font-size: 0.75rem; padding: 5px 10px;">
+        MODE KONTROL GLOBAL
+      </span>
+    {% endif %}
   </div>
 </div>
 
@@ -38,6 +65,10 @@
   <div class="summary-stat-item">
     <span class="control-label">KELOMPOK / GROUP:</span>
     <span class="control-stat-val">{{ groups|length }} GROUP</span>
+  </div>
+  <div class="summary-stat-item">
+    <span class="control-label">CAKUPAN POS:</span>
+    <span class="control-stat-val text-neon">4 POS (GLOBAL)</span>
   </div>
 </section>
 
@@ -82,16 +113,18 @@
   <table class="nb-table" aria-label="Daftar Tim Peserta">
     <thead>
       <tr>
-        <th style="width: 100px;">Kode Tim</th>
+        <th style="width: 90px;">Kode Tim</th>
         <th>Nama Tim</th>
         <th>Asal Sekolah</th>
-        <th style="width: 110px;">Group</th>
-        <th style="width: 110px;">Status</th>
+        <th style="width: 100px;">Group</th>
+        <th style="width: 180px;">Status di 4 Pos</th>
+        <th style="width: 100px;">Status</th>
         <th style="width: 170px; text-align: right;">Aksi</th>
       </tr>
     </thead>
     <tbody>
       {% for team in teams %}
+        {% set team_activity = team_station_activity.get(team.id, {}) if team_station_activity else {} %}
         <tr class="{{ 'row-inactive' if not team.is_active }}">
           <td>
             <span class="team-code-badge">{{ team.team_code }}</span>
@@ -104,6 +137,46 @@
           </td>
           <td>
             <span class="group-badge group-{{ team.group.code|lower }}">Group {{ team.group.code }}</span>
+          </td>
+          <td>
+            <!-- Pos Activity Chips -->
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              {% for st in stations %}
+                {% set st_lower = st.name.lower() %}
+                {% if 'software' in st_lower %}
+                  {% set short_name = 'SE' %}
+                {% elif 'cyber' in st_lower %}
+                  {% set short_name = 'CS' %}
+                {% elif 'hardware' in st_lower %}
+                  {% set short_name = 'HW' %}
+                {% elif 'networking' in st_lower %}
+                  {% set short_name = 'NET' %}
+                {% else %}
+                  {% set short_name = st.name[:3]|upper %}
+                {% endif %}
+
+                {% set act = team_activity.get(st.id) %}
+                {% if act %}
+                  {% if act.status in ['SUBMITTED', 'TIMED_OUT'] %}
+                    <span class="nb-badge" style="background: #bbf7d0; color: #166534; border: 1.5px solid #16a34a; font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" title="{{ st.name }}: Selesai{{ ' (Skor: ' ~ act.score ~ ')' if act.score is not none else '' }}">
+                      ✓ {{ short_name }}
+                    </span>
+                  {% elif act.status == 'IN_PROGRESS' %}
+                    <span class="nb-badge" style="background: #fef08a; color: #854d0e; border: 1.5px solid #ca8a04; font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" title="{{ st.name }}: Sedang Mengerjakan">
+                      ⏳ {{ short_name }}
+                    </span>
+                  {% else %}
+                    <span class="nb-badge" style="background: #e0e7ff; color: #3730a3; border: 1.5px solid #6366f1; font-size: 0.68rem; padding: 2px 5px; font-weight: 700;" title="{{ st.name }}: {{ act.status }}">
+                      ● {{ short_name }}
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="nb-badge" style="background: #f3f4f6; color: #9ca3af; border: 1.5px solid #d1d5db; font-size: 0.68rem; padding: 2px 5px; font-weight: 600;" title="{{ st.name }}: Belum ada sesi">
+                    — {{ short_name }}
+                  </span>
+                {% endif %}
+              {% endfor %}
+            </div>
           </td>
           <td>
             {% if team.is_active %}
@@ -142,7 +215,7 @@
         </tr>
       {% else %}
         <tr>
-          <td colspan="6" class="table-empty-message">
+          <td colspan="7" class="table-empty-message">
             <div class="empty-state-box">
               <span class="empty-icon">👥</span>
               <p>Belum ada data tim yang cocok dengan filter yang dipilih.</p>

@@ -94,7 +94,7 @@
       <tr>
         <th style="width: 60px;">No</th>
         <th>Pertanyaan</th>
-        <th style="width: 90px;">Kunci</th>
+        <th style="width: 80px; text-align: center;">Kunci</th>
         <th style="width: 100px;">Bobot</th>
         <th style="width: 110px;">Status</th>
         <th style="width: 170px; text-align: right;">Aksi</th>
@@ -117,8 +117,8 @@
               </div>
             </div>
           </td>
-          <td>
-            <span class="key-badge">KUNCI: {{ q.correct_answer }}</span>
+          <td style="text-align: center;">
+            <span class="key-badge">{{ q.correct_answer }}</span>
           </td>
           <td>
             <span class="weight-badge">{{ q.weight|round(0)|int if q.weight == q.weight|int else q.weight }} Pts</span>

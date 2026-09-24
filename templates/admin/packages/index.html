@@ -1,17 +1,20 @@
 {% extends "admin/base.html" %}
-{% block title %}Paket Soal & Studi Kasus{% endblock %}
+{% block title %}Paket Soal · {{ selected_station.name if selected_station else 'Semua Pos' }}{% endblock %}
 
 {% block content %}
 <div class="page-heading">
   <div class="heading-text">
-    <div class="eyebrow">MODUL MULTI-POS // STUDI KASUS</div>
-    <h1>Paket Soal / Studi Kasus</h1>
-    <p class="welcome-text">Kelola paket tantangan dan studi kasus per pos. Paket dapat diaktifkan, dipetakan ke kelompok, atau diduplikasi.</p>
+    <div class="eyebrow">POS HARDWARE // TANTANGAN STUDI KASUS BUILD PC</div>
+    <h1>Paket Tantangan Hardware (PC Build)</h1>
+    <p class="welcome-text">
+      Kelola paket tantangan studi kasus perakitan PC melalui BuildCores, batasan spesifikasi, dan pembobotan skor.
+      Paket tantangan khusus digunakan untuk <strong>Pos Hardware</strong>. Pos lain (Software Engineering, Cyber Security, Networking) dikelola melalui <strong>Bank Soal</strong>.
+    </p>
   </div>
   <div class="heading-actions">
     {% if selected_station %}
       <a href="{{ url_for('admin.packages_mapping', station_id=selected_station.id) }}" class="btn btn-outline">
-        <span>🗺 Pemetaan Kelompok</span>
+        <span>🗺️ Pemetaan Kelompok A–D</span>
       </a>
       <a href="{{ url_for('admin.packages_create', station_id=selected_station.id) }}" class="btn btn-neon">
         <span>+ Tambah Paket Hardware</span>
@@ -20,14 +23,14 @@
   </div>
 </div>
 
-<!-- Sub Menu Modul Paket -->
+<!-- Sub Menu Modul Paket Hardware -->
 <div class="module-subnav nb-card">
-  <span class="subnav-label">SUB MENU:</span>
+  <span class="subnav-label">SUB MENU HARDWARE:</span>
   <div class="subnav-links">
     <a href="{{ url_for('admin.packages_index', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
        class="subnav-item active">
       <span class="subnav-badge">01</span>
-      <span>📦 Kelola Paket Soal & Studi Kasus</span>
+      <span>📦 Kelola Paket Hardware</span>
     </a>
     <a href="{{ url_for('admin.packages_mapping', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
        class="subnav-item">
@@ -35,18 +38,6 @@
       <span>🗺️ Pemetaan Kelompok A–D</span>
     </a>
   </div>
-</div>
-
-<!-- Station Selector Tabs -->
-<div class="station-filter-tabs nb-card" style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-  <span class="mono-label" style="margin-right: 0.5rem;">PILIH POS:</span>
-  {% for st in stations %}
-    <a href="{{ url_for('admin.packages_index', station_id=st.id) }}"
-       class="nb-badge {{ 'badge-neon' if selected_station and selected_station.id == st.id else 'badge-neutral' }}"
-       style="font-size: 0.9rem; text-decoration: none; padding: 0.4rem 0.8rem; cursor: pointer;">
-      {{ st.name }} ({{ st.challenge_packages|length }} Paket)
-    </a>
-  {% endfor %}
 </div>
 
 <!-- Status Filter & Counter -->
@@ -62,7 +53,7 @@
     {% endfor %}
   </div>
   <div class="mono-sub">
-    Total: <strong>{{ packages|length }}</strong> Paket pada pos ini
+    Total: <strong>{{ packages|length }}</strong> Paket pada pos {{ selected_station.name if selected_station else 'ini' }}
   </div>
 </div>
 
@@ -72,12 +63,12 @@
       <thead>
         <tr>
           <th style="width: 110px;">Kode Paket</th>
-          <th>Judul Tantangan & Studi Kasus</th>
-          <th style="width: 140px;">Tipe Tantangan</th>
-          <th style="width: 90px;">Durasi</th>
+          <th>Judul Paket / Studi Kasus</th>
+          <th style="width: 150px;">Tipe Modul</th>
+          <th style="width: 80px;">Durasi</th>
           <th style="width: 120px;">Kelompok</th>
-          <th style="width: 110px;">Status</th>
-          <th style="width: 260px; text-align: right;">Aksi</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 300px; text-align: right;">Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -94,9 +85,15 @@
               </div>
             </td>
             <td>
-              <span class="nb-badge badge-neutral badge-xs">
-                {{ 'BUILD PC' if p.challenge_type == 'hardware_build_challenge' else p.challenge_type|upper }}
-              </span>
+              {% if p.challenge_type == 'hardware_build_challenge' %}
+                <span class="nb-badge badge-warning badge-xs">BUILD PC</span>
+              {% elif p.challenge_type == 'quiz_member_rotation' %}
+                <span class="nb-badge badge-neon badge-xs">KUIS ROTASI</span>
+              {% elif p.challenge_type == 'networking_3stage' %}
+                <span class="nb-badge badge-neutral badge-xs" style="background: #93c5fd; color: #000; font-weight: 700;">3-TAHAP</span>
+              {% else %}
+                <span class="nb-badge badge-neutral badge-xs" style="background: #e9d5ff; color: #000; font-weight: 700;">KUIS BERSAMA</span>
+              {% endif %}
             </td>
             <td>
               <span class="mono-val">{{ p.duration_minutes }}m</span>
@@ -122,7 +119,14 @@
               {% endif %}
             </td>
             <td style="text-align: right;">
-              <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end;">
+              <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                <!-- Link Langsung Kelola Soal untuk Paket Kuis -->
+                {% if p.question_set_id %}
+                  <a href="{{ url_for('admin.question_set_detail', set_id=p.question_set_id) }}" class="btn btn-primary btn-xs" title="Kelola Butir Soal Kuis">
+                    <span>📝 Soal</span>
+                  </a>
+                {% endif %}
+
                 <!-- Preview -->
                 <a href="{{ url_for('admin.packages_preview', package_id=p.id) }}" class="btn btn-outline btn-xs" title="Preview Tampilan Peserta">
                   <span>👁 Preview</span>

@@ -9,7 +9,10 @@ from models import (
     Group,
     GroupPackageMapping,
     PackageStatus,
+    QuestionSet,
+    QuestionSetStatus,
     Station,
+    StationMode,
     Submission,
     db,
 )
@@ -336,4 +339,92 @@ def archive_package(package_id: int) -> tuple[bool, str]:
 def delete_package(package_id: int) -> tuple[bool, str]:
     """Alias untuk delete_or_archive_package."""
     return delete_or_archive_package(package_id)
+
+
+def sync_quiz_packages_for_station(station_id: int) -> int:
+    """
+    Menyelaraskan QuestionSet pada pos kuis (Software Engineering, Cyber Security, Networking)
+    ke dalam ChallengePackage secara otomatis dan idempotent.
+    Memastikan pos kuis memiliki paket yang dapat dipetakan ke kelompok A-D tanpa campur aduk hardware.
+    """
+    station = db.session.get(Station, station_id)
+    if not station or not station.is_active:
+        return 0
+
+    # Khusus Hardware dikelola secara mandiri lewat tantangan build PC
+    if station.name.lower() == "hardware":
+        return 0
+
+    question_sets = db.session.scalars(
+        db.select(QuestionSet).where(QuestionSet.station_id == station.id).order_by(QuestionSet.code.asc())
+    ).all()
+
+    created_count = 0
+    for qs in question_sets:
+        # Cek apakah sudah ada ChallengePackage yang menunjuk ke question_set_id ini
+        existing = db.session.scalar(
+            db.select(ChallengePackage).where(
+                ChallengePackage.station_id == station.id,
+                ChallengePackage.question_set_id == qs.id,
+            )
+        )
+        if not existing:
+            # Juga cek berdasarkan package_code agar tidak duplikat
+            pkg_code = f"Set {qs.code}" if not qs.code.startswith("Set ") and not qs.code.startswith("Paket ") else qs.code
+            existing_by_code = db.session.scalar(
+                db.select(ChallengePackage).where(
+                    ChallengePackage.station_id == station.id,
+                    ChallengePackage.package_code == pkg_code,
+                )
+            )
+            if existing_by_code:
+                if not existing_by_code.question_set_id:
+                    existing_by_code.question_set_id = qs.id
+                continue
+
+            # Tentukan tipe tantangan dan durasi default berdasarkan mode pos
+            if station.mode == StationMode.MEMBER_ROTATION or "software" in station.name.lower():
+                ch_type = "quiz_member_rotation"
+                title = f"{pkg_code}: {qs.name} (Rotasi Anggota)"
+                desc = f"Paket kuis rotasi anggota tim ({qs.name}). Peserta mengerjakan porsi soalnya secara bergantian per 10 menit."
+                duration = 40
+            elif "networking" in station.name.lower():
+                ch_type = "networking_3stage"
+                title = f"{pkg_code}: {qs.name} (3-Tahap Jaringan)"
+                desc = f"Paket soal 3-tahap pos Networking: Tahap 1 PG, Tahap 2 Benar-Salah, Tahap 3 Isian Singkat Studi Kasus."
+                duration = 30
+            else:
+                ch_type = "quiz_standard"
+                title = f"{pkg_code}: {qs.name} (Kuis Bersama)"
+                desc = f"Paket soal kuis pilihan ganda {qs.name} dikerjakan bersama oleh tim peserta."
+                duration = 30
+
+            pkg_status = PackageStatus.ACTIVE if qs.status == QuestionSetStatus.READY else PackageStatus.DRAFT
+
+            new_pkg = ChallengePackage(
+                station_id=station.id,
+                package_code=pkg_code,
+                title=title,
+                description=desc,
+                instructions="Jawab seluruh pertanyaan kuis dengan teliti sebelum durasi waktu sesi perlombaan berakhir.",
+                challenge_type=ch_type,
+                external_tool_url=None,
+                rules_config=None,
+                scoring_config=None,
+                duration_minutes=duration,
+                status=pkg_status,
+                question_set_id=qs.id,
+            )
+            db.session.add(new_pkg)
+            created_count += 1
+
+    if created_count > 0:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    return created_count
+
 

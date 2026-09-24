@@ -14,6 +14,7 @@ from flask import (
     url_for,
 )
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from werkzeug.security import check_password_hash
 
 from forms.admin import LoginForm
@@ -29,6 +30,7 @@ from forms.package import (
     HardwarePackageForm,
     PackageActionForm,
     PackageMappingForm,
+    QuizPackageForm,
 )
 from forms.session import SessionActionForm, SessionForm
 from forms.team import TeamCSVUploadForm, TeamForm, TeamImportConfirmForm
@@ -72,6 +74,7 @@ from services.package_service import (
     is_package_editable,
     is_package_used,
     set_package_status,
+    sync_quiz_packages_for_station,
     update_package,
 )
 from services.leaderboard_service import (
@@ -131,11 +134,24 @@ def load_current_admin():
 
     # Context pos aktif yang sedang dikelola admin
     station_id = session.get("admin_station_id")
-    if station_id:
+    if station_id and station_id != 0:
         st = db.session.get(Station, station_id)
         g.active_station = st if (st and st.is_active) else None
     else:
         g.active_station = None
+
+    # Wajib pilih pos setelah login jika belum menentukan pos atau mode global:
+    allowed_endpoints = {
+        "admin.station_select",
+        "admin.set_station",
+        "admin.clear_station",
+        "admin.login",
+        "admin.logout",
+    }
+    if not current_app.testing and "admin_station_id" not in session and request.endpoint and request.endpoint.startswith("admin."):
+        if request.endpoint not in allowed_endpoints:
+            flash("Silakan pilih pos lomba yang ingin dikelola terlebih dahulu.", "info")
+            return redirect(url_for("admin.station_select"))
 
     return None
 
@@ -143,7 +159,7 @@ def load_current_admin():
 @admin_bp.route("/login", methods=["GET", "POST"])
 def login():
     if g.current_admin is not None:
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.station_select"))
     form = LoginForm()
     if form.validate_on_submit():
         username = form.username.data.strip()
@@ -151,8 +167,8 @@ def login():
         if admin and admin.is_active and check_password_hash(admin.password_hash, form.password.data):
             session.clear()
             session["admin_id"] = admin.id
-            flash("Login berhasil.", "success")
-            return redirect(url_for("admin.dashboard"))
+            flash("Login berhasil. Silakan pilih pos lomba yang akan dikelola.", "success")
+            return redirect(url_for("admin.station_select"))
         flash("Username atau password salah.", "error")
     return render_template("admin/login.html", form=form)
 
@@ -169,14 +185,22 @@ def logout():
 @admin_required
 def station_select():
     """Halaman pemilihan pos bagi admin untuk menentukan fokus operasional pos."""
+    station_order = db.case(
+        {"Software Engineering": 1, "Cyber Security": 2, "Hardware": 3, "Networking": 4},
+        value=Station.name,
+        else_=99,
+    )
     stations = db.session.scalars(
-        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+        db.select(Station).where(Station.is_active.is_(True)).order_by(station_order, Station.id.asc())
     ).all()
 
     station_meta = []
     for st in stations:
         is_hw = (st.name.lower() == "hardware")
         is_net = (st.name.lower() == "networking")
+        is_se = (st.name.lower() == "software engineering" or st.mode.value == "member_rotation")
+        is_cyber = (st.name.lower() == "cyber security")
+
         if is_hw:
             pkg_cnt = db.session.scalar(db.select(db.func.count()).select_from(ChallengePackage).where(ChallengePackage.station_id == st.id)) or 0
             pending_cnt = db.session.scalar(
@@ -189,11 +213,16 @@ def station_select():
             act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
             meta = {
                 "station": st,
-                "type": "Hardware Challenge",
-                "badge": "BuildCores Challenge",
+                "type": "Hardware PC Challenge",
+                "badge": "BuildCores PC Challenge",
+                "badge_class": "badge-cyan",
+                "card_class": "card-cyan",
                 "icon": "💻",
-                "desc": "Studi kasus perakitan PC via BuildCores, form data spesifikasi & bukti screenshot, serta verifikasi juri.",
+                "desc": "Tantangan simulasi rakit PC via BuildCores dengan skenario kasus, batasan anggaran, dan penilaian spesifikasi.",
+                "work_method": "Peserta merakit PC di BuildCores sesuai budget & kriteria, menginput form spek/harga, mengunggah bukti screenshot, lalu diverifikasi oleh juri.",
+                "question_method": "Bukan kuis PG! Menggunakan Paket Studi Kasus Hardware (form target max budget, skor CPU/GPU, parts wajib/larangan).",
                 "packages_count": pkg_cnt,
+                "packages_label": "Paket Studi Kasus",
                 "pending_count": pending_cnt,
                 "active_sessions": act_sess,
                 "is_hardware": True,
@@ -213,24 +242,54 @@ def station_select():
                 "station": st,
                 "type": "Networking 3-Tahap",
                 "badge": "Signal Check & Stamp",
+                "badge_class": "badge-neon",
+                "card_class": "card-white",
                 "icon": "🌐",
-                "desc": "Kuis tim 3 tahap (Signal Check, True or Trap, Case Signal), verifikasi jawaban isian, dan evaluasi Stamp.",
+                "desc": "Kuis tim multi-tahap (Signal Check, True or Trap, Case Signal) dengan konsol live monitoring dan verifikasi stamp.",
+                "work_method": "Peserta mengerjakan kuis 3 tahap bertingkat. Jawaban kasus jaringan diverifikasi panitia untuk mendapatkan Stamp kelulusan tahap.",
+                "question_method": "Bank Soal 3-Tahap Jaringan (pilihan ganda bertahap & isian studi kasus jaringan) via Bank Soal atau Import JSON.",
                 "packages_count": q_cnt,
+                "packages_label": "Bank Soal 3-Tahap",
                 "pending_count": pending_cnt,
                 "active_sessions": act_sess,
                 "is_hardware": False,
                 "is_networking": True,
+            }
+        elif is_se:
+            q_cnt = db.session.scalar(db.select(db.func.count()).select_from(QuestionSet).where(QuestionSet.station_id == st.id)) or 0
+            act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
+            meta = {
+                "station": st,
+                "type": "Software Engineering",
+                "badge": "Rotasi Anggota Tim",
+                "badge_class": "badge-yellow",
+                "card_class": "card-yellow",
+                "icon": "⚙️",
+                "desc": "Kuis pemrograman & rekayasa perangkat lunak interaktif dengan aturan rotasi giliran anggota tim per butir/set soal.",
+                "work_method": "Peserta menjawab soal dengan giliran bergantian antar anggota tim sesuai putaran rotasi sesi.",
+                "question_method": "Bank Soal Kuis PG (Set A–D) pilihan ganda A–E, bobot poin, kunci jawaban, dan sinkronisasi nomor rotasi.",
+                "packages_count": q_cnt,
+                "packages_label": "Set Soal Rotasi",
+                "pending_count": 0,
+                "active_sessions": act_sess,
+                "is_hardware": False,
+                "is_networking": False,
             }
         else:
             q_cnt = db.session.scalar(db.select(db.func.count()).select_from(QuestionSet).where(QuestionSet.station_id == st.id)) or 0
             act_sess = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.station_id == st.id, CompetitionSession.status == SessionStatus.RUNNING)) or 0
             meta = {
                 "station": st,
-                "type": "Quiz Challenge",
-                "badge": "Rotasi Anggota" if st.mode.value == "member_rotation" else "Kuis Standar",
-                "icon": "⚙️" if st.mode.value == "member_rotation" else "🛡️",
-                "desc": "Kuis pilihan ganda interaktif dengan " + ("sistem rotasi giliran anggota tim per paket soal." if st.mode.value == "member_rotation" else "pengerjaan soal standar."),
+                "type": "Cyber Security",
+                "badge": "Kuis Standar Tim",
+                "badge_class": "badge-black",
+                "card_class": "card-white",
+                "icon": "🛡️",
+                "desc": "Kuis keamanan siber pilihan ganda interaktif yang dikerjakan secara kolaboratif bersama seluruh anggota tim.",
+                "work_method": "Pengerjaan kuis pilihan ganda kolaboratif oleh seluruh anggota tim secara serentak.",
+                "question_method": "Bank Soal Kuis PG (Set A–D) pilihan ganda A–E, bobot nilai, kunci jawaban, serta import JSON.",
                 "packages_count": q_cnt,
+                "packages_label": "Set Soal Kuis",
                 "pending_count": 0,
                 "active_sessions": act_sess,
                 "is_hardware": False,
@@ -238,7 +297,16 @@ def station_select():
             }
         station_meta.append(meta)
 
-    return render_template("admin/station_select.html", station_meta=station_meta)
+    # Telemetri agregat untuk Mode Global (Pilihan ke-5)
+    total_active_sessions = db.session.scalar(db.select(db.func.count()).select_from(CompetitionSession).where(CompetitionSession.status == SessionStatus.RUNNING)) or 0
+    total_teams_count = db.session.scalar(db.select(db.func.count()).select_from(Team).where(Team.is_active.is_(True))) or 0
+
+    global_meta = {
+        "total_active_sessions": total_active_sessions,
+        "total_teams_count": total_teams_count,
+    }
+
+    return render_template("admin/station_select.html", station_meta=station_meta, global_meta=global_meta)
 
 
 @admin_bp.get("/set-station/<int:station_id>")
@@ -246,8 +314,8 @@ def station_select():
 def set_station(station_id: int):
     """Mengatur pos aktif yang dikelola admin."""
     if station_id == 0:
-        session.pop("admin_station_id", None)
-        flash("Mode operasional diatur ke: Semua Pos (Mode Global).", "info")
+        session["admin_station_id"] = 0
+        flash("Mode operasional diatur ke: Mode Global (Semua Pos).", "info")
         return redirect(url_for("admin.dashboard"))
 
     st = db.session.get(Station, station_id)
@@ -256,17 +324,22 @@ def set_station(station_id: int):
         return redirect(url_for("admin.station_select"))
 
     session["admin_station_id"] = st.id
-    flash(f"Pos aktif berhasil diatur ke: Pos {st.name}.", "success")
-    return redirect(url_for("admin.dashboard"))
+    flash(f"Berhasil masuk ke: Pos {st.name}.", "success")
+    if st.name.lower() == "networking":
+        return redirect(url_for("admin.networking_lobby"))
+    elif st.name.lower() == "hardware":
+        return redirect(url_for("admin.dashboard"))
+    else:
+        return redirect(url_for("admin.dashboard"))
 
 
 @admin_bp.get("/set-station/clear")
 @admin_required
 def clear_station():
-    """Menghapus filter pos aktif dan kembali ke Mode Global."""
+    """Menghapus pilihan pos aktif dan kembali ke halaman pemilihan pos."""
     session.pop("admin_station_id", None)
-    flash("Beralih ke Mode Global (Semua Pos).", "info")
-    return redirect(url_for("admin.dashboard"))
+    flash("Silakan pilih pos lomba yang ingin dikelola.", "info")
+    return redirect(url_for("admin.station_select"))
 
 
 @admin_bp.get("/dashboard")
@@ -452,11 +525,17 @@ def dashboard():
 @admin_required
 def questions_index():
     """Daftar seluruh question set dikelompokkan berdasarkan station aktif."""
+    if g.active_station and g.active_station.name.lower() == "hardware":
+        flash("Pos Hardware menggunakan sistem Paket Studi Kasus PC Challenge (bukan Bank Soal PG). Mengarahkan ke menu Paket Soal Hardware.", "info")
+        return redirect(url_for("admin.packages_index", station_id=g.active_station.id))
+
     ensure_default_question_sets()
 
     selected_station_id = request.args.get("station_id", type=int)
-    if not selected_station_id and g.active_station and g.active_station.name.lower() != "hardware":
+    if g.active_station:
         selected_station_id = g.active_station.id
+    elif not selected_station_id and all_stations:
+        selected_station_id = all_stations[0].id
 
     station_priority = db.case(
         {"Software Engineering": 1, "Cyber Security": 2, "Hardware": 3, "Networking": 4},
@@ -490,6 +569,10 @@ def question_set_detail(set_id: int):
     question_set = db.session.get(QuestionSet, set_id)
     if question_set is None:
         abort(404)
+
+    if g.active_station and question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Bank soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
 
     status_filter = request.args.get("status", "all").strip().lower()
     search_query = request.args.get("search", "").strip()
@@ -537,6 +620,10 @@ def question_create(set_id: int):
     question_set = db.session.get(QuestionSet, set_id)
     if question_set is None:
         abort(404)
+
+    if g.active_station and question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Bank soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
 
     editable, reason = is_question_set_editable(question_set)
     if not editable:
@@ -591,6 +678,10 @@ def question_edit(question_id: int):
     if question is None:
         abort(404)
 
+    if g.active_station and question.question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
+
     question_set = question.question_set
     editable, reason = is_question_set_editable(question_set)
     if not editable:
@@ -639,6 +730,10 @@ def question_delete(question_id: int):
     if question is None:
         abort(404)
 
+    if g.active_station and question.question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
+
     form = EmptyForm()
     if not form.validate_on_submit():
         flash("Token CSRF tidak valid.", "error")
@@ -668,6 +763,10 @@ def question_restore(question_id: int):
     if question is None:
         abort(404)
 
+    if g.active_station and question.question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
+
     form = EmptyForm()
     if not form.validate_on_submit():
         flash("Token CSRF tidak valid.", "error")
@@ -696,6 +795,10 @@ def question_permanent_delete(question_id: int):
     question = db.session.get(Question, question_id)
     if question is None:
         abort(404)
+
+    if g.active_station and question.question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
 
     form = EmptyForm()
     if not form.validate_on_submit():
@@ -731,6 +834,10 @@ def question_set_status(set_id: int):
     question_set = db.session.get(QuestionSet, set_id)
     if question_set is None:
         abort(404)
+
+    if g.active_station and question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Bank soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
 
     form = QuestionSetStatusForm()
     if form.validate_on_submit():
@@ -785,6 +892,10 @@ def question_set_preview(set_id: int):
     if question_set is None:
         abort(404)
 
+    if g.active_station and question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Bank soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
+
     active_questions = [
         q for q in sorted(question_set.questions, key=lambda x: (x.order_number, x.id))
         if q.is_active
@@ -806,13 +917,20 @@ def question_set_preview(set_id: int):
 def questions_import():
     """Upload dan validasi berkas JSON Bank Soal."""
     form = QuestionJSONUploadForm()
-    active_stations = db.session.scalars(
-        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
-    ).all()
-    form.station_id.choices = [
-        (s.id, f"{s.name} ({'BELUM DIKETAHUI' if s.mode == StationMode.BELUM_DIKETAHUI else s.mode.value})")
-        for s in active_stations
-    ]
+    if g.active_station:
+        form.station_id.choices = [
+            (g.active_station.id, f"{g.active_station.name} ({'BELUM DIKETAHUI' if g.active_station.mode == StationMode.BELUM_DIKETAHUI else g.active_station.mode.value})")
+        ]
+        if request.method == "GET":
+            form.station_id.data = g.active_station.id
+    else:
+        active_stations = db.session.scalars(
+            db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
+        ).all()
+        form.station_id.choices = [
+            (s.id, f"{s.name} ({'BELUM DIKETAHUI' if s.mode == StationMode.BELUM_DIKETAHUI else s.mode.value})")
+            for s in active_stations
+        ]
 
     if form.validate_on_submit():
         file = form.file.data
@@ -960,12 +1078,36 @@ def teams_index():
     active_teams = db.session.scalar(db.select(db.func.count()).select_from(Team).where(Team.is_active.is_(True)))
 
     groups = db.session.scalars(db.select(Group).order_by(Group.code.asc())).all()
+    stations = db.session.scalars(db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())).all()
+
+    # Hitung keikutsertaan / aktivitas tiap tim di seluruh pos lomba secara global
+    team_ids = [t.id for t in teams]
+    team_station_activity = {t.id: {} for t in teams}
+    if team_ids:
+        submissions = db.session.scalars(
+            db.select(Submission)
+            .options(
+                joinedload(Submission.session).joinedload(CompetitionSession.station),
+                joinedload(Submission.score),
+            )
+            .where(Submission.team_id.in_(team_ids))
+        ).unique().all()
+        for sub in submissions:
+            if sub.session and sub.session.station:
+                team_station_activity[sub.team_id][sub.session.station_id] = {
+                    "status": sub.status.value,
+                    "score": sub.score.final_score if sub.score else None,
+                    "station_name": sub.session.station.name,
+                }
+
     empty_form = EmptyForm()
 
     return render_template(
         "admin/teams/index.html",
         teams=teams,
         groups=groups,
+        stations=stations,
+        team_station_activity=team_station_activity,
         total_teams=total_teams,
         active_teams=active_teams,
         search_query=search_query,
@@ -1187,26 +1329,44 @@ def teams_template_csv():
 # ==============================================================================
 
 def _populate_session_form_choices(form, station_id=None):
-    active_stations = db.session.scalars(
-        db.select(Station).where(Station.is_active.is_(True)).order_by(Station.name)
-    ).all()
-    form.station_id.choices = [
-        (s.id, f"{s.name} ({'BELUM DIKETAHUI' if s.mode == StationMode.BELUM_DIKETAHUI else s.mode.value})")
-        for s in active_stations
-    ]
+    if g.active_station:
+        st_active = g.active_station
+        form.station_id.choices = [
+            (st_active.id, f"{st_active.name} ({'BELUM DIKETAHUI' if st_active.mode == StationMode.BELUM_DIKETAHUI else st_active.mode.value})")
+        ]
+        if st_active.name.lower() == "hardware":
+            form.question_set_id.choices = [(0, "Tanpa bank soal — khusus Hardware (paket studi kasus)")]
+        else:
+            ready_sets = db.session.scalars(
+                db.select(QuestionSet)
+                .where(QuestionSet.station_id == st_active.id, QuestionSet.status == QuestionSetStatus.READY)
+                .order_by(QuestionSet.code)
+            ).all()
+            form.question_set_id.choices = [
+                (qs.id, f"Set {qs.code} ({qs.name})") for qs in ready_sets
+            ]
+            if not form.question_set_id.choices:
+                form.question_set_id.choices = [(0, "-- Belum ada bank soal READY pada pos ini --")]
+    else:
+        active_stations = db.session.scalars(
+            db.select(Station).where(Station.is_active.is_(True)).order_by(Station.name)
+        ).all()
+        form.station_id.choices = [
+            (s.id, f"{s.name} ({'BELUM DIKETAHUI' if s.mode == StationMode.BELUM_DIKETAHUI else s.mode.value})")
+            for s in active_stations
+        ]
+        ready_sets = db.session.scalars(
+            db.select(QuestionSet)
+            .join(Station)
+            .where(QuestionSet.status == QuestionSetStatus.READY)
+            .order_by(Station.name, QuestionSet.code)
+        ).all()
+        form.question_set_id.choices = [(0, "Tanpa bank soal — khusus Hardware (paket studi kasus)")] + [
+            (qs.id, f"{qs.station.name} — Set {qs.code} ({qs.name})") for qs in ready_sets
+        ]
 
     groups = db.session.scalars(db.select(Group).order_by(Group.code)).all()
     form.group_id.choices = [(g.id, f"Kelompok {g.code}") for g in groups]
-
-    ready_sets = db.session.scalars(
-        db.select(QuestionSet)
-        .join(Station)
-        .where(QuestionSet.status == QuestionSetStatus.READY)
-        .order_by(Station.name, QuestionSet.code)
-    ).all()
-    form.question_set_id.choices = [(0, "Tanpa bank soal — khusus Hardware (paket studi kasus)")] + [
-        (qs.id, f"{qs.station.name} — Set {qs.code} ({qs.name})") for qs in ready_sets
-    ]
 
 
 @admin_bp.get("/sessions")
@@ -1582,25 +1742,21 @@ def results_export_csv():
 @admin_bp.get("/packages")
 @admin_required
 def packages_index():
-    """Daftar seluruh paket soal / studi kasus dikelompokkan berdasarkan pos."""
-    station_id = request.args.get("station_id", type=int)
+    """Daftar paket studi kasus hardware (khusus Pos Hardware)."""
+    # Hanya Pos Hardware yang memiliki paket tantangan
+    if g.active_station and g.active_station.name.lower() != "hardware":
+        flash(f"Paket tantangan hanya digunakan untuk Pos Hardware. Pos {g.active_station.name} dikelola melalui Bank Soal.", "info")
+        return redirect(url_for("admin.questions_index", station_id=g.active_station.id))
+
     status_filter = request.args.get("status", type=str)
 
     all_stations = db.session.scalars(
         db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
     ).all()
 
-    selected_station = None
-    if station_id:
-        selected_station = db.session.get(Station, station_id)
-    elif g.active_station:
-        selected_station = g.active_station
-        station_id = selected_station.id
-    elif all_stations:
-        # Prioritaskan Pos Hardware jika ada
-        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
-        selected_station = hw_st or all_stations[0]
-        station_id = selected_station.id
+    hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+    selected_station = g.active_station or hw_st
+    station_id = selected_station.id if selected_station else None
 
     packages = get_packages_by_station(station_id=station_id, status=status_filter)
 
@@ -1624,7 +1780,7 @@ def packages_index():
 
     return render_template(
         "admin/packages/index.html",
-        stations=all_stations,
+        stations=[hw_st] if hw_st else all_stations,
         selected_station=selected_station,
         packages=package_data,
         status_filter=status_filter or "all",
@@ -1635,29 +1791,32 @@ def packages_index():
 @admin_bp.route("/packages/create", methods=["GET", "POST"])
 @admin_required
 def packages_create():
-    """Form pembuatan paket soal / studi kasus baru."""
+    """Form pembuatan paket tantangan studi kasus hardware baru (khusus Pos Hardware)."""
+    if g.active_station and g.active_station.name.lower() != "hardware":
+        flash("Paket tantangan hanya digunakan untuk Pos Hardware. Pos lain dikelola melalui Bank Soal.", "warning")
+        return redirect(url_for("admin.questions_index", station_id=g.active_station.id))
+
     all_stations = db.session.scalars(
         db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
     ).all()
 
-    selected_station_id = request.args.get("station_id", type=int)
-    if not selected_station_id and g.active_station:
-        selected_station_id = g.active_station.id
-    elif not selected_station_id and all_stations:
-        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
-        selected_station_id = (hw_st or all_stations[0]).id
+    hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+    selected_station = g.active_station or hw_st
+    if not selected_station:
+        abort(404)
+
+    selected_station_id = selected_station.id
 
     form = HardwarePackageForm()
-    form.station_id.choices = [(s.id, f"{s.name}") for s in all_stations]
+    form.station_id.choices = [(selected_station.id, f"{selected_station.name}")]
 
     if request.method == "GET":
         form.station_id.data = selected_station_id
         form.package_code.data = generate_next_package_code(selected_station_id)
 
     if form.validate_on_submit():
-        st_id = form.station_id.data
+        st_id = selected_station.id
         pkg_code = form.package_code.data.strip()
-
         budget_val = form.max_budget.data if form.max_budget.data is not None else request.form.get("budget_max")
         budget_float = float(budget_val or 1500.0)
 
@@ -1706,7 +1865,7 @@ def packages_create():
                 duration_minutes=form.duration_minutes.data,
                 status=status_enum,
             )
-            flash(f"Paket '{new_pkg.package_code}' ({new_pkg.title}) berhasil dibuat.", "success")
+            flash(f"Paket Hardware '{new_pkg.package_code}' ({new_pkg.title}) berhasil dibuat.", "success")
             return redirect(url_for("admin.packages_index", station_id=st_id))
         except ValueError as e:
             flash(str(e), "error")
@@ -1714,9 +1873,9 @@ def packages_create():
     return render_template(
         "admin/packages/form_hardware.html",
         form=form,
-        is_edit=False,
-        stations=all_stations,
+        stations=[hw_st] if hw_st else all_stations,
         selected_station_id=selected_station_id,
+        is_edit=False,
     )
 
 
@@ -1728,6 +1887,11 @@ def packages_edit(package_id: int):
     if not package:
         abort(404)
 
+    # Validasi kepemilikan paket jika dalam konteks pos aktif
+    if g.active_station and package.station_id != g.active_station.id:
+        flash("Akses ditolak. Paket ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.packages_index", station_id=g.active_station.id))
+
     editable, reason = is_package_editable(package)
     if not editable:
         flash(reason, "error")
@@ -1737,96 +1901,102 @@ def packages_edit(package_id: int):
         db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
     ).all()
 
-    form = HardwarePackageForm(obj=package)
-    form.station_id.choices = [(s.id, f"{s.name}") for s in all_stations]
+    # Jika paket bertipe hardware
+    if package.challenge_type == "hardware_build_challenge":
+        form = HardwarePackageForm(obj=package)
+        form.station_id.choices = [(s.id, f"{s.name}") for s in all_stations]
 
-    if request.method == "GET":
-        form.station_id.data = package.station_id
-        form.status.data = package.status.value
-        rules = package.rules_config or {}
-        scoring = package.scoring_config or {}
+        if request.method == "GET":
+            form.station_id.data = package.station_id
+            form.status.data = package.status.value
+            rules = package.rules_config or {}
+            scoring = package.scoring_config or {}
 
-        form.max_budget.data = rules.get("max_budget", 1500.0)
-        form.currency.data = rules.get("currency", "USD")
-        form.region.data = rules.get("region", "United States")
-        form.min_cpu_score.data = rules.get("min_cpu_score", 1000.0)
-        form.min_gpu_score.data = rules.get("min_gpu_score", 2000.0)
-        form.min_ram_gb.data = rules.get("min_ram_gb", 16.0)
-        form.min_storage_gb.data = rules.get("min_storage_gb", 512.0)
-        form.min_psu_watt.data = rules.get("min_psu_watt", 550.0)
-        form.required_components.data = rules.get("required_components", "")
-        form.forbidden_components.data = rules.get("forbidden_components", "")
-        form.used_parts_allowed.data = rules.get("used_parts_allowed", False)
-        form.custom_price_allowed.data = rules.get("custom_price_allowed", False)
-        form.discount_allowed.data = rules.get("discount_allowed", True)
-        form.extra_notes.data = rules.get("extra_notes", "")
+            form.max_budget.data = rules.get("max_budget", 1500.0)
+            form.currency.data = rules.get("currency", "USD")
+            form.region.data = rules.get("region", "United States")
+            form.min_cpu_score.data = rules.get("min_cpu_score", 1000.0)
+            form.min_gpu_score.data = rules.get("min_gpu_score", 2000.0)
+            form.min_ram_gb.data = rules.get("min_ram_gb", 16.0)
+            form.min_storage_gb.data = rules.get("min_storage_gb", 512.0)
+            form.min_psu_watt.data = rules.get("min_psu_watt", 550.0)
+            form.required_components.data = rules.get("required_components", "")
+            form.forbidden_components.data = rules.get("forbidden_components", "")
+            form.used_parts_allowed.data = rules.get("used_parts_allowed", False)
+            form.custom_price_allowed.data = rules.get("custom_price_allowed", False)
+            form.discount_allowed.data = rules.get("discount_allowed", True)
+            form.extra_notes.data = rules.get("extra_notes", "")
 
-        form.weight_compatibility.data = scoring.get("weight_compatibility", 20.0)
-        form.weight_budget.data = scoring.get("weight_budget", 15.0)
-        form.weight_cpu_target.data = scoring.get("weight_cpu_target", 15.0)
-        form.weight_gpu_target.data = scoring.get("weight_gpu_target", 20.0)
-        form.weight_completeness.data = scoring.get("weight_completeness", 10.0)
-        form.weight_efficiency.data = scoring.get("weight_efficiency", 15.0)
-        form.weight_time_bonus.data = scoring.get("weight_time_bonus", 5.0)
+            form.weight_compatibility.data = scoring.get("weight_compatibility", 20.0)
+            form.weight_budget.data = scoring.get("weight_budget", 15.0)
+            form.weight_cpu_target.data = scoring.get("weight_cpu_target", 15.0)
+            form.weight_gpu_target.data = scoring.get("weight_gpu_target", 20.0)
+            form.weight_completeness.data = scoring.get("weight_completeness", 10.0)
+            form.weight_efficiency.data = scoring.get("weight_efficiency", 15.0)
+            form.weight_time_bonus.data = scoring.get("weight_time_bonus", 5.0)
 
-    if form.validate_on_submit():
-        rules_cfg = {
-            "max_budget": float(form.max_budget.data or 1500.0),
-            "budget_max": float(form.max_budget.data or 1500.0),
-            "currency": form.currency.data.strip() or "USD",
-            "region": form.region.data.strip() or "United States",
-            "min_cpu_score": float(form.min_cpu_score.data or 1000.0),
-            "min_gpu_score": float(form.min_gpu_score.data or 2000.0),
-            "min_ram_gb": float(form.min_ram_gb.data or 16.0),
-            "min_storage_gb": float(form.min_storage_gb.data or 512.0),
-            "min_psu_watt": float(form.min_psu_watt.data or 550.0) if form.min_psu_watt.data else None,
-            "required_components": form.required_components.data.strip() if form.required_components.data else "",
-            "forbidden_components": form.forbidden_components.data.strip() if form.forbidden_components.data else "",
-            "used_parts_allowed": bool(form.used_parts_allowed.data),
-            "custom_price_allowed": bool(form.custom_price_allowed.data),
-            "discount_allowed": bool(form.discount_allowed.data),
-            "extra_notes": form.extra_notes.data.strip() if form.extra_notes.data else "",
-        }
+        if form.validate_on_submit():
+            rules_cfg = {
+                "max_budget": float(form.max_budget.data or 1500.0),
+                "budget_max": float(form.max_budget.data or 1500.0),
+                "currency": form.currency.data.strip() or "USD",
+                "region": form.region.data.strip() or "United States",
+                "min_cpu_score": float(form.min_cpu_score.data or 1000.0),
+                "min_gpu_score": float(form.min_gpu_score.data or 2000.0),
+                "min_ram_gb": float(form.min_ram_gb.data or 16.0),
+                "min_storage_gb": float(form.min_storage_gb.data or 512.0),
+                "min_psu_watt": float(form.min_psu_watt.data or 550.0) if form.min_psu_watt.data else None,
+                "required_components": form.required_components.data.strip() if form.required_components.data else "",
+                "forbidden_components": form.forbidden_components.data.strip() if form.forbidden_components.data else "",
+                "used_parts_allowed": bool(form.used_parts_allowed.data),
+                "custom_price_allowed": bool(form.custom_price_allowed.data),
+                "discount_allowed": bool(form.discount_allowed.data),
+                "extra_notes": form.extra_notes.data.strip() if form.extra_notes.data else "",
+            }
 
-        scoring_cfg = {
-            "weight_compatibility": float(form.weight_compatibility.data or 20.0),
-            "weight_budget": float(form.weight_budget.data or 15.0),
-            "weight_cpu_target": float(form.weight_cpu_target.data or 15.0),
-            "weight_cpu": float(form.weight_cpu_target.data or 15.0),
-            "weight_gpu_target": float(form.weight_gpu_target.data or 20.0),
-            "weight_gpu": float(form.weight_gpu_target.data or 20.0),
-            "weight_completeness": float(form.weight_completeness.data or 10.0),
-            "weight_efficiency": float(form.weight_efficiency.data or 15.0),
-            "weight_time_bonus": float(form.weight_time_bonus.data or 5.0),
-        }
+            scoring_cfg = {
+                "weight_compatibility": float(form.weight_compatibility.data or 20.0),
+                "weight_budget": float(form.weight_budget.data or 15.0),
+                "weight_cpu_target": float(form.weight_cpu_target.data or 15.0),
+                "weight_cpu": float(form.weight_cpu_target.data or 15.0),
+                "weight_gpu_target": float(form.weight_gpu_target.data or 20.0),
+                "weight_gpu": float(form.weight_gpu_target.data or 20.0),
+                "weight_completeness": float(form.weight_completeness.data or 10.0),
+                "weight_efficiency": float(form.weight_efficiency.data or 15.0),
+                "weight_time_bonus": float(form.weight_time_bonus.data or 5.0),
+            }
 
-        try:
-            status_enum = PackageStatus[form.status.data]
-            update_package(
-                package=package,
-                package_code=form.package_code.data.strip(),
-                title=form.title.data.strip(),
-                description=form.description.data.strip(),
-                instructions=form.instructions.data.strip(),
-                external_tool_url=form.external_tool_url.data.strip(),
-                rules_config=rules_cfg,
-                scoring_config=scoring_cfg,
-                duration_minutes=form.duration_minutes.data,
-                status=status_enum,
-            )
-            flash(f"Paket '{package.package_code}' berhasil diperbarui.", "success")
-            return redirect(url_for("admin.packages_index", station_id=package.station_id))
-        except ValueError as e:
-            flash(str(e), "error")
+            try:
+                status_enum = PackageStatus[form.status.data]
+                update_package(
+                    package=package,
+                    package_code=form.package_code.data.strip(),
+                    title=form.title.data.strip(),
+                    description=form.description.data.strip(),
+                    instructions=form.instructions.data.strip(),
+                    external_tool_url=form.external_tool_url.data.strip(),
+                    rules_config=rules_cfg,
+                    scoring_config=scoring_cfg,
+                    duration_minutes=form.duration_minutes.data,
+                    status=status_enum,
+                )
+                flash(f"Paket '{package.package_code}' berhasil diperbarui.", "success")
+                return redirect(url_for("admin.packages_index", station_id=package.station_id))
+            except ValueError as e:
+                flash(str(e), "error")
 
-    return render_template(
-        "admin/packages/form_hardware.html",
-        form=form,
-        package=package,
-        is_edit=True,
-        stations=all_stations,
-        selected_station_id=package.station_id,
-    )
+        return render_template(
+            "admin/packages/form_hardware.html",
+            form=form,
+            package=package,
+            is_edit=True,
+            stations=[package.station] if g.active_station else all_stations,
+            selected_station_id=package.station_id,
+        )
+
+    else:
+        flash("Hanya paket studi kasus Hardware yang dapat dikelola di modul ini.", "warning")
+        return redirect(url_for("admin.packages_index"))
 
 
 @admin_bp.post("/packages/<int:package_id>/duplicate")
@@ -1836,6 +2006,14 @@ def packages_duplicate(package_id: int):
     action_form = PackageActionForm()
     if not action_form.validate_on_submit():
         flash("Token CSRF tidak valid.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    package = get_package_by_id(package_id)
+    if not package:
+        abort(404)
+
+    if g.active_station and package.station_id != g.active_station.id:
+        flash("Akses ditolak. Paket ini bukan milik pos yang sedang Anda kelola.", "error")
         return redirect(url_for("admin.packages_index"))
 
     try:
@@ -1855,6 +2033,14 @@ def packages_preview(package_id: int):
     if not package:
         abort(404)
 
+    if g.active_station and package.station_id != g.active_station.id:
+        flash("Akses ditolak. Paket ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    # Untuk paket kuis non-hardware yang terhubung ke QuestionSet, arahkan ke preview soal kuis
+    if package.challenge_type != "hardware_build_challenge" and package.question_set_id:
+        return redirect(url_for("admin.question_set_preview", set_id=package.question_set_id))
+
     return render_template("admin/packages/preview.html", package=package)
 
 
@@ -1867,18 +2053,34 @@ def packages_status(package_id: int):
         flash("Token CSRF tidak valid.", "error")
         return redirect(url_for("admin.packages_index"))
 
+    package = get_package_by_id(package_id)
+    if not package:
+        abort(404)
+
+    if g.active_station and package.station_id != g.active_station.id:
+        flash("Akses ditolak. Tindakan ini hanya dapat dilakukan di dalam pos yang bersangkutan.", "error")
+        return redirect(url_for("admin.packages_index"))
+
     new_status_str = request.form.get("status", "").strip().upper()
     try:
         new_status = PackageStatus[new_status_str]
         success, msg = set_package_status(package_id, new_status)
         if success:
+            # Jika paket kuis, sinkronkan status QuestionSet
+            if package.question_set_id:
+                qs = db.session.get(QuestionSet, package.question_set_id)
+                if qs:
+                    if new_status == PackageStatus.ACTIVE:
+                        qs.status = QuestionSetStatus.READY
+                    elif new_status == PackageStatus.DRAFT:
+                        qs.status = QuestionSetStatus.DRAFT
+                db.session.commit()
             flash(msg, "success")
         else:
             flash(msg, "error")
     except KeyError:
         flash("Status paket tidak valid.", "error")
 
-    package = get_package_by_id(package_id)
     st_id = package.station_id if package else None
     return redirect(url_for("admin.packages_index", station_id=st_id))
 
@@ -1893,7 +2095,14 @@ def packages_delete(package_id: int):
         return redirect(url_for("admin.packages_index"))
 
     package = get_package_by_id(package_id)
-    st_id = package.station_id if package else None
+    if not package:
+        abort(404)
+
+    if g.active_station and package.station_id != g.active_station.id:
+        flash("Akses ditolak. Tindakan ini hanya dapat dilakukan di dalam pos yang bersangkutan.", "error")
+        return redirect(url_for("admin.packages_index"))
+
+    st_id = package.station_id
 
     success, msg = delete_or_archive_package(package_id)
     if success:
@@ -1908,22 +2117,17 @@ def packages_delete(package_id: int):
 @admin_required
 def packages_mapping():
     """Halaman pengelolaan pemetaan paket soal kepada Kelompok A, B, C, D."""
-    station_id = request.args.get("station_id", type=int)
-
     all_stations = db.session.scalars(
         db.select(Station).where(Station.is_active.is_(True)).order_by(Station.id.asc())
     ).all()
 
-    selected_station = None
-    if station_id:
-        selected_station = db.session.get(Station, station_id)
-    elif g.active_station:
-        selected_station = g.active_station
-        station_id = selected_station.id
-    elif all_stations:
-        hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
-        selected_station = hw_st or all_stations[0]
-        station_id = selected_station.id
+    if g.active_station and g.active_station.name.lower() != "hardware":
+        flash(f"Pemetaan paket hanya digunakan untuk Pos Hardware. Pos {g.active_station.name} dikelola melalui Bank Soal.", "info")
+        return redirect(url_for("admin.questions_index", station_id=g.active_station.id))
+
+    hw_st = next((s for s in all_stations if s.name.lower() == "hardware"), None)
+    selected_station = g.active_station or hw_st
+    station_id = selected_station.id if selected_station else None
 
     # Ambil seluruh paket aktif pada pos ini
     active_packages = db.session.scalars(

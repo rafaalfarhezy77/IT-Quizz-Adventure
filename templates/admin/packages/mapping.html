@@ -4,27 +4,27 @@
 {% block content %}
 <div class="page-heading">
   <div class="heading-text">
-    <div class="eyebrow">DISTRIBUSI STUDI KASUS // KELOMPOK A–D</div>
-    <h1>Pemetaan Paket ke Kelompok</h1>
-    <p class="welcome-text">Tentukan paket soal/studi kasus yang ditugaskan kepada masing-masing Kelompok (A, B, C, D). Sistem mendukung strategi <strong>SAME_FOR_ALL</strong> dan <strong>BY_GROUP</strong>.</p>
+    <div class="eyebrow">POS HARDWARE // DISTRIBUSI STUDI KASUS KELOMPOK A–D</div>
+    <h1>Pemetaan Paket Hardware ke Kelompok</h1>
+    <p class="welcome-text">Tentukan paket studi kasus Hardware (rakit PC) yang ditugaskan kepada masing-masing Kelompok (A, B, C, D). Sistem mendukung strategi <strong>SAME_FOR_ALL</strong> dan <strong>BY_GROUP</strong>.</p>
   </div>
   <div class="heading-actions">
     {% if selected_station %}
       <a href="{{ url_for('admin.packages_index', station_id=selected_station.id) }}" class="btn btn-outline">
-        <span>← Kelola Paket Pos Ini</span>
+        <span>← Kelola Paket Hardware</span>
       </a>
     {% endif %}
   </div>
 </div>
 
-<!-- Sub Menu Modul Paket -->
+<!-- Sub Menu Modul Paket Hardware -->
 <div class="module-subnav nb-card">
-  <span class="subnav-label">SUB MENU:</span>
+  <span class="subnav-label">SUB MENU HARDWARE:</span>
   <div class="subnav-links">
     <a href="{{ url_for('admin.packages_index', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
        class="subnav-item">
       <span class="subnav-badge">01</span>
-      <span>📦 Kelola Paket Soal & Studi Kasus</span>
+      <span>📦 Kelola Paket Hardware</span>
     </a>
     <a href="{{ url_for('admin.packages_mapping', station_id=selected_station.id if selected_station else (g.active_station.id if g.active_station else None)) }}"
        class="subnav-item active">
@@ -32,18 +32,6 @@
       <span>🗺️ Pemetaan Kelompok A–D</span>
     </a>
   </div>
-</div>
-
-<!-- Station Selector Tabs -->
-<div class="station-filter-tabs nb-card" style="margin-bottom: 1.5rem; padding: 0.75rem 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-  <span class="mono-label" style="margin-right: 0.5rem;">PILIH POS:</span>
-  {% for st in stations %}
-    <a href="{{ url_for('admin.packages_mapping', station_id=st.id) }}"
-       class="nb-badge {{ 'badge-neon' if selected_station and selected_station.id == st.id else 'badge-neutral' }}"
-       style="font-size: 0.9rem; text-decoration: none; padding: 0.4rem 0.8rem;">
-      {{ st.name }}
-    </a>
-  {% endfor %}
 </div>
 
 <!-- Current Mapping Status Table -->

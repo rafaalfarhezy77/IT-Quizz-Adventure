@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/module_layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-scroll.css') }}">
   <script src="{{ url_for('static', filename='js/module_dialogs.js') }}" defer></script>
 </head>
 <body class="{{ 'admin-shell' if g.current_admin else 'login-page' }}">
@@ -77,16 +78,16 @@
           <span class="nav-indicator">▸</span> Dashboard {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Utama' }}
         </a>
 
-        <!-- 2. Modul Pos Hardware -->
+        <!-- 2. Modul Pos Hardware (HANYA ADA DI POS HARDWARE / GLOBAL) -->
         {% if not g.active_station or g.active_station.name.lower() == 'hardware' %}
           <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.packages') }}">
             <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.packages') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id if g.active_station else None) }}">
-              <span class="nav-indicator">▸</span> Paket Soal / Kasus {{ ('Hardware') if g.active_station else '' }}
+              <span class="nav-indicator">▸</span> Paket Tantangan Hardware
             </a>
             {% if request.endpoint and request.endpoint.startswith('admin.packages') %}
               <div class="nav-submenu-box">
                 <a class="nav-subitem {{ 'active' if not request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id if g.active_station else None) }}">
-                  • Kelola Paket
+                  • Kelola Paket Hardware
                 </a>
                 <a class="nav-subitem {{ 'active' if request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_mapping', station_id=g.active_station.id if g.active_station else None) }}">
                   • Pemetaan Kelompok A–D
@@ -107,23 +108,7 @@
               <span class="nav-indicator">▸</span> 🌐 Konsol Pos Networking
             </a>
           {% endif %}
-          {% if g.active_station and g.active_station.name.lower() not in ('hardware', 'networking') %}
-            <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.packages') }}">
-              <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.packages') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id) }}">
-                <span class="nav-indicator">▸</span> Paket Soal Kuis
-              </a>
-              {% if request.endpoint and request.endpoint.startswith('admin.packages') %}
-                <div class="nav-submenu-box">
-                  <a class="nav-subitem {{ 'active' if not request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_index', station_id=g.active_station.id) }}">
-                    • Kelola Paket
-                  </a>
-                  <a class="nav-subitem {{ 'active' if request.endpoint.startswith('admin.packages_mapping') }}" href="{{ url_for('admin.packages_mapping', station_id=g.active_station.id) }}">
-                    • Pemetaan Kelompok A–D
-                  </a>
-                </div>
-              {% endif %}
-            </div>
-          {% endif %}
+
           <!-- BANK SOAL: HANYA MUNCUL DI POS KUIS / GLOBAL (Bukan Hardware) -->
           <div class="nav-group {{ 'open' if request.endpoint and request.endpoint.startswith('admin.question') }}">
             <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.question') }}" href="{{ url_for('admin.questions_index', station_id=g.active_station.id if g.active_station else None) }}">
@@ -142,9 +127,10 @@
           </div>
         {% endif %}
 
-        <!-- 4. Kontrol Umum Perlombaan -->
+        <!-- 4. Kontrol Tim Global & Operasional -->
+        <div class="nav-header-label" style="margin-top: 1rem;">DATA GLOBAL & OPERASIONAL</div>
         <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.team') }}" href="{{ url_for('admin.teams_index') }}">
-          <span class="nav-indicator">▸</span> 👥 Tim Peserta
+          <span class="nav-indicator">▸</span> 👥 Tim Peserta (Global / Semua Pos)
         </a>
         <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.sessions') }}" href="{{ url_for('admin.sessions_index', station_id=g.active_station.id if g.active_station else None) }}">
           <span class="nav-indicator">▸</span> ⏱️ Sesi {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Perlombaan' }}
@@ -188,5 +174,16 @@
 </main>
 
 {% block scripts %}{% endblock %}
+<script>
+  (function() {
+    if (window.location.search && window.location.search.indexOf('scroll_sidebar=') !== -1) {
+      var match = window.location.search.match(/scroll_sidebar=(\d+)/);
+      var top = document.querySelector('.sidebar-top');
+      if (top && match) {
+        top.scrollTop = parseInt(match[1], 10);
+      }
+    }
+  })();
+</script>
 </body>
 </html>

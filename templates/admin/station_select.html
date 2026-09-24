@@ -1,117 +1,206 @@
 {% extends "admin/base.html" %}
 {% block title %}Pilih Pos Lomba{% endblock %}
+
+{% block extra_head %}
+<style>
+  .station-card-current {
+    border-width: 4px !important;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-heading">
   <div class="heading-text">
     <div class="eyebrow">PUSAT KENDALI OPERASIONAL // STATION HUB</div>
     <h1>Pilih Pos Lomba yang Ingin Dikelola</h1>
     <p class="welcome-text">
-      Setiap pos perlombaan memiliki format tantangan dan pengaturan yang berbeda. Silakan pilih pos di bawah ini untuk mengelola paket soal, pemetaan kelompok, sesi, dan verifikasi secara terfokus.
+      Setiap pos perlombaan memiliki <strong>metode pengerjaan peserta</strong> dan <strong>metode penambahan soal</strong> yang berbeda. Pilih salah satu pos di bawah untuk mengelola secara terfokus tanpa risiko data tertukar, atau pilih <strong>Mode Global</strong> untuk mengoordinasi seluruh pos.
     </p>
   </div>
   <div class="heading-actions">
     {% if g.active_station %}
-      <span class="nb-badge badge-neon" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
-        POS AKTIF SAAT INI: {{ g.active_station.name|upper }}
+      <span class="nb-badge badge-neon" style="font-size: 0.88rem; padding: 0.5rem 0.85rem; border: 2px solid #000; box-shadow: 2px 2px 0 #000;">
+        ● POS AKTIF: {{ g.active_station.name|upper }}
+      </span>
+    {% elif session.get('admin_station_id') == 0 %}
+      <span class="nb-badge badge-white" style="font-size: 0.88rem; padding: 0.5rem 0.85rem; border: 2px solid #000; box-shadow: 2px 2px 0 #000;">
+        🌐 MODE GLOBAL (SEMUA POS)
       </span>
     {% else %}
-      <span class="nb-badge badge-white" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
-        MODE SAAT INI: SEMUA POS (GLOBAL)
+      <span class="nb-badge badge-yellow" style="font-size: 0.88rem; padding: 0.5rem 0.85rem; border: 2px solid #000; box-shadow: 2px 2px 0 #000;">
+        ⚠️ BELUM MEMILIH POS
       </span>
     {% endif %}
   </div>
 </div>
 
-<!-- Station Cards Grid -->
-<div class="station-hub-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+<!-- Grid 5 Pos Lomba (4 Pos Khusus + 1 Mode Global) -->
+<div class="station-hub-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem; margin-top: 1.75rem;">
+  
   {% for meta in station_meta %}
     {% set st = meta.station %}
     {% set is_current = (g.active_station and g.active_station.id == st.id) %}
-    <div class="nb-card {{ 'card-cyan' if meta.is_hardware else ('card-yellow' if st.mode.value == 'member_rotation' else 'card-white') }}" 
-         style="display: flex; flex-direction: column; justify-content: space-between; border-width: {{ '4px' if is_current else '3px' }}; position: relative;">
+    
+    <div class="nb-card {{ meta.card_class }} {{ 'station-card-current' if is_current else '' }}" 
+         style="display: flex; flex-direction: column; justify-content: space-between; border-width: 3px; position: relative; background: #fff;">
       
       {% if is_current %}
-        <div style="position: absolute; top: -12px; right: 16px; background: #000; color: #ADFF2F; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 800; padding: 2px 10px; border: 2px solid #ADFF2F; box-shadow: 2px 2px 0 #000;">
-          ★ SEDANG AKTIF
+        <div style="position: absolute; top: -14px; right: 16px; background: #000; color: #ADFF2F; font-family: var(--font-mono); font-size: 0.76rem; font-weight: 800; padding: 3px 12px; border: 2px solid #ADFF2F; box-shadow: 3px 3px 0 #000; z-index: 5;">
+          ★ SEDANG DIKELOLA
         </div>
       {% endif %}
 
       <div>
+        <!-- Header Kartu Pos -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
-          <div style="font-size: 2.25rem;">{{ meta.icon }}</div>
-          <span class="nb-badge {{ 'badge-neon' if meta.is_hardware else 'badge-black' }}" style="font-size: 0.75rem;">
+          <div style="font-size: 2.5rem; line-height: 1;">{{ meta.icon }}</div>
+          <span class="nb-badge {{ meta.badge_class }}" style="font-size: 0.78rem; text-transform: uppercase;">
             {{ meta.badge }}
           </span>
         </div>
 
-        <h2 style="font-size: 1.6rem; margin-bottom: 0.5rem; text-transform: uppercase;">
+        <h2 style="font-size: 1.65rem; margin-bottom: 0.4rem; text-transform: uppercase; font-family: var(--font-display); letter-spacing: -0.02em;">
           Pos {{ st.name }}
         </h2>
 
-        <p class="mono-sub" style="color: #222; font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem;">
+        <p style="color: #333; font-size: 0.88rem; line-height: 1.45; margin-bottom: 1.25rem;">
           {{ meta.desc }}
         </p>
 
-        <!-- Specific Telemetry -->
-        <div style="background: rgba(255, 255, 255, 0.7); border: 2px solid #000; padding: 0.75rem; margin-bottom: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-            <span>{% if meta.is_hardware %}Paket Studi Kasus:{% else %}Bank Soal Kuis:{% endif %}</span>
-            <strong>{{ meta.packages_count }} Paket</strong>
+        <!-- Blok 1: Metode Pengerjaan Peserta -->
+        <div style="margin-bottom: 0.85rem; border: 2px solid #000; background: #FFFEEA; padding: 0.75rem 0.85rem; box-shadow: 2px 2px 0 #000;">
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; color: #854d0e; margin-bottom: 0.25rem; letter-spacing: 0.05em;">
+            🎮 METODE PENGERJAAN PESERTA:
           </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-            <span>Sesi Sedang Berjalan:</span>
-            <strong>{{ meta.active_sessions }} Sesi</strong>
+          <div style="font-size: 0.84rem; line-height: 1.4; color: #111;">
+            {{ meta.work_method }}
+          </div>
+        </div>
+
+        <!-- Blok 2: Metode Penambahan Soal -->
+        <div style="margin-bottom: 1.15rem; border: 2px solid #000; background: #F0FDF4; padding: 0.75rem 0.85rem; box-shadow: 2px 2px 0 #000;">
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; color: #166534; margin-bottom: 0.25rem; letter-spacing: 0.05em;">
+            📝 METODE & FORMAT SOAL:
+          </div>
+          <div style="font-size: 0.84rem; line-height: 1.4; color: #111;">
+            {{ meta.question_method }}
+          </div>
+        </div>
+
+        <!-- Telemetri Data Pos -->
+        <div style="background: var(--nb-gray-100); border: 2px solid #000; padding: 0.7rem 0.85rem; margin-bottom: 1.35rem; font-family: var(--font-mono); font-size: 0.8rem;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <span style="color: #444;">{{ meta.packages_label }}:</span>
+            <strong>{{ meta.packages_count }} {{ 'Paket' if meta.is_hardware else 'Set Soal' }}</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+            <span style="color: #444;">Sesi Sedang Berjalan:</span>
+            {% if meta.active_sessions > 0 %}
+              <strong style="color: #16a34a; font-weight: 800;">{{ meta.active_sessions }} Sesi</strong>
+            {% else %}
+              <strong style="color: #222222;">{{ meta.active_sessions }} Sesi</strong>
+            {% endif %}
           </div>
           {% if meta.is_hardware %}
-            <div style="display: flex; justify-content: space-between; color: #b45309; font-weight: 700;">
+            <div style="display: flex; justify-content: space-between; color: #c2410c; font-weight: 700;">
               <span>Verifikasi Menunggu:</span>
               <strong>{{ meta.pending_count }} Berkas</strong>
+            </div>
+          {% elif meta.is_networking %}
+            <div style="display: flex; justify-content: space-between; color: #4338ca; font-weight: 700;">
+              <span>Jawaban Perlu Review:</span>
+              <strong>{{ meta.pending_count }} Butir</strong>
             </div>
           {% endif %}
         </div>
       </div>
 
+      <!-- Tombol Masuk Pos -->
       <div>
         <a href="{{ url_for('admin.set_station', station_id=st.id) }}" 
-           class="btn {{ 'btn-neon' if meta.is_hardware else 'btn-outline' }} btn-block" 
-           style="text-align: center; justify-content: center; font-weight: 800;">
+           class="btn {{ 'btn-neon' if is_current else 'btn-outline' }} btn-block" 
+           style="text-align: center; justify-content: center; font-weight: 800; font-size: 0.88rem; padding: 10px 14px;">
           <span>MASUK KE POS {{ st.name|upper }} ➔</span>
         </a>
       </div>
     </div>
   {% endfor %}
 
-  <!-- Global Master Card -->
-  <div class="nb-card card-white" style="display: flex; flex-direction: column; justify-content: space-between; border-style: dashed;">
+  <!-- KARTU KE-5: MODE KONTROL GLOBAL (SEMUA POS) -->
+  {% set is_global_active = (session.get('admin_station_id') == 0) %}
+  <div class="nb-card card-white" 
+       style="display: flex; flex-direction: column; justify-content: space-between; border: 3px dashed #000; position: relative; background: #FAFAFA;">
+    
+    {% if is_global_active %}
+      <div style="position: absolute; top: -14px; right: 16px; background: #000; color: #FFF; font-family: var(--font-mono); font-size: 0.76rem; font-weight: 800; padding: 3px 12px; border: 2px solid #000; box-shadow: 3px 3px 0 #888; z-index: 5;">
+        ★ SEDANG DIKELOLA
+      </div>
+    {% endif %}
+
     <div>
+      <!-- Header Mode Global -->
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
-        <div style="font-size: 2.25rem;">🌐</div>
-        <span class="nb-badge badge-white" style="font-size: 0.75rem;">
-          OVERVIEW SYSTEM
+        <div style="font-size: 2.5rem; line-height: 1;">👑</div>
+        <span class="nb-badge badge-black" style="font-size: 0.78rem;">
+          OVERVIEW SYSTEM // ROOT
         </span>
       </div>
 
-      <h2 style="font-size: 1.6rem; margin-bottom: 0.5rem; text-transform: uppercase;">
+      <h2 style="font-size: 1.65rem; margin-bottom: 0.4rem; text-transform: uppercase; font-family: var(--font-display); letter-spacing: -0.02em;">
         Mode Global (Semua Pos)
       </h2>
 
-      <p class="mono-sub" style="color: #444; font-size: 0.88rem; line-height: 1.5; margin-bottom: 1.25rem;">
-        Kelola seluruh pos, tim, kelompok, sesi, dan leaderboard secara serentak tanpa penyaringan pos tertentu.
+      <p style="color: #444; font-size: 0.88rem; line-height: 1.45; margin-bottom: 1.25rem;">
+        Pusat kendali komprehensif bagi koordinator lomba untuk memantau dan mengonfigurasi seluruh 4 pos sekaligus tanpa batas penyaringan.
       </p>
 
-      <div style="background: #fafafa; border: 2px dashed #666; padding: 0.75rem; margin-bottom: 1.5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #555;">
-        <div>▸ Akses seluruh menu modul tanpa filter pos</div>
-        <div>▸ Ideal untuk koordinator lomba / root admin</div>
+      <!-- Blok 1: Fungsi Mode Global -->
+      <div style="margin-bottom: 0.85rem; border: 2px dashed #000; background: #F8FAFC; padding: 0.75rem 0.85rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; color: #334155; margin-bottom: 0.25rem; letter-spacing: 0.05em;">
+          🌐 CAKUPAN KENDALI KOORDINATOR:
+        </div>
+        <div style="font-size: 0.84rem; line-height: 1.4; color: #111;">
+          Mengakses seluruh modul pos (Hardware, Networking, Software Engineering, Cyber Security), kontrol sesi serentak, dan leaderboard gabungan.
+        </div>
+      </div>
+
+      <!-- Blok 2: Pengelolaan Data Global -->
+      <div style="margin-bottom: 1.15rem; border: 2px dashed #000; background: #F8FAFC; padding: 0.75rem 0.85rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.72rem; font-weight: 800; color: #334155; margin-bottom: 0.25rem; letter-spacing: 0.05em;">
+          👥 DATA TIM & SISTEM:
+        </div>
+        <div style="font-size: 0.84rem; line-height: 1.4; color: #111;">
+          Pengelolaan master data tim, pemetaan Kelompok A–D, impor massal file CSV tim peserta, dan ekspor CSV hasil akhir.
+        </div>
+      </div>
+
+      <!-- Telemetri Global -->
+      <div style="background: #EDEDE4; border: 2px solid #000; padding: 0.7rem 0.85rem; margin-bottom: 1.35rem; font-family: var(--font-mono); font-size: 0.8rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+          <span style="color: #444;">Total Tim Terdaftar:</span>
+          <strong>{{ global_meta.total_teams_count }} Tim</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #444;">Total Sesi Berjalan:</span>
+          {% if global_meta.total_active_sessions > 0 %}
+            <strong style="color: #16a34a; font-weight: 800;">{{ global_meta.total_active_sessions }} Sesi</strong>
+          {% else %}
+            <strong style="color: #222222;">{{ global_meta.total_active_sessions }} Sesi</strong>
+          {% endif %}
+        </div>
       </div>
     </div>
 
+    <!-- Tombol Masuk Mode Global -->
     <div>
       <a href="{{ url_for('admin.set_station', station_id=0) }}" 
-         class="btn btn-outline btn-block" 
-         style="text-align: center; justify-content: center; font-weight: 800;">
-        <span>KELOLA SEMUA POS (GLOBAL) ➔</span>
+         class="btn {{ 'btn-neon' if is_global_active else 'btn-outline' }} btn-block" 
+         style="text-align: center; justify-content: center; font-weight: 800; font-size: 0.88rem; padding: 10px 14px;">
+        <span>KELOLA SEMUA POS (MODE GLOBAL) ➔</span>
       </a>
     </div>
   </div>
+
 </div>
 {% endblock %}

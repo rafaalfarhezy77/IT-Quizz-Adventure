@@ -258,15 +258,47 @@ p {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 28px 18px 24px;
+  padding: 24px 0 18px 0;
   border-right: var(--nb-border-thick);
   background: var(--nb-white);
+  overflow: hidden;
 }
 
 .sidebar-top {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 10px 14px 18px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--nb-black) var(--nb-gray-100);
+}
+
+/* Neo-Brutalist Custom Scrollbar for Sidebar */
+.sidebar-top::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-top::-webkit-scrollbar-track {
+  background: var(--nb-gray-100);
+  border-left: 2px solid var(--nb-black);
+}
+
+.sidebar-top::-webkit-scrollbar-thumb {
+  background: var(--nb-black);
+  border-radius: 0px;
+}
+
+.sidebar-top::-webkit-scrollbar-thumb:hover {
+  background: var(--nb-neon);
+}
+
+.sidebar-top::-webkit-scrollbar-thumb:active {
+  background: var(--nb-neon-hover);
 }
 
 .nav-header-label {
@@ -336,8 +368,10 @@ p {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-top: 16px;
+  padding: 16px 18px 0;
   border-top: 2px solid var(--nb-gray-200);
+  flex-shrink: 0;
+  background: var(--nb-white);
 }
 
 .system-mini-info {
@@ -1129,6 +1163,9 @@ p {
   .sidebar-top {
     flex-direction: row;
     align-items: center;
+    flex: 0 0 auto;
+    overflow: visible;
+    padding: 0;
   }
 
   .sidebar nav {
@@ -1145,7 +1182,8 @@ p {
   }
 
   .sidebar-bottom {
-    padding-top: 0;
+    flex: 0 0 auto;
+    padding: 0 8px;
     border-top: 0;
   }
 
@@ -1747,16 +1785,21 @@ p {
 }
 
 .key-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 800;
+  font-size: 0.95rem;
+  font-weight: 900;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   background: var(--nb-neon);
   color: var(--nb-black);
-  padding: 4px 8px;
   border: 2px solid var(--nb-black);
   box-shadow: 2px 2px 0px var(--nb-black);
-  white-space: nowrap;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 .weight-badge {
@@ -3361,17 +3404,21 @@ p {
 .member-badge-sm.member-3 { background: #DCFCE7; color: #15803D; }
 
 .key-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 900;
-  width: 28px;
-  height: 28px;
-  line-height: 24px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   text-align: center;
   background: var(--nb-neon, #C6FF00);
+  color: var(--nb-black, #111111);
   border: 2px solid var(--nb-black);
   box-shadow: 2px 2px 0 var(--nb-black);
+  box-sizing: border-box;
 }
 
 .category-chip {
@@ -3477,7 +3524,7 @@ p {
 
 /* Sidebar Station Context Box */
 .sidebar-station-box {
-  margin: 0 12px 14px 12px;
+  margin: 0 2px 14px 0;
   padding: 10px 12px;
   background: #FFFFFF;
   border: 2px solid var(--nb-black);

@@ -7,22 +7,28 @@
   <div class="heading-text">
     <div class="eyebrow">BANK SOAL // QUESTION_SETS</div>
     <h1>Manajemen Soal</h1>
-    <p class="welcome-text">Kelola paket soal (Set A–D) untuk setiap pos perlombaan IT Quest Adventure.</p>
+    <p class="welcome-text">Kelola bank soal kuis (Set A–D) untuk pos perlombaan IT Quest Adventure.</p>
   </div>
   <div class="heading-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
     <a href="{{ url_for('admin.questions_import') }}" class="btn btn-primary">
       <span>📥 IMPORT JSON</span>
     </a>
     <!-- Filter Pos / Station -->
-    <form method="get" action="{{ url_for('admin.questions_index') }}" class="station-filter-form" style="display: flex; align-items: center; gap: 8px; margin: 0;">
-      <label for="station_select" class="filter-label" style="margin: 0; white-space: nowrap; font-weight: 800; font-family: var(--font-mono); font-size: 0.85rem;">FILTER POS:</label>
-      <select name="station_id" id="station_select" class="nb-select" style="min-height: 42px; padding: 6px 12px; width: auto;" onchange="this.form.submit()">
-        <option value="">Semua Pos ({{ all_stations|length }})</option>
-        {% for st in all_stations %}
-          <option value="{{ st.id }}" {{ 'selected' if selected_station_id == st.id }}>{{ st.name }}</option>
-        {% endfor %}
-      </select>
-    </form>
+    {% if not g.active_station %}
+      <form method="get" action="{{ url_for('admin.questions_index') }}" class="station-filter-form" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+        <label for="station_select" class="filter-label" style="margin: 0; white-space: nowrap; font-weight: 800; font-family: var(--font-mono); font-size: 0.85rem;">FILTER POS:</label>
+        <select name="station_id" id="station_select" class="nb-select" style="min-height: 42px; padding: 6px 12px; width: auto;" onchange="this.form.submit()">
+          <option value="">Semua Pos ({{ all_stations|length }})</option>
+          {% for st in all_stations %}
+            <option value="{{ st.id }}" {{ 'selected' if selected_station_id == st.id }}>{{ st.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% else %}
+      <span class="nb-badge badge-neon" style="font-size: 0.85rem; padding: 0.4rem 0.8rem; border: 2px solid #000;">
+        POS: {{ g.active_station.name }}
+      </span>
+    {% endif %}
   </div>
 </div>
 
@@ -54,9 +60,9 @@
         </div>
         <span class="station-set-count">
           {% if st.question_sets %}
-            {{ st.question_sets|length }} PAKET SOAL
+            {{ st.question_sets|length }} SET SOAL
           {% else %}
-            BELUM ADA PAKET SOAL
+            BELUM ADA SET SOAL
           {% endif %}
         </span>
       </div>

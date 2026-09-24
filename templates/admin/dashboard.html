@@ -130,7 +130,7 @@
 <section class="stats-grid" aria-label="Ringkasan data utama">
   {% for key, title, subtitle, color, icon in [
     ('stations','Pos Lomba','Total Station aktif','yellow','⬡'),
-    ('packages','Paket Terdaftar',('Paket ' ~ active_station.name) if active_station else 'Seluruh pos lomba','green','◈'),
+    ('packages', ('Paket Hardware' if (not active_station or active_station.name.lower() == 'hardware') else 'Bank Soal (Set)'), (('Paket ' ~ active_station.name) if active_station and active_station.name.lower() == 'hardware' else (('Bank Soal ' ~ active_station.name) if active_station else 'Khusus Pos Hardware')),'green', ('◈' if (not active_station or active_station.name.lower() == 'hardware') else '📝')),
     ('teams','Tim Terdaftar','Peserta aktif kompetisi','pink','⬢'),
     ('active_sessions','Sesi Berjalan',('Sesi ' ~ active_station.name) if active_station else 'Status running live','white','◎'),
     ('hw_pending','Verifikasi Hardware','Menunggu juri PC','cyan','✦')
@@ -275,7 +275,7 @@
         ('01','Paket Studi Kasus Hardware','Kelola spesifikasi, batasan numerik, dan bobot skor', url_for('admin.packages_index', station_id=active_station.id)),
         ('02','Pemetaan Kelompok A–D','Atur strategi SAME_FOR_ALL atau BY_GROUP untuk Hardware', url_for('admin.packages_mapping', station_id=active_station.id)),
         ('03','🛠️ Verifikasi Hasil Build','Periksa URL BuildCores, screenshot, dan validasi nilai juri', url_for('admin.hardware_submissions_index')),
-        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('04','👥 Tim Peserta (Global)','Master data tim terdaftar untuk seluruh 4 pos lomba (A–D)', url_for('admin.teams_index')),
         ('05','Sesi Pos Hardware','Mulai sesi hardware, pantau timer, dan status peserta', url_for('admin.sessions_index', station_id=active_station.id)),
         ('06','Leaderboard Hardware','Papan skor hasil build PC terverifikasi dan ekspor CSV', url_for('admin.results_index', station_id=active_station.id))
       ] %}
@@ -298,8 +298,8 @@
         ('01','📡 Lobby & Sesi Networking','Buka lobby, pilih rotasi dan set soal kelompok, pantau live', url_for('admin.networking_lobby')),
         ('02','📋 Bank Soal Networking','Kelola butir soal 3 tahap (PG A–E, Benar/Salah, Isian)', url_for('admin.questions_index', station_id=active_station.id)),
         ('03','📥 Import JSON Soal','Import bank soal JSON Pos Networking (Set A–D)', url_for('admin.questions_import')),
-        ('04','🗺️ Pemetaan Set Kelompok','Atur pemetaan Set Soal A–D ke Kelompok A–D', url_for('admin.packages_mapping', station_id=active_station.id)),
-        ('05','👥 Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('04','👥 Tim Peserta (Global)','Master data tim terdaftar untuk seluruh 4 pos lomba (A–D)', url_for('admin.teams_index')),
+        ('05','⏱️ Sesi Pos Networking','Mulai sesi kuis jaringan, pantau countdown timer', url_for('admin.sessions_index', station_id=active_station.id)),
         ('06','🏆 Leaderboard & Stamp','Papan peringkat hasil final dan status perolehan Stamp', url_for('admin.results_index', station_id=active_station.id))
       ] %}
       <a class="quick-link" href="{{ endpoint_url }}">
@@ -320,10 +320,10 @@
       {% for number, title, detail, endpoint_url in [
         ('01','📝 Bank Soal (Kuis PG)','Kelola butir soal kuis pilihan ganda pos ini', url_for('admin.questions_index', station_id=active_station.id)),
         ('02','📥 Import JSON Soal','Import batch soal pilihan ganda dari berkas JSON', url_for('admin.questions_import')),
-        ('03','Paket Soal Kuis','Kelola paket bank soal dan penugasan kelompok', url_for('admin.packages_index', station_id=active_station.id)),
-        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
-        ('05','Sesi Pos Kuis','Mulai sesi kuis, pantau countdown timer server', url_for('admin.sessions_index', station_id=active_station.id)),
-        ('06','Leaderboard Kuis','Papan peringkat skor kuis dan rotasi tim', url_for('admin.results_index', station_id=active_station.id))
+        ('03','👥 Tim Peserta (Global)','Master data tim terdaftar untuk seluruh 4 pos lomba (A–D)', url_for('admin.teams_index')),
+        ('04','⏱️ Sesi Pos Kuis','Mulai sesi kuis, pantau countdown timer server', url_for('admin.sessions_index', station_id=active_station.id)),
+        ('05','🏆 Leaderboard Kuis','Papan peringkat skor kuis dan rotasi tim', url_for('admin.results_index', station_id=active_station.id)),
+        ('06','⇄ Ganti Pos Lomba','Kembali ke menu pemilihan pos lomba', url_for('admin.station_select'))
       ] %}
       <a class="quick-link" href="{{ endpoint_url }}">
         <div class="quick-num-box">
@@ -341,10 +341,10 @@
     {% else %}
       <!-- Global Mode Quick Actions -->
       {% for number, title, detail, endpoint_url in [
-        ('01','Paket Soal & Studi Kasus','Kelola paket build PC dan studi kasus per pos', url_for('admin.packages_index')),
-        ('02','Pemetaan Kelompok','Atur paket SAME_FOR_ALL atau BY_GROUP untuk Kelompok A–D', url_for('admin.packages_mapping')),
+        ('01','Paket Studi Kasus Hardware','Kelola spesifikasi tantangan rakit PC Pos Hardware', url_for('admin.packages_index')),
+        ('02','Pemetaan Kelompok Hardware','Atur paket SAME_FOR_ALL atau BY_GROUP untuk Hardware (A–D)', url_for('admin.packages_mapping')),
         ('03','Verifikasi Hardware','Koreksi data build BuildCores dan validasi nilai final', url_for('admin.hardware_submissions_index')),
-        ('04','Kelola Tim Peserta','Data tim terdaftar, asal sekolah, dan status aktif', url_for('admin.teams_index')),
+        ('04','👥 Tim Peserta (Global)','Master data tim terdaftar untuk seluruh 4 pos lomba (A–D)', url_for('admin.teams_index')),
         ('05','Kontrol Sesi Lomba','Mulai sesi, monitor waktu countdown, dan pantau peserta', url_for('admin.sessions_index')),
         ('06','Hasil & Leaderboard','Papan peringkat terintegrasi dan ekspor CSV', url_for('admin.results_index'))
       ] %}
