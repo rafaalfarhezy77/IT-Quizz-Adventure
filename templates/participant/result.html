@@ -73,7 +73,11 @@
         </div>
 
         <!-- Stamp Showcase (Independent from Total Score) -->
-        <div class="stamp-box-{{ 'granted' if summary.has_stamp else 'denied' }}" style="border: var(--nb-border); box-shadow: var(--nb-shadow); padding: 1.25rem; margin-bottom: 1.25rem; background: {{ '#dcfce7' if summary.has_stamp else '#fee2e2' }};">
+        {% if summary.has_stamp %}
+        <div class="stamp-box-granted" style="border: var(--nb-border); box-shadow: var(--nb-shadow); padding: 1.25rem; margin-bottom: 1.25rem; background: #dcfce7;">
+        {% else %}
+        <div class="stamp-box-denied" style="border: var(--nb-border); box-shadow: var(--nb-shadow); padding: 1.25rem; margin-bottom: 1.25rem; background: #fee2e2;">
+        {% endif %}
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
             <div>
               <div class="mono-label" style="color: #000; font-weight: 900; margin-bottom: 0.35rem;">STATUS STAMP POS NETWORKING:</div>

@@ -300,7 +300,11 @@
           {% for error in form.screenshot.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
 
           <!-- Image Preview Area -->
-          <div id="image-preview-container" style="margin-top: 0.75rem; display: {{ 'block' if hw_sub.screenshot_path else 'none' }};">
+          {% if hw_sub.screenshot_path %}
+          <div id="image-preview-container" style="margin-top: 0.75rem; display: block;">
+          {% else %}
+          <div id="image-preview-container" style="margin-top: 0.75rem; display: none;">
+          {% endif %}
             <span class="mono-label">PREVIEW SCREENSHOT:</span>
             <img id="image-preview"
                  src="{{ url_for('uploaded_hardware_file', filename=hw_sub.screenshot_path) if hw_sub.screenshot_path else '' }}"
