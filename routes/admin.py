@@ -1281,6 +1281,50 @@ def team_deactivate(team_id: int):
     return redirect(url_for("admin.teams_index"))
 
 
+@admin_bp.post("/teams/delete-permanent")
+@admin_required
+def teams_delete_permanent():
+    form = EmptyForm()
+    if not form.validate_on_submit():
+        abort(400)
+    reason = request.form.get("reason", "").strip()
+    raw_ids = request.form.getlist("team_ids")
+    if not reason or len(reason) > 500 or request.form.get("confirmation") != "HAPUS PERMANEN":
+        flash("Isi alasan (maksimal 500 karakter) dan ketik HAPUS PERMANEN untuk konfirmasi.", "error")
+        return redirect(url_for("admin.teams_index"))
+    try:
+        team_ids = {int(value) for value in raw_ids}
+    except ValueError:
+        abort(400)
+    if not team_ids or any(value <= 0 for value in team_ids):
+        flash("Pilih minimal satu tim yang akan dihapus.", "error")
+        return redirect(url_for("admin.teams_index"))
+    teams = db.session.scalars(db.select(Team).where(Team.id.in_(team_ids))).all()
+    if len(teams) != len(team_ids):
+        flash("Pilihan tim sudah berubah. Muat ulang dan pilih kembali.", "error")
+        return redirect(url_for("admin.teams_index"))
+    identities = [(team.id, team.team_code) for team in teams]
+    try:
+        for team in teams:
+            for submission in list(team.submissions):
+                if submission.score:
+                    db.session.delete(submission.score)
+                for answer in list(submission.answers):
+                    db.session.delete(answer)
+                db.session.delete(submission)
+            db.session.flush()
+            db.session.delete(team)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Gagal menghapus tim permanen")
+        flash("Penghapusan gagal. Tidak ada tim yang dihapus.", "error")
+        return redirect(url_for("admin.teams_index"))
+    current_app.logger.warning("TEAM_PERMANENT_DELETE admin=%s teams=%s reason=%r", g.current_admin.id, identities, reason)
+    flash(f"{len(teams)} tim beserta seluruh jawaban, nilai, dan riwayatnya telah dihapus permanen.", "success")
+    return redirect(url_for("admin.teams_index"))
+
+
 @admin_bp.post("/teams/<int:team_id>/restore")
 @admin_required
 def team_restore(team_id: int):
