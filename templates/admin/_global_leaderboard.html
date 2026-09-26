@@ -1,0 +1,18 @@
+<section class="global-leaderboard nb-panel" data-leaderboard data-api="{{ url_for('api.admin_global_leaderboard') }}" data-login="{{ url_for('admin.login') }}" aria-label="Leaderboard global">
+  <div class="leaderboard-heading">
+    <div><h2>LEADERBOARD GLOBAL</h2><p>Total nilai resmi terbaru dari setiap pos</p></div>
+    <div class="leaderboard-controls">
+      {% if leaderboard_display %}
+      <button type="button" class="btn btn-outline btn-sm" data-fullscreen>LAYAR PENUH</button>
+      <a class="btn btn-outline btn-sm" href="{{ url_for('admin.dashboard') }}">KEMBALI</a>
+      {% else %}
+      <a class="btn btn-neon btn-sm" href="{{ url_for('admin.global_leaderboard_display') }}" target="_blank" rel="noopener">TAMPILAN LAYAR PENUH</a>
+      {% endif %}
+    </div>
+  </div>
+  <p class="leaderboard-status" data-live-status role="status">Memuat peringkat…</p>
+  <div class="leaderboard-table-wrap">
+    <table class="nb-table"><caption class="sr-only">Peringkat berdasarkan total nilai resmi semua pos</caption><thead data-leaderboard-head></thead><tbody data-leaderboard-body></tbody></table>
+  </div>
+  <p class="leaderboard-empty" data-empty hidden>Belum ada tim aktif.</p>
+</section>

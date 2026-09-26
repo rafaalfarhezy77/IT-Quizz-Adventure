@@ -2884,6 +2884,54 @@ p {
 /* ==========================================================================
    ADMIN RESULTS & MONITORING (LANGKAH 8)
    ========================================================================== */
+.package-table-card {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.package-table-card .nb-table {
+  width: 100%;
+  min-width: 1180px;
+  table-layout: fixed;
+}
+
+.package-table-card .nb-table th,
+.package-table-card .nb-table td {
+  padding: 18px 16px;
+  vertical-align: middle;
+}
+
+.package-table-title {
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.package-table-description {
+  width: 100%;
+}
+
+.package-table-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch;
+}
+
+.package-table-actions form {
+  margin: 0;
+  display: flex !important;
+}
+
+.package-table-actions .btn {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 8px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .results-filter-form {
   padding: 1.25rem 1.5rem;
 }
@@ -2898,6 +2946,22 @@ p {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.results-filter-form .filter-group select.form-control {
+  appearance: none;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 12px 8px;
+}
+
+@media (forced-colors: active) {
+  .results-filter-form .filter-group select.form-control {
+    appearance: auto;
+    background-image: none;
+  }
 }
 
 .filter-label {

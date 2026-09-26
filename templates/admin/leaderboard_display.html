@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leaderboard Global — IT Quest Adventure</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global-leaderboard.css') }}">
+  <script src="{{ url_for('static', filename='js/global-leaderboard.js') }}" defer></script>
+</head>
+<body class="leaderboard-display">
+<main>{% set leaderboard_display = true %}{% include "admin/_global_leaderboard.html" %}</main>
+</body>
+</html>

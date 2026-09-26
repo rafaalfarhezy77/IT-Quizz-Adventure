@@ -119,6 +119,12 @@ from utils.auth import admin_required
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
+@admin_bp.get("/leaderboard/global/display")
+@admin_required
+def global_leaderboard_display():
+    return render_template("admin/leaderboard_display.html")
+
+
 @admin_bp.before_request
 def load_current_admin():
     g.current_admin = None

@@ -10,6 +10,8 @@ from sqlalchemy.orm import joinedload
 from models import (
     CompetitionSession,
     Group,
+    HardwareSubmission,
+    NetworkingSubmission,
     Score,
     SessionStatus,
     Station,
@@ -17,7 +19,54 @@ from models import (
     SubmissionStatus,
     Team,
     db,
+    utcnow,
 )
+
+
+def get_global_leaderboard() -> dict[str, Any]:
+    """Aggregate the latest official result per active team and station."""
+    stations = db.session.scalars(db.select(Station).order_by(Station.id)).all()
+    teams = db.session.execute(
+        db.select(Team, Group.code).join(Group).where(Team.is_active.is_(True))
+    ).all()
+    results = db.session.execute(
+        db.select(Submission.team_id, CompetitionSession.station_id, Score.final_score,
+                  HardwareSubmission.verification_status, NetworkingSubmission.verification_status,
+                  Station.name, Submission.submission_type)
+        .join(Score, Score.submission_id == Submission.id)
+        .join(CompetitionSession, CompetitionSession.id == Submission.session_id)
+        .join(Station, Station.id == CompetitionSession.station_id)
+        .join(Team, Team.id == Submission.team_id)
+        .outerjoin(HardwareSubmission, HardwareSubmission.submission_id == Submission.id)
+        .outerjoin(NetworkingSubmission, NetworkingSubmission.submission_id == Submission.id)
+        .where(Team.is_active.is_(True), CompetitionSession.status != SessionStatus.CANCELLED,
+               Submission.status.in_([SubmissionStatus.SUBMITTED, SubmissionStatus.TIMED_OUT, SubmissionStatus.GRADED]))
+        .order_by(Score.submitted_at.desc(), Submission.id.desc())
+    ).all()
+    latest = {}
+    for team_id, station_id, value, hardware, networking, name, kind in results:
+        if networking is not None or name.lower() == "networking":
+            if networking != "FINALIZED":
+                continue
+        elif hardware is not None or name.lower() == "hardware" or kind == "hardware_build_challenge":
+            if hardware not in ("VERIFIED", "SCORED"):
+                continue
+        latest.setdefault((team_id, station_id), float(value))
+    rows = []
+    for team, group in teams:
+        points = {str(st.id): latest.get((team.id, st.id)) for st in stations}
+        rows.append({"team_id": team.id, "team_code": team.team_code, "team_name": team.team_name,
+                     "school": team.school, "group_code": group, "points": points,
+                     "total": round(sum(value for value in points.values() if value is not None), 6)})
+    rows.sort(key=lambda row: (-row["total"], row["team_code"]))
+    rank = 0
+    previous = None
+    for index, row in enumerate(rows, 1):
+        if row["total"] != previous:
+            rank = index
+        row["rank"] = rank
+        previous = row["total"]
+    return {"updated_at": utcnow().isoformat(), "stations": [{"id": st.id, "name": st.name} for st in stations], "rows": rows}
 
 
 def calculate_rankings(items: list[dict[str, Any]]) -> list[dict[str, Any]]:

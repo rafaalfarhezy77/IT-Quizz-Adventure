@@ -1,5 +1,5 @@
-from flask import Blueprint, jsonify, make_response, request
-from models import CompetitionSession, Group, SessionStatus, Station, SubmissionStatus, db
+from flask import Blueprint, jsonify, make_response, request, session
+from models import Admin, CompetitionSession, Group, SessionStatus, Station, SubmissionStatus, db
 from services.quiz_service import (
     get_or_create_submission,
     get_submission_answers_map,
@@ -30,6 +30,15 @@ def no_store_json(payload, status_code=200):
 def health():
     db.session.execute(db.select(Station.id).limit(1))
     return {"database": "ok", "status": "ok"}
+
+
+@api_bp.get("/admin/global-leaderboard")
+def admin_global_leaderboard():
+    admin = db.session.get(Admin, session.get("admin_id")) if session.get("admin_id") else None
+    if not admin or not admin.is_active:
+        return no_store_json({"error": "Sesi admin berakhir."}, 401)
+    from services.leaderboard_service import get_global_leaderboard
+    return no_store_json(get_global_leaderboard())
 
 
 @api_bp.get("/foundation-summary")

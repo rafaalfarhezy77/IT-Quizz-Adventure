@@ -1,0 +1,23 @@
+.global-leaderboard { margin-bottom: 28px; padding: 24px; }
+.leaderboard-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.leaderboard-heading h2 { font-size: 1.5rem; }
+.leaderboard-heading p { margin-top: 10px; }
+.leaderboard-controls { display: flex; gap: 12px; flex-shrink: 0; }
+.leaderboard-status { margin: 18px 0; font-family: var(--font-mono); font-size: .8rem; }
+.leaderboard-table-wrap { overflow-x: auto; }
+.global-leaderboard table { min-width: 1000px; }
+.global-leaderboard th:nth-child(n+3), .global-leaderboard td:nth-child(n+3) { text-align: right; }
+.global-leaderboard td:nth-child(2) { min-width: 240px; }
+.leaderboard-team-name { display: block; margin-bottom: 6px; }
+.leaderboard-team-detail { font-size: .8rem; color: #555; }
+.leaderboard-total { font-weight: 800; font-size: 1.25rem; }
+.global-leaderboard tr[data-podium="true"] td:first-child { background: var(--nb-neon); font-weight: 800; }
+.leaderboard-empty { padding: 36px; text-align: center; }
+.leaderboard-display { background: var(--nb-bg); padding: 32px; }
+.leaderboard-display .global-leaderboard { margin: 0; min-height: calc(100vh - 64px); }
+.leaderboard-display:fullscreen { overflow: auto; }
+.leaderboard-display:fullscreen .leaderboard-controls { opacity: 0; pointer-events: none; }
+.leaderboard-display:fullscreen.show-controls .leaderboard-controls,
+.leaderboard-display:fullscreen .leaderboard-controls:focus-within { opacity: 1; pointer-events: auto; }
+.leaderboard-display:fullscreen .leaderboard-heading h2 { font-size: 2rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }

@@ -58,17 +58,17 @@
 </div>
 
 {% if packages %}
-  <div class="nb-table-wrap nb-card">
+  <div class="nb-table-wrap nb-card package-table-card">
     <table class="nb-table">
       <thead>
         <tr>
           <th style="width: 110px;">Kode Paket</th>
           <th>Judul Paket / Studi Kasus</th>
-          <th style="width: 150px;">Tipe Modul</th>
+          <th style="width: 120px;">Tipe Modul</th>
           <th style="width: 80px;">Durasi</th>
           <th style="width: 120px;">Kelompok</th>
           <th style="width: 100px;">Status</th>
-          <th style="width: 300px; text-align: right;">Aksi</th>
+          <th style="width: 260px; text-align: right;">Aksi</th>
         </tr>
       </thead>
       <tbody>
@@ -79,8 +79,8 @@
               <span class="mono-code text-bold mono-highlight">{{ p.package_code }}</span>
             </td>
             <td>
-              <div style="font-weight: 700; font-size: 1rem;">{{ p.title }}</div>
-              <div class="mono-sub" style="font-size: 0.8rem; color: #555; max-width: 450px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <div class="package-table-title" style="font-weight: 700; font-size: 1rem;">{{ p.title }}</div>
+              <div class="mono-sub package-table-description" style="font-size: 0.8rem; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 {{ p.description }}
               </div>
             </td>
@@ -119,7 +119,7 @@
               {% endif %}
             </td>
             <td style="text-align: right;">
-              <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+              <div class="package-table-actions">
                 <!-- Link Langsung Kelola Soal untuk Paket Kuis -->
                 {% if p.question_set_id %}
                   <a href="{{ url_for('admin.question_set_detail', set_id=p.question_set_id) }}" class="btn btn-primary btn-xs" title="Kelola Butir Soal Kuis">

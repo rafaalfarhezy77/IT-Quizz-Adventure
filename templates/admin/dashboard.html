@@ -127,6 +127,9 @@
 {% endif %}
 
 <!-- Primary Stats Grid (Contains 'Total Station' keyword for compatibility) -->
+{% if not active_station %}
+  {% include "admin/_global_leaderboard.html" %}
+{% endif %}
 <section class="stats-grid" aria-label="Ringkasan data utama">
   {% for key, title, subtitle, color, icon in [
     ('stations','Pos Lomba','Total Station aktif','yellow','⬡'),
@@ -364,4 +367,10 @@
     {% endif %}
   </div>
 </section>
+{% endblock %}
+{% block scripts %}
+{% if not active_station %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/global-leaderboard.css') }}">
+<script src="{{ url_for('static', filename='js/global-leaderboard.js') }}" defer></script>
+{% endif %}
 {% endblock %}
