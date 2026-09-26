@@ -381,12 +381,12 @@ class NetworkingSubmission(TimestampMixin, db.Model):
 
     stage_1_started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stage_1_submitted_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    stage_1_duration_seconds: Mapped[int] = mapped_column(default=300, nullable=False)
+    stage_1_duration_seconds: Mapped[int] = mapped_column(default=600, nullable=False)
     stage_1_score: Mapped[float] = mapped_column(default=0.0, nullable=False)
 
     stage_2_started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stage_2_submitted_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    stage_2_duration_seconds: Mapped[int] = mapped_column(default=600, nullable=False)
+    stage_2_duration_seconds: Mapped[int] = mapped_column(default=300, nullable=False)
     stage_2_score: Mapped[float] = mapped_column(default=0.0, nullable=False)
 
     stage_3_started_at: Mapped[datetime | None] = mapped_column(nullable=True)

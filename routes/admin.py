@@ -22,6 +22,7 @@ from forms.question import (
     CaseStudyForm,
     EmptyForm,
     QuestionForm,
+    NetworkingQuestionForm,
     QuestionImportConfirmForm,
     QuestionJSONUploadForm,
     QuestionSetStatusForm,
@@ -668,10 +669,15 @@ def question_create(set_id: int):
         flash(reason or "Question set sedang dikunci dan tidak dapat diedit.", "error")
         return redirect(url_for("admin.question_set_detail", set_id=set_id))
 
-    form = QuestionForm()
+    form = NetworkingQuestionForm() if question_set.station.name.lower() == "networking" else QuestionForm()
     if request.method == "GET":
         form.order_number.data = get_next_order_number(set_id)
         form.weight.data = 100.0
+        if isinstance(form, NetworkingQuestionForm):
+            stage = 1 if form.order_number.data <= 10 else 2 if form.order_number.data <= 20 else 3
+            form.stage.data = stage
+            form.question_type.data = {1: "multiple_choice", 2: "true_false", 3: "short_text"}[stage]
+            form.weight.data = {1: 3, 2: 4, 3: 6}[stage]
 
     if form.validate_on_submit():
         if is_order_number_taken(set_id, form.order_number.data):
@@ -683,15 +689,17 @@ def question_create(set_id: int):
                 question = Question(
                     question_set_id=set_id,
                     text=form.text.data.strip(),
-                    option_a=form.option_a.data.strip(),
-                    option_b=form.option_b.data.strip(),
-                    option_c=form.option_c.data.strip(),
-                    option_d=form.option_d.data.strip(),
+                    option_a=(form.option_a.data or "").strip(),
+                    option_b=(form.option_b.data or "").strip(),
+                    option_c=(form.option_c.data or "").strip(),
+                    option_d=(form.option_d.data or "").strip(),
                     correct_answer=form.correct_answer.data,
                     weight=float(form.weight.data),
                     order_number=int(form.order_number.data),
                     is_active=True,
                 )
+                if isinstance(form, NetworkingQuestionForm):
+                    form.apply_networking(question)
                 db.session.add(question)
                 db.session.commit()
                 flash("Soal berhasil ditambahkan.", "success")
@@ -726,7 +734,9 @@ def question_edit(question_id: int):
         flash(reason or "Question set sedang dikunci dan tidak dapat diedit.", "error")
         return redirect(url_for("admin.question_set_detail", set_id=question_set.id))
 
-    form = QuestionForm(obj=question)
+    form = NetworkingQuestionForm(obj=question) if question_set.station.name.lower() == "networking" else QuestionForm(obj=question)
+    if request.method == "GET" and isinstance(form, NetworkingQuestionForm):
+        form.accepted_answers_text.data = "\n".join(question.accepted_answers or [])
 
     if form.validate_on_submit():
         if is_order_number_taken(question_set.id, form.order_number.data, exclude_question_id=question.id):
@@ -736,13 +746,15 @@ def question_edit(question_id: int):
         else:
             try:
                 question.text = form.text.data.strip()
-                question.option_a = form.option_a.data.strip()
-                question.option_b = form.option_b.data.strip()
-                question.option_c = form.option_c.data.strip()
-                question.option_d = form.option_d.data.strip()
+                question.option_a = (form.option_a.data or "").strip()
+                question.option_b = (form.option_b.data or "").strip()
+                question.option_c = (form.option_c.data or "").strip()
+                question.option_d = (form.option_d.data or "").strip()
                 question.correct_answer = form.correct_answer.data
                 question.weight = float(form.weight.data)
                 question.order_number = int(form.order_number.data)
+                if isinstance(form, NetworkingQuestionForm):
+                    form.apply_networking(question)
 
                 db.session.commit()
                 flash("Soal berhasil diperbarui.", "success")
@@ -1123,16 +1135,17 @@ def questions_import_cancel():
 @admin_required
 def questions_sample_json():
     """Unduh berkas contoh bank_soal.json resmi."""
-    sample_path = Path(current_app.root_path) / "bank_soal.json"
+    filename = "bank_soal_networking.json" if request.args.get("station") == "networking" else "bank_soal.json"
+    sample_path = Path(__file__).resolve().parent.parent / filename
     if not sample_path.is_file():
-        sample_path = Path("bank_soal.json")
+        sample_path = Path(filename)
     if sample_path.is_file():
         with open(sample_path, "r", encoding="utf-8") as f:
             content = f.read()
         return Response(
             content,
             mimetype="application/json",
-            headers={"Content-Disposition": "attachment; filename=bank_soal.json"},
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     abort(404)
 
@@ -2584,13 +2597,23 @@ def networking_open_lobby():
         flash(f"Lobby sesi untuk Kelompok {group.code} sudah aktif (Sesi #{existing.id}).", "info")
         return redirect(url_for("admin.networking_lobby", group_id=group.id, rotation=rotation))
 
+    qs = db.session.get(QuestionSet, set_id)
+    from services.question_service import validate_question_set_ready
+    if not qs or qs.station_id != net_station.id or qs.code != group.code or qs.status != QuestionSetStatus.READY:
+        flash("Gunakan set Networking READY yang sesuai kelompok A–D.", "danger")
+        return redirect(url_for("admin.networking_lobby"))
+    valid, errors = validate_question_set_ready(qs)
+    if not valid:
+        flash(" ".join(errors), "danger")
+        return redirect(url_for("admin.networking_lobby"))
+
     new_session = CompetitionSession(
         station_id=net_station.id,
         group_id=group.id,
         question_set_id=set_id,
         rotation_number=rotation,
         status=SessionStatus.WAITING,
-        duration_seconds=1800,  # 30 menit default
+        duration_seconds=sum(current_app.config.get(f"NETWORKING_STAGE_{n}_SECONDS", d) for n, d in [(1, 600), (2, 300), (3, 900)]) + 300,
     )
     db.session.add(new_session)
     db.session.commit()
@@ -2752,7 +2775,8 @@ def networking_finalize_session(session_id: int):
             if ok:
                 finalized_count += 1
 
-    session_obj.status = SessionStatus.FINISHED
+    if all(not sub.networking_submission or sub.networking_submission.verification_status == "FINALIZED" for sub in subs):
+        session_obj.status = SessionStatus.FINISHED
     db.session.commit()
 
     flash(f"Berhasil memfinalisasi skor dan Stamp untuk {finalized_count} tim! Hasil telah dipublikasikan ke Leaderboard.", "success")

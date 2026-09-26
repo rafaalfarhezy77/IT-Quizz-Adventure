@@ -148,10 +148,10 @@
             <div class="fw-bold">{{ ts.team.team_name }}</div>
             <div class="small text-muted">{{ ts.team.school }}</div>
           </td>
-          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_1_score if ts.net_sub else 0 }} / 10</td>
-          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_2_score if ts.net_sub else 0 }} / 10</td>
+          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_1_score if ts.net_sub else 0 }} / 30</td>
+          <td class="text-center font-monospace fw-bold">{{ ts.net_sub.stage_2_score if ts.net_sub else 0 }} / 40</td>
           <td class="text-center font-monospace fw-bold">
-            {{ ts.net_sub.stage_3_score if ts.net_sub else 0 }} / 5
+            {{ ts.net_sub.stage_3_score if ts.net_sub else 0 }} / 30
             <div class="small text-primary">({{ ts.net_sub.stage_3_correct_count if ts.net_sub else 0 }}/5 Benar)</div>
           </td>
           <td class="text-center">

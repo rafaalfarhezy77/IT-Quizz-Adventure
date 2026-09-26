@@ -266,6 +266,13 @@
     </div>
   </div>
 
+  <div class="net-hero-card">
+    <p class="fw-bold">Tiga peserta berdiskusi bersama melalui satu laptop; tidak ada pergantian anggota. Operator memilih atau mengetik jawaban. Jangan mencari jawaban di internet atau memakai AI. Jika ada kendala, panggil panitia; timer tetap berjalan.</p>
+    <p>Signal Check: 10 soal × 3 poin (10 menit). True or Trap: 10 soal × 4 poin (5 menit). Case Signal: 5 soal × 6 poin (15 menit). Verifikasi sekitar 5 menit. Durasi mengikuti konfigurasi panitia. Jawaban dapat diubah sebelum tahap dikumpulkan atau waktu habis.</p>
+    <p>Ketepatan maksimal 100 poin; bonus kecepatan dihitung terpisah. Stamp hanya jika minimal 4 dari 5 jawaban Case Signal benar.</p>
+    <div>Hasil tahap selesai: Signal Check {{ net_sub.stage_1_score }}/30 · True or Trap {{ net_sub.stage_2_score }}/40 · Case Signal {{ net_sub.stage_3_score }}/30.</div>
+    {% if current_stage < 4 %}<div id="questionProgress" class="fw-bold" aria-live="polite"></div>{% else %}<div>Skor sementara {{ net_sub.provisional_score }}/100. Menunggu verifikasi panitia.</div>{% endif %}
+  </div>
   <!-- STAGE 4: WAITING FOR VERIFICATION -->
   {% if current_stage == 4 %}
   <div class="net-q-card text-center py-5">
@@ -472,14 +479,16 @@
   if (timerDisplay && !isTimerLocked) {
     timerDisplay.innerText = formatTime(remainingSec);
 
+    const clientDeadline = Date.now() + remainingSec * 1000;
     const timerInterval = setInterval(() => {
+      remainingSec = Math.max(0, Math.ceil((clientDeadline - Date.now()) / 1000));
       if (remainingSec <= 0) {
         clearInterval(timerInterval);
         timerDisplay.innerText = "00:00";
         autoSubmitOnTimeout();
         return;
       }
-      remainingSec--;
+
       timerDisplay.innerText = formatTime(remainingSec);
 
       if (remainingSec < 60 && timerBox) {
@@ -495,6 +504,7 @@
     if (SUBMIT_BTN) {
       SUBMIT_BTN.disabled = true;
       SUBMIT_BTN.innerText = "WAKTU HABIS, MENGIRIM JAWABAN...";
+      isTimerLocked = true;
     }
     alert("Waktu pengerjaan tahap ini telah habis! Jawaban Anda sedang dikumpulkan otomatis oleh server.");
     SUBMIT_FORM.submit();
@@ -523,6 +533,9 @@
 
   // Debounced input (Tahap 3)
   let inputDebounceTimers = {};
+  const pendingSaves = new Set();
+  const saveChains = new Map();
+  let saveFailed = false;
   function handleShortTextInput(inputElem) {
     if (isTimerLocked || isSubmitting) return;
 
@@ -553,7 +566,7 @@
   function sendAnswerToServer(questionId, answerValue) {
     setSaveStatus("saving");
 
-    fetch(SAVE_URL, {
+    const request = (saveChains.get(String(questionId)) || Promise.resolve()).catch(() => {}).then(() => fetch(SAVE_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -563,21 +576,61 @@
         question_id: questionId,
         answer_value: answerValue,
       }),
-    })
+    }))
     .then(res => res.json())
     .then(data => {
       if (data.success) {
         setSaveStatus("saved");
+        updateProgress();
       } else {
         setSaveStatus("error");
-        console.error("Gagal simpan:", data.message);
+        throw new Error(data.message);
       }
     })
     .catch(err => {
       setSaveStatus("error");
+      saveFailed = true;
       console.error("Network error:", err);
+      throw err;
     });
+    saveChains.set(String(questionId), request);
+    pendingSaves.add(request);
+    request.then(() => pendingSaves.delete(request), () => pendingSaves.delete(request));
+    return request;
   }
+
+  function updateProgress() {
+    const cards = [...document.querySelectorAll('.net-q-card[id]')];
+    const count = cards.filter(card => card.querySelector('button.selected') || card.querySelector('input')?.value.trim()).length;
+    const el = document.getElementById('questionProgress');
+    if (el) el.textContent = `Progres jawaban: ${count}/${cards.length}`;
+  }
+  updateProgress();
+  if (SUBMIT_FORM) SUBMIT_FORM.addEventListener('submit', async event => {
+    event.preventDefault();
+    isSubmitting = true;
+    SUBMIT_BTN.disabled = true;
+    SUBMIT_BTN.innerText = "SEDANG MENGIRIM JAWABAN...";
+    saveFailed = false;
+    try {
+      for (const input of document.querySelectorAll('.short-text-input')) {
+        clearTimeout(inputDebounceTimers[input.dataset.qid]);
+        sendAnswerToServer(input.dataset.qid, input.value);
+      }
+      // Re-save selected values too, so a failed earlier request can be retried.
+      for (const button of document.querySelectorAll('button.selected[data-qid]')) {
+        sendAnswerToServer(button.dataset.qid, button.dataset.ans);
+      }
+      await Promise.all([...pendingSaves]);
+      if (!saveFailed) SUBMIT_FORM.submit();
+    } catch (error) {
+      isSubmitting = false;
+      SUBMIT_BTN.disabled = false;
+      SUBMIT_BTN.textContent = 'COBA KIRIM KEMBALI';
+      setSaveStatus('error');
+      alert('Jawaban belum tersimpan. Periksa koneksi lalu coba kembali.');
+    }
+  });
 
   // Submit confirmation dialog & double-click protection
   function confirmSubmitStage(e) {
@@ -596,11 +649,6 @@
       return false;
     }
 
-    isSubmitting = true;
-    if (SUBMIT_BTN) {
-      SUBMIT_BTN.disabled = true;
-      SUBMIT_BTN.innerText = "SEDANG MENGIRIM JAWABAN...";
-    }
     return true;
   }
 </script>

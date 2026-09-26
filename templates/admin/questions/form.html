@@ -23,6 +23,12 @@
     <form method="post" novalidate class="question-form">
       {{ form.hidden_tag() }}
 
+      {% if form.stage is defined %}
+      {% for field in [form.stage, form.question_type, form.option_e, form.case_study, form.accepted_answers_text] %}
+      <div class="form-group">{{ field.label }}{{ field(class="nb-input") }}{% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+      {% endfor %}
+      <p>PG: A–E. Benar/Salah: kunci Benar atau Salah. Isian: kunci utama dan varian satu per baris. Bobot tahap 1/2/3: 3/4/6.</p>
+      {% endif %}
       <!-- FIELD 1: TEKS PERTANYAAN -->
       <div class="form-group">
         <div class="form-label-row">

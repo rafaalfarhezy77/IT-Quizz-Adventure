@@ -41,18 +41,21 @@
 
           <div class="preview-card-body">
             <div class="question-content-box">
+              {% if q.case_study %}<p class="preview-question-text">Studi kasus: {{ q.case_study }}</p>{% endif %}
+              {% if q.accepted_answers %}<p>Varian diterima: {{ q.accepted_answers|join("; ") }}</p>{% endif %}
               <p class="preview-question-text">{{ q.text }}</p>
             </div>
 
             <div class="preview-options-list">
-              {% for opt_key, opt_val in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d)] %}
-                <div class="preview-option-item {{ 'is-correct-option' if opt_key == q.correct_answer }}">
+              {% for opt_key, opt_val in [('A', q.option_a), ('B', q.option_b), ('C', q.option_c), ('D', q.option_d), ('E', q.option_e)] %}
+                {% if opt_val %}<div class="preview-option-item {{ 'is-correct-option' if opt_key == q.correct_answer }}">
                   <div class="opt-bullet">{{ opt_key }}</div>
                   <div class="opt-text">{{ opt_val }}</div>
                   {% if opt_key == q.correct_answer %}
                     <span class="correct-tag">✓ KUNCI</span>
                   {% endif %}
                 </div>
+                {% endif %}
               {% endfor %}
             </div>
           </div>

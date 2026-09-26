@@ -230,6 +230,12 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
             result["global_errors"].append(f"[Set {set_code}] Isi paket soal harus berupa daftar array soal.")
             continue
 
+        from services.question_service import is_question_set_editable
+        editable, reason = is_question_set_editable(db_qs)
+        if station.name.lower() == "networking" and not editable:
+            result["global_errors"].append(reason)
+        if station.name.lower() == "networking" and len(q_list) != 25:
+            result["global_errors"].append("Networking wajib memuat tepat 25 soal per set.")
         if is_software and len(q_list) != 9:
             result["global_errors"].append(f"[Set {set_code}] Software Engineering wajib memuat tepat 9 soal, masing-masing 3 soal per anggota.")
 
@@ -391,7 +397,9 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 elif question_type == "short_text":
                     if accepted_answers_val:
                         if isinstance(accepted_answers_val, list):
-                            accepted_answers_list = [str(x).strip() for x in accepted_answers_val if str(x).strip()]
+                            if any(not isinstance(x, str) or not x.strip() for x in accepted_answers_val):
+                                row_errors.append(f"{loc_prefix}: Setiap varian jawaban wajib berupa teks tidak kosong.")
+                            accepted_answers_list = [x.strip() for x in accepted_answers_val if isinstance(x, str) and x.strip()]
                         elif isinstance(accepted_answers_val, str):
                             accepted_answers_list = [str(accepted_answers_val).strip()]
                     elif correct_clean:
@@ -465,6 +473,10 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                         f"{loc_prefix}: external_id '{ext_id_clean}' sudah terdaftar pada soal lain di Set {set_code}."
                     )
 
+            if is_networking:
+                from types import SimpleNamespace
+                from services.question_service import validate_networking_question
+                row_errors.extend(validate_networking_question(SimpleNamespace(order_number=order_number, stage=stage_num, question_type=question_type, text=text_str, weight=weight_float, option_a=opt_a_str, option_b=opt_b_str, option_c=opt_c_str, option_d=opt_d_str, option_e=opt_e_str, correct_answer=correct_clean, accepted_answers=accepted_answers_list)))
             is_row_valid = (len(row_errors) == 0)
             status_row = "VALID" if is_row_valid else "ERROR"
 
@@ -576,7 +588,12 @@ def execute_question_import(file_token: str, station_id: int, mode: str = "ADD")
                     )
                 )
 
+                if existing_question is None and target_set.station.name.lower() == "networking":
+                    # Legacy Networking seeds did not assign external_id. Adopt only an
+                    # unassigned row with the same order, under the existing UPDATE preview.
+                    existing_question = db.session.scalar(db.select(Question).where(Question.question_set_id == set_id, Question.order_number == q_data["order_number"], Question.external_id.is_(None)))
                 if existing_question is not None:
+                    existing_question.external_id = ext_id
                     # Perbarui data soal yang sudah ada
                     existing_question.text = q_data["text"]
                     existing_question.case_study = q_data.get("case_study")

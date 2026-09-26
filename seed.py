@@ -150,125 +150,13 @@ def seed_database():
             # Pastikan Set A berstatus READY agar siap digunakan
             qs_a.status = QuestionSetStatus.READY
 
-    # Seed 25 soal Pos Networking dari dokumen Networking_IT_Quiz.docx untuk Set A-D
+    # Seed 25 soal Pos Networking dari .agents/Panduan Pos 3 Networking.md untuk Set A-D
     net_station = db.session.scalar(db.select(Station).where(Station.name == "Networking"))
     if net_station:
-        networking_questions_data = [
-            # TAHAP 1 - Pilihan Ganda (10 soal, A-E, @1 poin)
-            {"order": 1, "stage": 1, "type": "multiple_choice", "cat": "Konsep Dasar Jaringan",
-             "text": "Pengertian jaringan komputer yang paling tepat adalah…",
-             "a": "Sekumpulan komputer otonom yang saling terhubung menggunakan protokol komunikasi untuk berbagi data, sumber daya, dan layanan",
-             "b": "Kumpulan kabel listrik dalam satu gedung", "c": "Sistem operasi untuk mengelola file", "d": "Aplikasi pengolah kata", "e": "Perangkat penyimpanan data eksternal",
-             "ans": "A", "weight": 1.0, "acc": None, "case": None},
-            {"order": 2, "stage": 1, "type": "multiple_choice", "cat": "Jenis Jaringan Geografis",
-             "text": "Jaringan yang menghubungkan HP dengan earphone/speaker lewat Bluetooth dalam jarak sangat dekat disebut…",
-             "a": "PAN", "b": "LAN", "c": "MAN", "d": "WAN", "e": "VPN",
-             "ans": "A", "weight": 1.0, "acc": None, "case": None},
-            {"order": 3, "stage": 1, "type": "multiple_choice", "cat": "Jenis Jaringan Geografis",
-             "text": "Jaringan yang mencakup satu ruangan, satu rumah, atau satu gedung sekolah disebut…",
-             "a": "PAN", "b": "LAN", "c": "MAN", "d": "WAN", "e": "GAN",
-             "ans": "B", "weight": 1.0, "acc": None, "case": None},
-            {"order": 4, "stage": 1, "type": "multiple_choice", "cat": "Jenis Jaringan Geografis",
-             "text": "Jaringan yang menghubungkan beberapa LAN dalam cakupan satu kota disebut…",
-             "a": "PAN", "b": "LAN", "c": "MAN", "d": "WAN", "e": "SAN",
-             "ans": "C", "weight": 1.0, "acc": None, "case": None},
-            {"order": 5, "stage": 1, "type": "multiple_choice", "cat": "Jenis Jaringan Geografis",
-             "text": "Jaringan yang mencakup wilayah sangat luas (antar kota/negara/benua) dan menggunakan router disebut…",
-             "a": "PAN", "b": "LAN", "c": "MAN", "d": "WAN", "e": "HAN",
-             "ans": "D", "weight": 1.0, "acc": None, "case": None},
-            {"order": 6, "stage": 1, "type": "multiple_choice", "cat": "Media Konektivitas",
-             "text": "Media kabel yang memanfaatkan cahaya untuk mengirim data dengan kecepatan sangat tinggi dan jarak jauh adalah…",
-             "a": "Kabel UTP", "b": "Kabel Coaxial", "c": "Fiber Optik", "d": "Kabel Telepon", "e": "Kabel Listrik",
-             "ans": "C", "weight": 1.0, "acc": None, "case": None},
-            {"order": 7, "stage": 1, "type": "multiple_choice", "cat": "Perangkat Jaringan",
-             "text": "Perangkat yang berfungsi menghubungkan beberapa komputer dalam satu jaringan LAN disebut…",
-             "a": "Router", "b": "Switch/Hub", "c": "Modem", "d": "Firewall", "e": "NIC",
-             "ans": "B", "weight": 1.0, "acc": None, "case": None},
-            {"order": 8, "stage": 1, "type": "multiple_choice", "cat": "Perangkat Jaringan",
-             "text": "Perangkat yang mengatur jalur (routing) pengiriman data antar jaringan yang berbeda, misalnya dari LAN ke internet, disebut…",
-             "a": "Switch", "b": "Access Point", "c": "Router", "d": "NIC", "e": "Hub",
-             "ans": "C", "weight": 1.0, "acc": None, "case": None},
-            {"order": 9, "stage": 1, "type": "multiple_choice", "cat": "Perangkat Jaringan",
-             "text": "Kartu yang dipasang pada komputer agar dapat terhubung ke jaringan disebut…",
-             "a": "Firewall", "b": "NIC (Network Interface Card)", "c": "Access Point", "d": "Switch", "e": "Modem",
-             "ans": "B", "weight": 1.0, "acc": None, "case": None},
-            {"order": 10, "stage": 1, "type": "multiple_choice", "cat": "Topologi Jaringan",
-             "text": "Topologi jaringan di mana setiap komputer terhubung langsung ke semua komputer lain, sehingga sangat andal namun mahal, disebut topologi…",
-             "a": "Bus", "b": "Star", "c": "Ring", "d": "Mesh", "e": "Tree",
-             "ans": "D", "weight": 1.0, "acc": None, "case": None},
-
-            # TAHAP 2 - Benar-Salah (10 soal, @1 poin)
-            {"order": 11, "stage": 2, "type": "true_false", "cat": "Konsep Dasar Jaringan",
-             "text": "Internet adalah jaringan privat yang hanya bisa diakses oleh satu sekolah saja.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-            {"order": 12, "stage": 2, "type": "true_false", "cat": "Jenis Jaringan Geografis",
-             "text": "LAN biasanya mencakup wilayah yang lebih kecil dibanding MAN.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Benar", "weight": 1.0, "acc": None, "case": None},
-            {"order": 13, "stage": 2, "type": "true_false", "cat": "Media Konektivitas",
-             "text": "Kabel UTP termasuk media jaringan nirkabel.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-            {"order": 14, "stage": 2, "type": "true_false", "cat": "Perangkat Jaringan",
-             "text": "Access Point berfungsi memancarkan sinyal WiFi agar perangkat bisa terhubung secara nirkabel.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Benar", "weight": 1.0, "acc": None, "case": None},
-            {"order": 15, "stage": 2, "type": "true_false", "cat": "Perangkat Jaringan",
-             "text": "Firewall berfungsi mempercepat kecepatan koneksi internet.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-            {"order": 16, "stage": 2, "type": "true_false", "cat": "Topologi Jaringan",
-             "text": "Pada topologi Bus, seluruh komputer terhubung ke satu kabel utama secara berurutan.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Benar", "weight": 1.0, "acc": None, "case": None},
-            {"order": 17, "stage": 2, "type": "true_false", "cat": "Topologi Jaringan",
-             "text": "Pada topologi Star, jika satu kabel dari komputer ke switch putus, seluruh jaringan otomatis ikut mati total.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-            {"order": 18, "stage": 2, "type": "true_false", "cat": "Topologi Jaringan",
-             "case": "Sebuah lab sekolah menghubungkan 20 komputer memakai 1 switch di tengah ruangan, dan tiap komputer punya kabel sendiri langsung ke switch tersebut.",
-             "text": "Topologi yang dipakai lab ini adalah topologi Ring.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-            {"order": 19, "stage": 2, "type": "true_false", "cat": "Jenis Jaringan Geografis",
-             "case": "Sebuah kios kecil menghubungkan komputer kasir ke printer struk tanpa kabel dari jarak sekitar 2 meter memakai Bluetooth.",
-             "text": "Jenis jaringan yang terbentuk ini disebut PAN.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Benar", "weight": 1.0, "acc": None, "case": None},
-            {"order": 20, "stage": 2, "type": "true_false", "cat": "Perangkat Jaringan",
-             "text": "Router hanya bisa dipakai untuk jaringan berskala LAN dan tidak berperan apa pun dalam koneksi ke internet.",
-             "a": "Benar", "b": "Salah", "c": None, "d": None, "e": None,
-             "ans": "Salah", "weight": 1.0, "acc": None, "case": None},
-
-            # TAHAP 3 - Isian Singkat / Short Text (5 soal, studi kasus berbeda)
-            {"order": 21, "stage": 3, "type": "short_text", "cat": "Pertanian",
-             "case": "Sebuah startup smart farming memasang banyak sensor kelembapan tanah di satu petak sawah. Sensor-sensor ini saling terhubung dalam kelompok kecil berjarak kurang dari 10 meter satu sama lain sebelum datanya dikumpulkan ke satu alat pengumpul (gateway) di pinggir sawah.",
-             "text": "Jenis jaringan antar-sensor yang berjarak sangat dekat ini disebut ___",
-             "a": None, "b": None, "c": None, "d": None, "e": None,
-             "ans": "PAN", "weight": 1.0, "acc": ["PAN", "Personal Area Network"]},
-            {"order": 22, "stage": 3, "type": "short_text", "cat": "Kesehatan",
-             "case": "Sebuah klinik di desa terpencil ingin melakukan konsultasi video secara langsung dengan dokter spesialis yang bertugas di rumah sakit besar di kota lain, bahkan berbeda pulau. Meski sinyal HP di desa tersebut sering naik-turun, komunikasi video tetap harus bisa tersambung lintas pulau.",
-             "text": "Jenis jaringan berskala sangat luas yang dibutuhkan agar komunikasi ini bisa berjalan disebut ___",
-             "a": None, "b": None, "c": None, "d": None, "e": None,
-             "ans": "WAN", "weight": 1.0, "acc": ["WAN", "Wide Area Network", "internet"]},
-            {"order": 23, "stage": 3, "type": "short_text", "cat": "Ketahanan Pangan",
-             "case": "Sebuah gudang penyimpanan pangan nasional memasang belasan kamera CCTV. Seluruh kamera tersebut disambungkan lewat kabel ke satu alat pusat yang diletakkan di tengah ruangan kontrol, sehingga jika salah satu kabel kamera putus, kamera-kamera lain tetap merekam normal tanpa terganggu.",
-             "text": "Topologi jaringan CCTV gudang ini disebut topologi ___",
-             "a": None, "b": None, "c": None, "d": None, "e": None,
-             "ans": "Star", "weight": 1.0, "acc": ["Star", "topologi star", "bintang", "topologi bintang"]},
-            {"order": 24, "stage": 3, "type": "short_text", "cat": "Ekonomi Sirkular/Sampah",
-             "case": "Aplikasi bank sampah digital di suatu kota diakses oleh ribuan warga dari berbagai kecamatan secara bersamaan lewat internet untuk mencatat transaksi tukar sampah menjadi saldo. Agar data transaksi dan saldo warga tidak bisa diretas atau diakses sembarang orang dari luar, perangkat/sistem keamanan jaringan yang wajib dipasang di server aplikasi tersebut adalah ___",
-             "text": "Perangkat/sistem keamanan jaringan yang wajib dipasang di server aplikasi tersebut adalah ___",
-             "a": None, "b": None, "c": None, "d": None, "e": None,
-             "ans": "Firewall", "weight": 1.0, "acc": ["Firewall", "firewall jaringan"]},
-            {"order": 25, "stage": 3, "type": "short_text", "cat": "Pariwisata",
-             "case": "Pengelola sebuah destinasi wisata baru ingin menyediakan akses WiFi gratis ke seluruh area terbuka objek wisata yang cukup luas, tanpa harus menarik kabel LAN ke setiap sudut area.",
-             "text": "Perangkat yang perlu dipasang di beberapa titik untuk memancarkan sinyal WiFi ke seluruh area terbuka tersebut disebut ___",
-             "a": None, "b": None, "c": None, "d": None, "e": None,
-             "ans": "Access Point", "weight": 1.0, "acc": ["Access Point", "AP", "access point WiFi", "pemancar WiFi"]},
-        ]
-
+        import json
+        from pathlib import Path
+        bank = json.loads((Path(__file__).parent / "bank_soal_networking.json").read_text(encoding="utf-8"))
+        networking_questions_data = [dict(order=q["order_number"], stage=q["stage"], type=q["question_type"], cat=q.get("category"), case=q.get("case_study"), text=q["text"], a=q.get("options", {}).get("A"), b=q.get("options", {}).get("B"), c=q.get("options", {}).get("C"), d=q.get("options", {}).get("D"), e=q.get("options", {}).get("E"), ans=q["correct_answer"], acc=q.get("accepted_answers"), weight=q["weight"], external_id=q["external_id"]) for q in bank["sets"]["A"]]
         for set_code in ("A", "B", "C", "D"):
             qs_net = db.session.scalar(
                 db.select(QuestionSet).where(
@@ -287,7 +175,7 @@ def seed_database():
                 db.session.flush()
 
             existing_net_q = [q for q in qs_net.questions if q.is_active]
-            if len(existing_net_q) < len(networking_questions_data):
+            if not qs_net.questions and qs_net.status != QuestionSetStatus.LOCKED:
                 for old_q in qs_net.questions:
                     db.session.delete(old_q)
                 db.session.flush()
@@ -297,6 +185,7 @@ def seed_database():
                         Question(
                             question_set_id=qs_net.id,
                             order_number=qd["order"],
+                            external_id=qd["external_id"],
                             stage=qd["stage"],
                             question_type=qd["type"],
                             category=qd["cat"],
@@ -313,7 +202,8 @@ def seed_database():
                             is_active=True,
                         )
                     )
-            qs_net.status = QuestionSetStatus.READY
+            if qs_net.status != QuestionSetStatus.LOCKED:
+                qs_net.status = QuestionSetStatus.READY
 
     # Seed sample DRAFT Hardware packages jika belum ada
     hw_station = db.session.scalar(db.select(Station).where(Station.name == "Hardware"))

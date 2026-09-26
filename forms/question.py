@@ -109,3 +109,34 @@ class QuestionImportConfirmForm(FlaskForm):
     station_id = HiddenField(validators=[DataRequired(message="ID Pos tidak valid.")])
     mode = HiddenField(validators=[DataRequired(message="Mode import tidak valid.")])
     submit = SubmitField("Konfirmasi & Import ke Database")
+
+
+class NetworkingQuestionForm(QuestionForm):
+    option_a = StringField("Pilihan A")
+    option_b = StringField("Pilihan B")
+    option_c = StringField("Pilihan C")
+    option_d = StringField("Pilihan D")
+    option_e = StringField("Pilihan E")
+    correct_answer = StringField("Kunci jawaban utama", validators=[DataRequired()])
+    stage = IntegerField("Tahap", validators=[DataRequired(), NumberRange(min=1, max=3)])
+    question_type = SelectField("Tipe soal", choices=[("multiple_choice", "Pilihan Ganda"), ("true_false", "Benar/Salah"), ("short_text", "Isian Singkat")])
+    case_study = TextAreaField("Studi kasus")
+    accepted_answers_text = TextAreaField("Varian jawaban (satu per baris)")
+
+    def apply_networking(self, question):
+        question.stage = self.stage.data
+        question.question_type = self.question_type.data
+        question.option_e = self.option_e.data or None
+        question.case_study = self.case_study.data or None
+        question.accepted_answers = [a.strip() for a in (self.accepted_answers_text.data or "").splitlines() if a.strip()]
+
+    def validate(self, extra_validators=None):
+        if not super().validate(extra_validators):
+            return False
+        from types import SimpleNamespace
+        from services.question_service import validate_networking_question
+        q = SimpleNamespace(order_number=self.order_number.data, text=self.text.data, weight=self.weight.data, correct_answer=self.correct_answer.data, option_a=self.option_a.data, option_b=self.option_b.data, option_c=self.option_c.data, option_d=self.option_d.data)
+        self.apply_networking(q)
+        errors = validate_networking_question(q)
+        self.correct_answer.errors.extend(errors)
+        return not errors

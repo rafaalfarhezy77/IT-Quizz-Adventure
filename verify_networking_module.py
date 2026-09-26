@@ -131,7 +131,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
                 question_set_id=qs_net_a.id,
                 rotation_number=1,
                 status=SessionStatus.WAITING,
-                duration_seconds=300,
+                duration_seconds=2100,
             )
             db.session.add(session_a)
             db.session.commit()
@@ -276,7 +276,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
                 rotation_number=1,
                 status=SessionStatus.RUNNING,
                 started_at=get_server_now(),
-                duration_seconds=300,
+                duration_seconds=2100,
             )
             db.session.add(session_b)
             db.session.commit()
@@ -300,7 +300,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
                 db.select(Question).where(Question.question_set_id == self.qs_net_b_id)
             )
 
-            ok, err, status = save_networking_answer(net_sub_a.id, q_in_set_b.id, "A")
+            ok, err, status = save_networking_answer(net_sub_a.submission_id, q_in_set_b.id, "A")
             self.assertFalse(ok, "Jawaban untuk soal dari set lain harus ditolak")
             self.assertIn("tidak termasuk dalam paket soal", err)
 
@@ -318,7 +318,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertIsNotNone(q_e)
             self.assertEqual(q_e.option_e, "Menyimpan file statis")
 
-            ok, err, status = save_networking_answer(net_sub.id, q_e.id, "E")
+            ok, err, status = save_networking_answer(net_sub.submission_id, q_e.id, "E")
             self.assertTrue(ok)
 
             ans = db.session.scalar(
@@ -346,7 +346,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
                     Question.correct_answer == "True",
                 )
             )
-            ok, err, status = save_networking_answer(net_sub.id, q_tf.id, "Benar")
+            ok, err, status = save_networking_answer(net_sub.submission_id, q_tf.id, "Benar")
             self.assertTrue(ok)
 
             ans = db.session.scalar(
@@ -357,7 +357,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             )
             self.assertTrue(ans.is_correct)
 
-            ok_w, err_w, status_w = save_networking_answer(net_sub.id, q_tf.id, "Salah")
+            ok_w, err_w, status_w = save_networking_answer(net_sub.submission_id, q_tf.id, "Salah")
             self.assertTrue(ok_w)
             ans_w = db.session.scalar(
                 db.select(Answer).where(
@@ -370,8 +370,8 @@ class NetworkingModuleTestCase(unittest.TestCase):
     def test_07_short_text_variations_normalization(self):
         """7. Variasi jawaban isian dikenali setelah normalisasi."""
         self.assertEqual(normalize_text_answer("  Access   Point  "), "access point")
-        self.assertEqual(normalize_text_answer("Access-Point!"), "access point")
-        self.assertEqual(normalize_text_answer("D.H.C.P. Server"), "dhcp server")
+        self.assertEqual(normalize_text_answer("Access-Point!"), "access-point!")
+        self.assertEqual(normalize_text_answer("D.H.C.P. Server"), "d.h.c.p. server")
 
         accepted = ["access point", "ap", "access point wifi", "pemancar wifi"]
         is_corr, status = evaluate_short_text_answer("  ACCESS POINT  ", accepted)
@@ -382,7 +382,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
         self.assertTrue(is_corr)
         self.assertEqual(status, "AUTO_GRADED")
 
-        is_corr, status = evaluate_short_text_answer("Pemancar Wifi!", accepted)
+        is_corr, status = evaluate_short_text_answer("Pemancar Wifi", accepted)
         self.assertTrue(is_corr)
         self.assertEqual(status, "AUTO_GRADED")
 
@@ -405,7 +405,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
                     Question.stage == 3,
                 )
             )
-            ok, err, status = save_networking_answer(net_sub.id, q3.id, "pemancar sinyal radio lokal")
+            ok, err, status = save_networking_answer(net_sub.submission_id, q3.id, "pemancar sinyal radio lokal")
             self.assertTrue(ok)
             self.assertEqual(status, "NEEDS_REVIEW")
 
@@ -435,7 +435,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             q1 = db.session.scalar(
                 db.select(Question).where(Question.question_set_id == self.qs_net_a_id, Question.stage == 1)
             )
-            save_networking_answer(net_sub.id, q1.id, "A")
+            save_networking_answer(net_sub.submission_id, q1.id, "A")
 
             # Disconnect and reconnect
             sub_after, net_sub_after, _ = get_or_create_networking_submission(self.session_a_id, self.teams_a_ids[0], "token-a")
@@ -449,14 +449,14 @@ class NetworkingModuleTestCase(unittest.TestCase):
         """11. Waktu habis menyebabkan autosubmit."""
         with self.app.app_context():
             sub, net_sub, _ = get_or_create_networking_submission(self.session_a_id, self.teams_a_ids[0], "token-a")
-            net_sub.stage_1_started_at = get_server_now() - timedelta(seconds=310)
+            net_sub.stage_1_started_at = get_server_now() - timedelta(seconds=610)
             db.session.commit()
 
             timer = get_stage_timer_info(net_sub, 1)
             self.assertTrue(timer["is_expired"])
             self.assertEqual(timer["remaining_seconds"], 0)
 
-            ok, err, next_stage = submit_stage(net_sub.id, 1, is_timeout=True)
+            ok, err, next_stage = submit_stage(net_sub.submission_id, 1, is_timeout=True)
             self.assertTrue(ok)
             self.assertEqual(next_stage, 2)
 
@@ -471,11 +471,11 @@ class NetworkingModuleTestCase(unittest.TestCase):
             q1 = db.session.scalar(
                 db.select(Question).where(Question.question_set_id == self.qs_net_a_id, Question.stage == 1)
             )
-            save_networking_answer(net_sub.id, q1.id, "A")
+            save_networking_answer(net_sub.submission_id, q1.id, "A")
 
-            submit_stage(net_sub.id, 1, is_timeout=False)
+            submit_stage(net_sub.submission_id, 1, is_timeout=False)
 
-            ok, err, status = save_networking_answer(net_sub.id, q1.id, "B")
+            ok, err, status = save_networking_answer(net_sub.submission_id, q1.id, "B")
             self.assertFalse(ok)
             self.assertIn("terkunci", err)
 
@@ -494,11 +494,11 @@ class NetworkingModuleTestCase(unittest.TestCase):
 
             for i, q in enumerate(q_stage3):
                 if i < 4:
-                    save_networking_answer(net_sub.id, q.id, q.accepted_answers[0])
+                    save_networking_answer(net_sub.submission_id, q.id, q.accepted_answers[0])
                 else:
-                    save_networking_answer(net_sub.id, q.id, "jawaban asal-asalan")
+                    save_networking_answer(net_sub.submission_id, q.id, "jawaban asal-asalan")
 
-            ok_sub, _, _ = submit_stage(net_sub.id, 3, is_timeout=False)
+            ok_sub, _, _ = submit_stage(net_sub.submission_id, 3, is_timeout=False)
             self.assertTrue(ok_sub)
 
             ok_fin, _, data = finalize_networking_submission(net_sub.id, self.admin_id, notes="Verifikasi tuntas")
@@ -523,11 +523,11 @@ class NetworkingModuleTestCase(unittest.TestCase):
 
             for i, q in enumerate(q_stage3):
                 if i < 3:
-                    save_networking_answer(net_sub.id, q.id, q.accepted_answers[0])
+                    save_networking_answer(net_sub.submission_id, q.id, q.accepted_answers[0])
                 else:
-                    save_networking_answer(net_sub.id, q.id, "jawaban salah")
+                    save_networking_answer(net_sub.submission_id, q.id, "jawaban salah")
 
-            submit_stage(net_sub.id, 3, is_timeout=False)
+            submit_stage(net_sub.submission_id, 3, is_timeout=False)
             ok_fin, _, data = finalize_networking_submission(net_sub.id, self.admin_id, notes="Verifikasi tuntas")
             self.assertFalse(data["has_stamp"], "Tim dengan 3/5 benar di Tahap 3 TIDAK boleh mendapatkan Stamp")
 
@@ -543,7 +543,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             net_sub.stage_3_started_at = get_server_now()
             db.session.commit()
 
-            submit_stage(net_sub.id, 3, is_timeout=False)
+            submit_stage(net_sub.submission_id, 3, is_timeout=False)
 
             # First finalization
             ok1, _, data1 = finalize_networking_submission(net_sub.id, self.admin_id, notes="Finalisasi ke-1")
@@ -585,7 +585,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             net_sub1.stage_2_score = 100
             net_sub1.stage_3_score = 50
             db.session.commit()
-            submit_stage(net_sub1.id, 3, is_timeout=False)
+            submit_stage(net_sub1.submission_id, 3, is_timeout=False)
             finalize_networking_submission(net_sub1.id, self.admin_id)
 
             # Sub 2 submitted but NOT finalized yet
@@ -593,7 +593,7 @@ class NetworkingModuleTestCase(unittest.TestCase):
             net_sub2.current_stage = 3
             net_sub2.stage_1_score = 90
             db.session.commit()
-            submit_stage(net_sub2.id, 3, is_timeout=False)
+            submit_stage(net_sub2.submission_id, 3, is_timeout=False)
 
             leaderboard = get_session_leaderboard(self.session_a_id)
             ranked_team_ids = [row["team_id"] for row in leaderboard["ranked_rows"]]
@@ -637,6 +637,197 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertIsNotNone(audit)
             self.assertEqual(audit.reason, "Gangguan kabel LAN lokal selama 2 menit")
             self.assertEqual(audit.admin_id, self.admin_id)
+
+    def _load_source_bank(self):
+        from pathlib import Path
+        from services.question_json_import import parse_and_validate_question_json, execute_question_import, get_temp_upload_dir
+        import uuid
+        for qs in db.session.scalars(db.select(QuestionSet).where(QuestionSet.station_id == self.st_net_id)).all():
+            for q in list(qs.questions):
+                db.session.delete(q)
+        db.session.commit()
+        token = uuid.uuid4().hex
+        path = get_temp_upload_dir() / (token + ".json")
+        path.write_bytes(Path("bank_soal_networking.json").read_bytes())
+        validation = parse_and_validate_question_json(path, self.st_net_id)
+        self.assertTrue(validation["is_valid"], str(validation))
+        self.assertEqual(validation["total_questions"], 100)
+        ok, result, error = execute_question_import(token, self.st_net_id)
+        self.assertTrue(ok, error)
+        self.assertEqual(result["inserted"], 100)
+        return json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))["sets"]["A"]
+
+    def test_19_source_bank_ready_locked_and_exact_weights(self):
+        from pathlib import Path
+        from services.question_service import validate_question_set_ready
+        from services.question_json_import import parse_and_validate_question_json
+        with self.app.app_context():
+            bank = self._load_source_bank()
+            self.assertEqual(sum(q["weight"] for q in bank), 100)
+            self.assertEqual(bank[17]["correct_answer"], "Salah")
+            self.assertIn("20 komputer", bank[17]["case_study"])
+            self.assertIn("Bluetooth", bank[18]["case_study"])
+            qs = db.session.get(QuestionSet, self.qs_net_a_id)
+            self.assertTrue(validate_question_set_ready(qs)[0])
+            qs.status = QuestionSetStatus.LOCKED
+            db.session.commit()
+            self.assertFalse(parse_and_validate_question_json(Path("bank_soal_networking.json"), self.st_net_id, "UPDATE")["is_valid"])
+
+    def test_20_four_clients_complete_with_id_collision_and_one_bonus(self):
+        from services.session_service import get_remaining_seconds
+        with self.app.app_context():
+            bank = self._load_source_bank()
+            # Offset base submission IDs to reproduce the former ambiguous OR lookup.
+            dummy = Submission(session_id=self.session_a_id, team_id=self.team_b_id, status=SubmissionStatus.IN_PROGRESS)
+            db.session.add(dummy)
+            db.session.commit()
+            facilitator_control_action(self.session_a_id, "START_SESSION", self.admin_id, "Mulai bersama")
+            clients = []
+            for team_id in self.teams_a_ids:
+                client = self.app.test_client()
+                with client.session_transaction() as cookie:
+                    cookie.update(participant_authorized=True, participant_station_id=self.st_net_id, participant_group_id=self.grp_a_id, participant_team_id=team_id, participant_confirmed=True, participant_rules_accepted=True)
+                clients.append(client)
+            questions = db.session.scalars(db.select(Question).where(Question.question_set_id == self.qs_net_a_id).order_by(Question.order_number)).all()
+            for stage in (1, 2, 3):
+                for index, client in enumerate(clients):
+                    self.assertEqual(client.get("/participant/quiz").status_code, 200)
+                    for q in questions:
+                        if q.stage != stage:
+                            continue
+                        answer = q.correct_answer if index == 0 else "A" if stage == 1 else "Benar" if stage == 2 else "salah"
+                        response = client.post("/participant/networking/save-answer", json={"question_id":q.id, "answer_value":answer})
+                        self.assertTrue(response.json["success"], response.json)
+                    response = client.post("/participant/networking/submit-stage", data={"stage_num":stage})
+                    self.assertEqual(response.status_code, 302)
+                for team_id in self.teams_a_ids:
+                    sub = db.session.scalar(db.select(Submission).where(Submission.session_id==self.session_a_id, Submission.team_id==team_id))
+                    self.assertEqual(sub.networking_submission.current_stage, stage+1)
+            for index, team_id in enumerate(self.teams_a_ids):
+                sub = db.session.scalar(db.select(Submission).where(Submission.session_id==self.session_a_id, Submission.team_id==team_id))
+                ok, _, result = finalize_networking_submission(sub.networking_submission.id, self.admin_id)
+                self.assertTrue(ok)
+                self.assertEqual(sub.networking_submission.has_stamp, index == 0)
+                if index == 0:
+                    self.assertEqual(sub.score.raw_score, 100)
+                    expected = get_remaining_seconds(sub.session, sub.submitted_at) * 0.5
+                    self.assertEqual(sub.score.time_bonus, expected)
+                    self.assertEqual(sub.score.final_score, 100+expected)
+                self.assertEqual(clients[index].get("/participant/result").status_code, 200)
+
+    def test_21_safe_normalization_primary_key_and_stale_stage(self):
+        self.assertFalse(evaluate_short_text_answer("P.A.N.", ["PAN"])[0])
+        self.assertFalse(evaluate_short_text_answer("access-point", ["Access Point"])[0])
+        self.assertTrue(evaluate_short_text_answer("  WIDE   AREA NETWORK ", ["Wide Area Network"])[0])
+        with self.app.app_context():
+            sub, net, _ = get_or_create_networking_submission(self.session_a_id, self.teams_a_ids[0])
+            self.assertEqual(net.stage_1_duration_seconds, 600)
+            self.assertEqual(net.stage_2_duration_seconds, 300)
+            self.assertFalse(submit_stage(sub.id, 2)[0])
+            self.assertTrue(submit_stage(sub.id, 1)[0])
+            self.assertFalse(submit_stage(sub.id, 1)[0])
+            self.assertEqual(net.current_stage, 2)
+            self.assertFalse(finalize_networking_submission(net.id, self.admin_id)[0])
+
+    def test_22_legacy_update_and_import_validation(self):
+        from pathlib import Path
+        import uuid
+        from services.question_json_import import execute_question_import, get_temp_upload_dir, parse_and_validate_question_json
+        with self.app.app_context():
+            token = uuid.uuid4().hex
+            path = get_temp_upload_dir() / (token + ".json")
+            path.write_bytes(Path("bank_soal_networking.json").read_bytes())
+            ok, result, error = execute_question_import(token, self.st_net_id, "UPDATE")
+            self.assertTrue(ok, error)
+            self.assertEqual(result["updated"], 50)
+            self.assertEqual(result["inserted"], 50)
+            data = json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))
+            data["sets"]["A"][20]["accepted_answers"] = [None, 123]
+            data["sets"]["A"][0]["weight"] = 100
+            data["sets"]["A"][10]["question_type"] = "multiple_choice"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            self.assertFalse(parse_and_validate_question_json(path, self.st_net_id, "UPDATE")["is_valid"])
+            path.unlink()
+
+    def test_23_editor_and_preview_preserve_short_text(self):
+        with self.app.app_context():
+            self._load_source_bank()
+            q = db.session.scalar(db.select(Question).where(Question.question_set_id == self.qs_net_a_id, Question.order_number == 25))
+            client = self.app.test_client()
+            with client.session_transaction() as cookie:
+                cookie.update(admin_id=self.admin_id, admin_station_id=self.st_net_id)
+            self.assertEqual(client.get(f"/admin/questions/{q.id}/edit").status_code, 200)
+            response = client.post(f"/admin/questions/{q.id}/edit", data={"text":q.text,"correct_answer":"Access Point","weight":6,"order_number":25,"stage":3,"question_type":"short_text","accepted_answers_text":"AP\naccess point WiFi\npemancar WiFi", "case_study":"Studi kasus tetap"})
+            self.assertEqual(response.status_code, 302)
+            db.session.refresh(q)
+            self.assertEqual(q.accepted_answers, ["AP", "access point WiFi", "pemancar WiFi"])
+            for suffix in ("", "/preview"):
+                self.assertEqual(client.get(f"/admin/questions/set/{self.qs_net_a_id}"+suffix).status_code, 200)
+
+    def test_24_expired_timer_server_transition_and_reject_edit(self):
+        with self.app.app_context():
+            facilitator_control_action(self.session_a_id, "START_SESSION", self.admin_id, "Timer test")
+            sub = db.session.scalar(db.select(Submission).where(Submission.team_id==self.teams_a_ids[0], Submission.session_id==self.session_a_id))
+            net = sub.networking_submission
+            net.stage_1_started_at = get_server_now()-timedelta(seconds=601)
+            db.session.commit()
+            q = get_stage_questions(sub.session, 1)[0]
+            self.assertFalse(save_networking_answer(sub.id,q.id,"A")[0])
+            client = self.app.test_client()
+            with client.session_transaction() as cookie:
+                cookie.update(participant_authorized=True, participant_station_id=self.st_net_id, participant_group_id=self.grp_a_id, participant_team_id=self.teams_a_ids[0], participant_confirmed=True, participant_rules_accepted=True)
+            self.assertEqual(client.get("/participant/quiz").status_code, 302)
+            db.session.refresh(net)
+            self.assertEqual(net.current_stage, 2)
+            self.assertFalse(submit_stage(sub.id, 1)[0])
+
+    def test_25_primary_answer_and_bonus_idempotence(self):
+        with self.app.app_context():
+            self._load_source_bank()
+            facilitator_control_action(self.session_a_id,"START_SESSION",self.admin_id,"Mulai test")
+            sub = db.session.scalar(db.select(Submission).where(Submission.team_id==self.teams_a_ids[0],Submission.session_id==self.session_a_id))
+            net = sub.networking_submission
+            net.current_stage=3
+            net.stage_3_started_at=get_server_now()
+            q=get_stage_questions(sub.session,3)[0]
+            q.accepted_answers=["Personal Area Network"]
+            db.session.commit()
+            self.assertTrue(save_networking_answer(sub.id,q.id,"  pan ")[0])
+            self.assertTrue(submit_stage(sub.id,3)[0])
+            self.assertTrue(finalize_networking_submission(net.id,self.admin_id)[0])
+            first=net.final_score
+            self.assertTrue(finalize_networking_submission(net.id,self.admin_id,time_bonus=99999)[0])
+            self.assertEqual(net.final_score,first)
+            self.assertEqual(sub.score.final_score,first)
+
+    def test_26_facilitator_http_lobby_start_review_finalize(self):
+        with self.app.app_context():
+            self._load_source_bank()
+            db.session.delete(db.session.get(CompetitionSession,self.session_a_id))
+            db.session.commit()
+            admin=self.app.test_client()
+            with admin.session_transaction() as cookie:
+                cookie.update(admin_id=self.admin_id,admin_station_id=self.st_net_id)
+            response=admin.post("/admin/networking/open-lobby",data={"group_id":self.grp_a_id,"rotation":3,"set_id":self.qs_net_a_id})
+            self.assertEqual(response.status_code,302)
+            competition=db.session.scalar(db.select(CompetitionSession).where(CompetitionSession.group_id==self.grp_a_id))
+            self.assertEqual(competition.duration_seconds,2100)
+            self.assertEqual(admin.post("/admin/networking/control",data={"session_id":competition.id,"action":"START_SESSION","reason":"Mulai empat tim"}).status_code,302)
+            self.assertEqual(admin.get(f"/admin/networking/monitor/{competition.id}").status_code,200)
+            subs=db.session.scalars(db.select(Submission).where(Submission.session_id==competition.id)).all()
+            self.assertEqual(len(subs),4)
+            for sub in subs:
+                for stage in (1,2,3):
+                    self.assertTrue(submit_stage(sub.id,stage)[0])
+            frozen=subs[0].networking_submission.time_bonus
+            competition.status=SessionStatus.FINISHED
+            db.session.commit()
+            self.assertEqual(admin.get(f"/admin/networking/verify/{competition.id}").status_code,200)
+            self.assertEqual(admin.post(f"/admin/networking/finalize-session/{competition.id}").status_code,302)
+            db.session.refresh(subs[0].networking_submission)
+            self.assertEqual(subs[0].networking_submission.verification_status,"FINALIZED")
+            self.assertEqual(subs[0].score.time_bonus,frozen)
+            self.assertEqual(admin.get("/admin/questions/sample.json?station=networking").json["pos"],"Networking")
 
 
 if __name__ == "__main__":

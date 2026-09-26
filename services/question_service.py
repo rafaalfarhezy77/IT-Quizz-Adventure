@@ -85,6 +85,13 @@ def validate_question_set_ready(question_set: QuestionSet) -> tuple[bool, list[s
         errors.append("Question set belum memiliki soal aktif.")
         return False, errors
 
+    if question_set.station.name.lower() == "networking":
+        if sorted(q.order_number for q in active_questions) != list(range(1, 26)):
+            errors.append("Networking wajib memiliki 25 soal bernomor 1–25.")
+        for q in active_questions:
+            errors.extend(validate_networking_question(q))
+        return not errors, errors
+
     for q in active_questions:
         prefix = f"Soal nomor urut #{q.order_number}"
         if not q.text or not q.text.strip():
@@ -126,3 +133,26 @@ def is_order_number_taken(question_set_id: int, order_number: int, exclude_quest
     if exclude_question_id is not None:
         stmt = stmt.where(Question.id != exclude_question_id)
     return db.session.scalar(stmt) is not None
+
+
+def validate_networking_question(q):
+    """Validate stage, answer key and exact 30/40/30 scoring contract."""
+    import math
+    errors = []
+    stage = 1 if 1 <= q.order_number <= 10 else 2 if 11 <= q.order_number <= 20 else 3
+    kind = {1: "multiple_choice", 2: "true_false", 3: "short_text"}[stage]
+    if not 1 <= q.order_number <= 25 or q.stage != stage or q.question_type != kind:
+        errors.append("Nomor, tahap, dan tipe soal Networking tidak sesuai (1–10 PG, 11–20 B/S, 21–25 isian).")
+    if not q.text or not q.text.strip():
+        errors.append("Teks soal wajib diisi.")
+    if not math.isfinite(float(q.weight or 0)) or q.weight != {1: 3, 2: 4, 3: 6}[stage]:
+        errors.append("Bobot Networking wajib 3/4/6 sesuai tahap.")
+    if stage == 1:
+        if any(not getattr(q, "option_"+k.lower(), None) for k in "ABCDE") or q.correct_answer not in "ABCDE" or len(q.correct_answer) != 1:
+            errors.append("Pilihan A–E dan kunci A–E wajib diisi.")
+    elif stage == 2:
+        if str(q.correct_answer).lower() not in ("benar", "salah", "true", "false", "b", "s", "t", "f"):
+            errors.append("Kunci harus Benar atau Salah.")
+    elif not q.correct_answer or not isinstance(q.accepted_answers, list) or any(not isinstance(a, str) or not a.strip() for a in q.accepted_answers):
+        errors.append("Kunci utama dan daftar varian teks wajib valid.")
+    return errors

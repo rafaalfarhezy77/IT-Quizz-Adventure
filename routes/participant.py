@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    abort,
     current_app,
     flash,
     redirect,
@@ -562,7 +563,7 @@ def quiz():
 
         # Periksa timer tahap saat ini
         timer_info = get_stage_timer_info(net_sub, net_sub.current_stage)
-        if timer_info["is_expired"] and not timer_info["is_locked"]:
+        if timer_info["is_expired"]:
             # Auto submit tahap karena waktu habis
             submit_stage(submission.id, net_sub.current_stage, is_timeout=True)
             return redirect(url_for("participant.quiz"))
@@ -753,6 +754,9 @@ def networking_save_answer():
     if not session_obj:
         return {"success": False, "message": "Sesi tidak ditemukan."}, 404
 
+    if ctx["station"].name.lower() != "networking" or session_obj.status.value != "RUNNING":
+        return {"success": False, "message": "Endpoint khusus Networking."}, 403
+
     from services.networking_service import get_or_create_networking_submission, save_networking_answer
 
     client_token = session.get("participant_quiz_token")
@@ -790,6 +794,9 @@ def networking_submit_stage():
     if not session_obj:
         flash("Sesi perlombaan tidak ditemukan.", "danger")
         return redirect(url_for("participant.waiting"))
+
+    if ctx["station"].name.lower() != "networking":
+        abort(403)
 
     from services.networking_service import get_or_create_networking_submission, submit_stage
 

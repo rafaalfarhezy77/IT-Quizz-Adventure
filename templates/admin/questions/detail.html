@@ -138,12 +138,15 @@
           </td>
           <td>
             <div class="question-text-cell">
+              {% if q.case_study %}<p>Studi kasus: {{ q.case_study }}</p>{% endif %}
+              {% if q.accepted_answers %}<p>Varian: {{ q.accepted_answers|join("; ") }}</p>{% endif %}
               <p class="question-main-text">{{ q.text }}</p>
               <div class="options-preview-strip">
                 <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'A' }}"><b>A:</b> {{ q.option_a }}</span>
                 <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'B' }}"><b>B:</b> {{ q.option_b }}</span>
                 <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'C' }}"><b>C:</b> {{ q.option_c }}</span>
                 <span class="opt-preview {{ 'opt-correct' if q.correct_answer == 'D' }}"><b>D:</b> {{ q.option_d }}</span>
+                {% if q.option_e %}<span class="opt-preview"><b>E:</b> {{ q.option_e }}</span>{% endif %}
               </div>
             </div>
           </td>

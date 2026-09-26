@@ -24,6 +24,9 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     PARTICIPANT_ACCESS_CODE = os.environ.get("PARTICIPANT_ACCESS_CODE", "QUEST2026")
     TIME_BONUS_PER_SECOND = float(os.environ.get("TIME_BONUS_PER_SECOND", "1.0"))
+    NETWORKING_STAGE_1_SECONDS = int(os.environ.get("NETWORKING_STAGE_1_SECONDS", "600"))
+    NETWORKING_STAGE_2_SECONDS = int(os.environ.get("NETWORKING_STAGE_2_SECONDS", "300"))
+    NETWORKING_STAGE_3_SECONDS = int(os.environ.get("NETWORKING_STAGE_3_SECONDS", "900"))
     MEMBER_ROTATION_COUNT = int(os.environ.get("MEMBER_ROTATION_COUNT", "3"))
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", str(BASE_DIR / "instance" / "uploads"))
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max request payload

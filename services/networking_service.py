@@ -19,6 +19,7 @@ from models import (
     NetworkingSubmissionAudit,
     Question,
     QuestionSet,
+    QuestionSetStatus,
     Score,
     SessionStatus,
     Submission,
@@ -27,7 +28,7 @@ from models import (
     db,
     utcnow,
 )
-from services.session_service import get_server_now
+from services.session_service import get_server_now, get_remaining_seconds, ensure_naive_utc
 
 
 def ensure_utc(dt: datetime | None) -> datetime | None:
@@ -40,24 +41,8 @@ def ensure_utc(dt: datetime | None) -> datetime | None:
 
 
 def normalize_text_answer(text: str | None) -> str:
-    """
-    Normalisasi jawaban teks singkat peserta:
-    1. Lowercase
-    2. Hapus tanda baca sederhana (.,!?;:'"`~/-_()[]{})
-    3. Gabungkan multi-spasi menjadi satu spasi dan trim awal/akhir
-    Tidak menggunakan AI atau fuzzy matching.
-    """
-    if not text:
-        return ""
-    # 1. Lowercase
-    t = str(text).lower()
-    # 2. Ganti tanda hubung dan slash dengan spasi agar 'access-point' menjadi 'access point'
-    t = re.sub(r'[-/]', ' ', t)
-    # 3. Hapus tanda baca sederhana lainnya (titik, koma, tanda seru, tanda tanya, kutip, kurung, dll)
-    t = re.sub(r'[\.,!\?;:\'"`~_()\[\]{}]', '', t)
-    # 4. Collapse spasi berulang dan trim
-    t = re.sub(r'\s+', ' ', t).strip()
-    return t
+    """Only normalize case and whitespace; punctuation remains significant."""
+    return re.sub(r"\s+", " ", str(text or "").casefold()).strip()
 
 
 def evaluate_short_text_answer(
@@ -102,6 +87,10 @@ def get_or_create_networking_submission(
 
     is_new = False
     now = utcnow()
+    competition = db.session.get(CompetitionSession, session_id)
+    team = db.session.get(Team, team_id)
+    if not competition or competition.station.name.lower() != "networking" or not team or team.group_id != competition.group_id:
+        raise ValueError("Tim atau sesi Networking tidak sesuai kelompok.")
 
     if not sub:
         sub = Submission(
@@ -126,10 +115,10 @@ def get_or_create_networking_submission(
         net_sub = NetworkingSubmission(
             submission_id=sub.id,
             current_stage=1,
-            stage_1_duration_seconds=300,  # 5 min default
-            stage_2_duration_seconds=600,  # 10 min default
-            stage_3_duration_seconds=900,  # 15 min default
-            stage_1_started_at=now,
+            stage_1_duration_seconds=current_app.config.get("NETWORKING_STAGE_1_SECONDS", 600),
+            stage_2_duration_seconds=current_app.config.get("NETWORKING_STAGE_2_SECONDS", 300),
+            stage_3_duration_seconds=current_app.config.get("NETWORKING_STAGE_3_SECONDS", 900),
+            stage_1_started_at=competition.started_at or now,
             verification_status="IN_PROGRESS",
             session_token=client_token,
         )
@@ -221,6 +210,7 @@ def get_stage_timer_info(net_sub: NetworkingSubmission, stage_num: int) -> dict[
     else:
         elapsed = (now - started_at).total_seconds()
         remaining = max(0, int(duration - elapsed))
+        remaining = min(remaining, get_remaining_seconds(net_sub.submission.session, ensure_naive_utc(now)))
         is_expired = remaining <= 0
 
     return {
@@ -250,7 +240,7 @@ def save_networking_answer(
     """
     net_sub = db.session.scalar(
         db.select(NetworkingSubmission).where(
-            (NetworkingSubmission.id == submission_id) | (NetworkingSubmission.submission_id == submission_id)
+            NetworkingSubmission.submission_id == submission_id
         )
     )
     if not net_sub:
@@ -324,7 +314,7 @@ def save_networking_answer(
         user_text = str(raw_answer or "").strip()
         selected_answer = user_text[:255]
         text_answer = user_text
-        matched, status = evaluate_short_text_answer(user_text, question.accepted_answers)
+        matched, status = evaluate_short_text_answer(user_text, [question.correct_answer] + (question.accepted_answers or []))
         is_correct = matched
         points_awarded = float(question.weight) if matched else 0.0
         review_status = status
@@ -401,6 +391,9 @@ def submit_stage(
         return False, "Data submission networking tidak ditemukan.", stage_num
 
     sub = net_sub.submission
+    if net_sub.current_stage != stage_num or sub.status != SubmissionStatus.IN_PROGRESS:
+        return False, "Tahap sudah terkunci atau belum aktif.", net_sub.current_stage
+    is_timeout = is_timeout or get_stage_timer_info(net_sub, stage_num)["is_expired"]
     now = utcnow()
 
     if stage_num == 1:
@@ -451,6 +444,8 @@ def submit_stage(
         net_sub.current_stage = 4
         sub.status = SubmissionStatus.SUBMITTED if not is_timeout else SubmissionStatus.TIMED_OUT
         sub.submitted_at = now
+        remaining = get_remaining_seconds(sub.session, ensure_naive_utc(now))
+        net_sub.time_bonus = 0.0 if is_timeout else round(remaining * float(current_app.config.get("TIME_BONUS_PER_SECOND", 1.0)), 2)
 
         # Hitung skor sementara
         net_sub.provisional_score = round(
@@ -528,10 +523,7 @@ def review_answer_by_facilitator(
         return False, "Submission networking tidak valid."
 
     if net_sub.verification_status == "FINALIZED":
-        # Cek apakah user adalah admin utama
-        admin = db.session.get(Admin, admin_id)
-        if not admin:
-            return False, "Sesi sudah difinalisasi. Hanya Admin Utama yang dapat mengubah nilai."
+        return False, "Hasil sudah difinalisasi dan terkunci."
 
     old_status = ans.review_status
     old_correct = ans.is_correct
@@ -585,7 +577,7 @@ def finalize_networking_submission(
     networking_submission_id: int,
     admin_id: int,
     reason: str = "Finalisasi hasil Pos Networking",
-    time_bonus: float = 0.0,
+    time_bonus: float | None = None,
     penalty: float = 0.0,
     notes: str | None = None,
 ) -> tuple[bool, str | None, dict[str, Any] | None]:
@@ -600,6 +592,11 @@ def finalize_networking_submission(
     net_sub = db.session.get(NetworkingSubmission, networking_submission_id)
     if not net_sub:
         return False, "Data submission networking tidak ditemukan.", None
+
+    if net_sub.verification_status == "FINALIZED":
+        return True, None, {"final_score": net_sub.final_score, "has_stamp": net_sub.has_stamp}
+    if net_sub.current_stage != 4:
+        return False, "Tim belum menyelesaikan tiga tahap.", None
 
     if notes and not net_sub.facilitator_notes:
         net_sub.facilitator_notes = notes
@@ -626,7 +623,8 @@ def finalize_networking_submission(
     net_sub.has_stamp = (correct_count >= 4)
 
     raw_total = round(net_sub.stage_1_score + net_sub.stage_2_score + net_sub.stage_3_score, 2)
-    net_sub.time_bonus = round(float(time_bonus), 2)
+    # Bonus was frozen at quiz submission, independent of facilitator review time.
+    net_sub.time_bonus = round(net_sub.time_bonus or 0.0, 2)
     net_sub.penalty = round(float(penalty), 2)
     final_score = round(raw_total + net_sub.time_bonus - net_sub.penalty, 2)
 
@@ -636,7 +634,7 @@ def finalize_networking_submission(
     net_sub.verification_status = "FINALIZED"
     net_sub.verified_by_admin_id = admin_id
     net_sub.verified_at = now
-    net_sub.facilitator_notes = reason
+    net_sub.facilitator_notes = notes or reason
 
     sub.status = SubmissionStatus.GRADED
 
@@ -648,14 +646,14 @@ def finalize_networking_submission(
         score_obj.raw_score = raw_total
         score_obj.time_bonus = net_sub.time_bonus
         score_obj.final_score = final_score
-        score_obj.submitted_at = now
+        score_obj.submitted_at = sub.submitted_at
     else:
         score_obj = Score(
             submission_id=sub.id,
             raw_score=raw_total,
             time_bonus=net_sub.time_bonus,
             final_score=final_score,
-            submitted_at=now,
+            submitted_at=sub.submitted_at,
         )
         db.session.add(score_obj)
 
@@ -715,12 +713,20 @@ def facilitator_control_action(
 
     now = utcnow()
 
+    if session_obj.station.name.lower() != "networking":
+        return False, "Sesi bukan Pos Networking."
+    if stage_num not in (1, 2, 3):
+        return False, "Tahap harus 1, 2, atau 3."
     if action == "START_SESSION":
         if session_obj.status == SessionStatus.RUNNING:
             return True, "Sesi sudah berjalan."
 
+        if session_obj.status != SessionStatus.WAITING:
+            return False, "Sesi sudah selesai atau dibatalkan."
         session_obj.status = SessionStatus.RUNNING
         session_obj.started_at = now
+        if session_obj.question_set:
+            session_obj.question_set.status = QuestionSetStatus.LOCKED
 
         # Ambil seluruh tim aktif di kelompok sesi
         teams = db.session.scalars(
