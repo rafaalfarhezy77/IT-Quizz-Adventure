@@ -87,11 +87,35 @@
   </form>
 </section>
 
+{% if editable %}
+<section class="table-toolbar" aria-label="Hapus beberapa soal">
+  <form id="bulk-delete-form" method="post" action="{{ url_for('admin.questions_bulk_delete', set_id=question_set.id) }}"
+        style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+    {{ empty_form.hidden_tag() }}
+    <input type="hidden" name="status" value="{{ status_filter }}">
+    <input type="hidden" name="search" value="{{ search_query }}">
+    <span id="selected-question-count" aria-live="polite">0 soal dipilih</span>
+    <label for="bulk-delete-mode" class="control-label">TINDAKAN:</label>
+    <select id="bulk-delete-mode" name="delete_mode" class="nb-select nb-select-sm">
+      <option value="deactivate">Nonaktifkan soal</option>
+      <option value="permanent">Hapus permanen</option>
+    </select>
+    <button id="bulk-delete-submit" type="submit" class="btn btn-secondary btn-sm" disabled>HAPUS SOAL TERPILIH</button>
+    <span class="form-hint">Pilih semua hanya mencakup soal pada daftar yang tampil.</span>
+  </form>
+</section>
+{% endif %}
+
 <!-- TABEL DAFTAR SOAL -->
 <div class="table-responsive nb-panel table-panel">
   <table class="nb-table" aria-label="Daftar Soal">
     <thead>
       <tr>
+        {% if editable %}
+        <th style="width: 44px; text-align: center;">
+          <input type="checkbox" id="select-all-questions" aria-label="Pilih semua soal yang tampil" {% if not questions %}disabled{% endif %}>
+        </th>
+        {% endif %}
         <th style="width: 60px;">No</th>
         <th>Pertanyaan</th>
         <th style="width: 80px; text-align: center;">Kunci</th>
@@ -103,6 +127,12 @@
     <tbody>
       {% for q in questions %}
         <tr class="{{ 'row-inactive' if not q.is_active }}">
+          {% if editable %}
+          <td style="text-align: center;">
+            <input type="checkbox" class="question-selection" name="question_ids" value="{{ q.id }}"
+                   form="bulk-delete-form" aria-label="Pilih soal nomor {{ q.order_number }}">
+          </td>
+          {% endif %}
           <td>
             <span class="order-badge">#{{ q.order_number }}</span>
           </td>
@@ -172,7 +202,7 @@
         </tr>
       {% else %}
         <tr>
-          <td colspan="6" class="table-empty-message">
+          <td colspan="{{ 7 if editable else 6 }}" class="table-empty-message">
             <div class="empty-state-box">
               <span class="empty-icon">📂</span>
               <p>Belum ada soal pada filter ini.</p>
@@ -188,4 +218,40 @@
     </tbody>
   </table>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if editable %}
+<script>
+(() => {
+  const form = document.getElementById('bulk-delete-form');
+  const selectAll = document.getElementById('select-all-questions');
+  const choices = Array.from(document.querySelectorAll('.question-selection'));
+  const countLabel = document.getElementById('selected-question-count');
+  const submit = document.getElementById('bulk-delete-submit');
+  function updateSelection() {
+    const count = choices.filter(choice => choice.checked).length;
+    countLabel.textContent = `${count} soal dipilih`;
+    submit.disabled = count === 0;
+    selectAll.checked = choices.length > 0 && count === choices.length;
+    selectAll.indeterminate = count > 0 && count < choices.length;
+  }
+  selectAll.addEventListener('change', () => {
+    choices.forEach(choice => { choice.checked = selectAll.checked; });
+    updateSelection();
+  });
+  choices.forEach(choice => choice.addEventListener('change', updateSelection));
+  form.addEventListener('submit', event => {
+    const count = choices.filter(choice => choice.checked).length;
+    const permanent = document.getElementById('bulk-delete-mode').value === 'permanent';
+    const message = permanent
+      ? `Hapus ${count} soal secara PERMANEN? Tindakan ini tidak dapat dibatalkan.`
+      : `Nonaktifkan ${count} soal terpilih? Soal dapat dipulihkan kembali.`;
+    if (!count || !window.confirm(message)) event.preventDefault();
+  });
+  updateSelection();
+})();
+</script>
+{% endif %}
 {% endblock %}

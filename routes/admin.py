@@ -534,8 +534,6 @@ def questions_index():
     selected_station_id = request.args.get("station_id", type=int)
     if g.active_station:
         selected_station_id = g.active_station.id
-    elif not selected_station_id and all_stations:
-        selected_station_id = all_stations[0].id
 
     station_priority = db.case(
         {"Software Engineering": 1, "Cyber Security": 2, "Hardware": 3, "Networking": 4},
@@ -548,6 +546,8 @@ def questions_index():
         .order_by(station_priority, Station.id.asc())
     )
     all_stations = db.session.scalars(station_query).all()
+    if not selected_station_id and all_stations:
+        selected_station_id = all_stations[0].id
 
     if selected_station_id:
         stations = [s for s in all_stations if s.id == selected_station_id]
@@ -720,6 +720,67 @@ def question_edit(question_id: int):
         question=question,
         is_edit=True,
     )
+
+
+@admin_bp.post("/questions/set/<int:set_id>/bulk-delete")
+@admin_required
+def questions_bulk_delete(set_id: int):
+    """Nonaktifkan atau hapus pilihan soal dalam satu transaksi."""
+    question_set = db.session.get(QuestionSet, set_id)
+    if question_set is None:
+        abort(404)
+    if g.active_station and question_set.station_id != g.active_station.id:
+        flash("Akses ditolak. Bank soal ini bukan milik pos yang sedang Anda kelola.", "error")
+        return redirect(url_for("admin.questions_index"))
+
+    status_filter = request.form.get("status", "all")
+    if status_filter not in ("all", "active", "inactive"):
+        status_filter = "all"
+    destination = url_for("admin.question_set_detail", set_id=set_id,
+                          status=status_filter, search=request.form.get("search", ""))
+    if not EmptyForm().validate_on_submit():
+        flash("Token CSRF tidak valid.", "error")
+        return redirect(destination)
+    editable, reason = is_question_set_editable(question_set)
+    if not editable:
+        flash(reason or "Question set sedang dikunci.", "error")
+        return redirect(destination)
+
+    action = request.form.get("delete_mode", "deactivate")
+    if action not in ("deactivate", "permanent"):
+        flash("Pilihan penghapusan tidak valid.", "error")
+        return redirect(destination)
+    try:
+        question_ids = {int(value) for value in request.form.getlist("question_ids")}
+    except (ValueError, TypeError):
+        flash("Pilihan soal tidak valid.", "error")
+        return redirect(destination)
+    if not question_ids:
+        flash("Pilih minimal satu soal terlebih dahulu.", "error")
+        return redirect(destination)
+    questions = db.session.scalars(db.select(Question).where(
+        Question.question_set_id == set_id, Question.id.in_(question_ids)
+    )).all()
+    if len(questions) != len(question_ids):
+        flash("Pilihan soal tidak valid atau bukan milik paket ini. Tidak ada soal yang diubah.", "error")
+        return redirect(destination)
+    if action == "permanent" and any(question.answers for question in questions):
+        flash("Penghapusan dibatalkan: ada soal dengan riwayat pengerjaan. Gunakan pilihan nonaktifkan soal.", "error")
+        return redirect(destination)
+
+    try:
+        for question in questions:
+            if action == "permanent":
+                db.session.delete(question)
+            else:
+                question.is_active = False
+        db.session.commit()
+        result = "dihapus permanen" if action == "permanent" else "dinonaktifkan"
+        flash(f"{len(questions)} soal berhasil {result}.", "success")
+    except Exception:
+        db.session.rollback()
+        flash("Terjadi kesalahan basis data. Penghapusan soal dibatalkan.", "error")
+    return redirect(destination)
 
 
 @admin_bp.post("/questions/<int:question_id>/delete")
@@ -918,6 +979,7 @@ def questions_import():
     """Upload dan validasi berkas JSON Bank Soal."""
     form = QuestionJSONUploadForm()
     if g.active_station:
+        active_stations = [g.active_station]
         form.station_id.choices = [
             (g.active_station.id, f"{g.active_station.name} ({'BELUM DIKETAHUI' if g.active_station.mode == StationMode.BELUM_DIKETAHUI else g.active_station.mode.value})")
         ]
