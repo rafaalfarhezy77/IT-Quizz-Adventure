@@ -90,6 +90,13 @@
           <span class="status-badge status-{{ s.db_status|lower }}">DB: {{ s.db_status }}</span>
         </div>
         <div class="set-overview-body">
+          {% if s.case_study %}
+            <div style="margin-bottom: 16px;">
+              <span class="mono-label">STUDI KASUS {{ '(BARU)' if s.case_study_supplied else '(DIPERTAHANKAN)' }}</span>
+              <h3 style="margin: 10px 0;">{{ s.case_study.title }}</h3>
+              <p style="white-space: pre-wrap; line-height: 1.6;">{{ s.case_study.description }}</p>
+            </div>
+          {% endif %}
           <div class="stat-row">
             <span>Total Soal:</span>
             <strong>{{ s.total_questions }}</strong>

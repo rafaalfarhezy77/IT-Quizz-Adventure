@@ -54,6 +54,11 @@
   </header>
 
   <!-- Main Quiz Area -->
+  {% if has_case_study %}
+  <div style="margin: 16px 0;">
+    <a href="{{ url_for('participant.case_study') }}" class="btn btn-outline">BUKA STUDI KASUS</a>
+  </div>
+  {% endif %}
   <div class="quiz-main-layout">
     <!-- Left / Top: Question Navigator Grid -->
     <aside class="quiz-nav-sidebar nb-card" aria-label="Navigasi Butir Soal">

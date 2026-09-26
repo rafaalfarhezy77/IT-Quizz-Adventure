@@ -143,6 +143,11 @@ def upgrade_database_schema(app=None):
                     if "facilitator_notes" not in cols:
                         conn.execute(text("ALTER TABLE answers ADD COLUMN facilitator_notes TEXT;"))
 
+            # Set-level introduction is independent from Networking question-level cases.
+            res = conn.execute(text("PRAGMA table_info(question_sets);")).fetchall()
+            if res and "case_study" not in {row[1] for row in res}:
+                conn.execute(text("ALTER TABLE question_sets ADD COLUMN case_study JSON;"))
+
             # 3. Check sessions table
             res = conn.execute(text("PRAGMA table_info(sessions);")).fetchall()
             if res:
@@ -158,6 +163,8 @@ def upgrade_database_schema(app=None):
             res = conn.execute(text("PRAGMA table_info(submissions);")).fetchall()
             if res:
                 cols = {row[1] for row in res}
+                if "case_study_seen" not in cols:
+                    conn.execute(text("ALTER TABLE submissions ADD COLUMN case_study_seen BOOLEAN NOT NULL DEFAULT 0;"))
                 if "package_id" not in cols:
                     logger.info("Adding package_id column to submissions table")
                     conn.execute(text("ALTER TABLE submissions ADD COLUMN package_id INTEGER REFERENCES challenge_packages(id);"))

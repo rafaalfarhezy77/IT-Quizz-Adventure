@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Ubah' if question_set.case_study else 'Tambah' }} Study Case · Set {{ question_set.code }}{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text">
+    <div class="eyebrow">{{ question_set.station.name }} // SET {{ question_set.code }}</div>
+    <h1>{{ 'Ubah' if question_set.case_study else 'Tambah' }} Study Case</h1>
+    <p class="welcome-text">Judul dan deskripsi ini menjadi pengantar peserta Pos Software Engineering sebelum soal pertama.</p>
+  </div>
+</div>
+<section class="nb-panel" style="padding: 32px; max-width: 960px;">
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <div style="margin-bottom: 24px;">
+      {{ form.title.label(style="display: block; margin-bottom: 10px; font-weight: 800;") }}
+      {{ form.title(class="nb-input", style="width: 100%;", required=true) }}
+      {% for error in form.title.errors %}<p class="text-danger" style="margin-top: 8px;">{{ error }}</p>{% endfor %}
+    </div>
+    <div style="margin-bottom: 28px;">
+      {{ form.description.label(style="display: block; margin-bottom: 10px; font-weight: 800;") }}
+      {{ form.description(class="nb-input", rows=10, style="width: 100%; resize: vertical; line-height: 1.6;", required=true) }}
+      {% for error in form.description.errors %}<p class="text-danger" style="margin-top: 8px;">{{ error }}</p>{% endfor %}
+    </div>
+    <div style="display: flex; gap: 16px; align-items: center;">
+      {{ form.submit(class="btn btn-primary") }}
+      <a class="btn btn-outline" href="{{ url_for('admin.questions_index', station_id=question_set.station_id) }}">BATAL</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

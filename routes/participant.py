@@ -415,6 +415,7 @@ def waiting():
 
 
 @participant_bp.get("/quiz")
+@participant_bp.route("/quiz/case-study", methods=["GET", "POST"], endpoint="case_study")
 @require_participant_stage("rules_accepted")
 def quiz():
     ctx = get_participant_context()
@@ -616,6 +617,25 @@ def quiz():
         finalize_submission(submission, is_timeout=True)
         return redirect(url_for("participant.result"))
 
+    case_study = None
+    if station.name.strip().lower() == "software engineering" and session_obj.question_set:
+        case_study = session_obj.question_set.case_study
+    if case_study:
+        if request.endpoint == "participant.case_study" and request.method == "POST":
+            case_form = EmptyForm()
+            if case_form.validate_on_submit():
+                submission.case_study_seen = True
+                db.session.commit()
+                return redirect(url_for("participant.quiz"))
+            flash("Token keamanan tidak valid. Silakan coba kembali.", "danger")
+        if not submission.case_study_seen or request.endpoint == "participant.case_study":
+            return render_template(
+                "participant/case_study.html", station=station, group=group, team=team,
+                competition_session=session_obj, submission=submission,
+                case_study={"title": case_study["title"], "description": case_study["description"]},
+                remaining_seconds=remaining_seconds, case_form=EmptyForm(), ctx=ctx,
+            )
+
     all_questions = get_session_questions(session_obj)
     answers_map = get_submission_answers_map(submission.id)
 
@@ -651,6 +671,7 @@ def quiz():
         current_member=current_member,
         total_members=total_members,
         submit_form=submit_form,
+        has_case_study=bool(case_study),
         member_form=member_form,
         ctx=ctx,
     )

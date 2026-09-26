@@ -4,6 +4,12 @@ from wtforms import FloatField, HiddenField, IntegerField, SelectField, StringFi
 from wtforms.validators import AnyOf, DataRequired, NumberRange
 
 
+class CaseStudyForm(FlaskForm):
+    title = StringField("Judul Study Case", validators=[DataRequired(message="Judul wajib diisi.")])
+    description = TextAreaField("Deskripsi Study Case", validators=[DataRequired(message="Deskripsi wajib diisi.")])
+    submit = SubmitField("SIMPAN STUDY CASE")
+
+
 class QuestionForm(FlaskForm):
     text = TextAreaField(
         "Teks Pertanyaan",
@@ -103,4 +109,3 @@ class QuestionImportConfirmForm(FlaskForm):
     station_id = HiddenField(validators=[DataRequired(message="ID Pos tidak valid.")])
     mode = HiddenField(validators=[DataRequired(message="Mode import tidak valid.")])
     submit = SubmitField("Konfirmasi & Import ke Database")
-

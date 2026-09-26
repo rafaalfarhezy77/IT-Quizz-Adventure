@@ -1,0 +1,37 @@
+{% extends "participant/base.html" %}
+{% block title %}Studi Kasus · {{ station.name }}{% endblock %}
+{% block content %}
+<div class="quiz-container">
+  <header class="quiz-top-sticky nb-panel">
+    <div class="quiz-sticky-inner">
+      <div class="quiz-identity-block">
+        <div class="quiz-pos-badge"><span class="pos-name">{{ station.name }}</span><span class="group-tag">KELOMPOK {{ group.code }}</span></div>
+        <div class="quiz-team-info"><span class="team-code">{{ team.team_code }}</span><span class="team-name">{{ team.team_name }}</span></div>
+      </div>
+      <div class="quiz-timer-wrap">
+        <div class="timer-mini-label">SISA WAKTU</div>
+        <div id="session-timer" class="nb-timer timer-normal"
+             data-status="RUNNING" data-remaining="{{ remaining_seconds }}"
+             data-duration="{{ competition_session.duration_seconds }}"
+             data-sync-url="{{ url_for('api.participant_session_status') }}"
+             data-redirect-url="{{ url_for('participant.result') }}">
+          <span class="timer-digits">{{ "%02d:%02d"|format(remaining_seconds // 60, remaining_seconds % 60) }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+  <section class="nb-panel" aria-labelledby="case-study-title" style="margin-top: 24px; padding: 32px;">
+    <span class="nb-badge badge-neon">STUDI KASUS · {{ competition_session.question_set.name }}</span>
+    <h1 id="case-study-title" style="font-size: 2rem; margin: 20px 0;">{{ case_study.title }}</h1>
+    <p style="white-space: pre-wrap; line-height: 1.8; margin-bottom: 24px;">{{ case_study.description }}</p>
+    <p style="margin-bottom: 24px;">Waktu sesi tetap berjalan selama membaca. Studi kasus dapat dibuka kembali saat mengerjakan soal.</p>
+    <form method="post" action="{{ url_for('participant.case_study') }}">
+      {{ case_form.hidden_tag() }}
+      <button type="submit" class="btn btn-primary">{{ 'KEMBALI KE SOAL' if submission.case_study_seen else 'MULAI KERJAKAN SOAL' }}</button>
+    </form>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
+{% endblock %}

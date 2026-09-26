@@ -19,6 +19,7 @@ from werkzeug.security import check_password_hash
 
 from forms.admin import LoginForm
 from forms.question import (
+    CaseStudyForm,
     EmptyForm,
     QuestionForm,
     QuestionImportConfirmForm,
@@ -560,12 +561,43 @@ def questions_index():
     else:
         stations = all_stations
 
+    running_set_ids = set(db.session.scalars(
+        db.select(CompetitionSession.question_set_id).where(CompetitionSession.status == SessionStatus.RUNNING)
+    ).all())
+
     return render_template(
         "admin/questions/index.html",
         stations=stations,
         all_stations=all_stations,
         selected_station_id=selected_station_id,
+        running_set_ids=running_set_ids,
     )
+
+
+@admin_bp.route("/questions/set/<int:set_id>/case-study", methods=["GET", "POST"])
+@admin_required
+def question_set_case_study(set_id: int):
+    question_set = db.session.get(QuestionSet, set_id, populate_existing=True)
+    if question_set is None:
+        abort(404)
+    if g.active_station and question_set.station_id != g.active_station.id:
+        abort(403)
+    editable, reason = is_question_set_editable(question_set)
+    if not editable:
+        flash(reason, "error")
+        return redirect(url_for("admin.questions_index", station_id=question_set.station_id))
+    form = CaseStudyForm(data=question_set.case_study or {})
+    if form.validate_on_submit():
+        try:
+            question_set.case_study = {"title": form.title.data.strip(), "description": form.description.data.strip()}
+            db.session.commit()
+            flash(f"Study case untuk Set {question_set.code} berhasil disimpan.", "success")
+            return redirect(url_for("admin.questions_index", station_id=question_set.station_id))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Gagal menyimpan studi kasus Set %s", set_id)
+            flash("Study case gagal disimpan. Silakan coba kembali.", "error")
+    return render_template("admin/questions/case_study_form.html", form=form, question_set=question_set)
 
 
 @admin_bp.get("/questions/set/<int:set_id>")

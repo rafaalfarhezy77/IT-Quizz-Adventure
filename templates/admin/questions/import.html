@@ -35,7 +35,7 @@
   </div>
 </div>
 
-<div class="import-container">
+<div class="import-container import-json-container">
   <div class="import-grid">
     <!-- PANEL UPLOAD FORM -->
     <section class="nb-panel import-upload-card">
@@ -100,6 +100,9 @@
             <strong>Paket Soal Didukung:</strong> Satu file dapat memuat pemetaan Set A, B, C, dan D di bawah kunci <code>"sets"</code>.
           </li>
           <li>
+            <strong>Studi Kasus Software Engineering:</strong> Set dapat berisi <code>case_study</code> dengan <code>title</code> dan <code>description</code>, serta <code>questions</code> berisi tepat 9 soal bernomor 1–9. Format lama berupa array soal tetap diterima. Jika studi kasus tidak disertakan, studi kasus tersimpan tetap dipertahankan.
+          </li>
+          <li>
             <strong>Pembagian Anggota Tim:</strong>
             <div class="rule-member-badge-row">
               <span class="member-chip chip-m1">Soal 1–3: Anggota 1</span>
@@ -123,11 +126,16 @@
         </ul>
 
         <div class="csv-example-box">
-          <div class="example-title">Contoh Struktur JSON:</div>
+          <div class="example-title">Potongan Struktur JSON (unduh contoh untuk 9 soal lengkap per set):</div>
           <pre><code>{
   "station": "Software Engineering",
   "sets": {
-    "A": [
+    "A": {
+      "case_study": {
+        "title": "Sistem Antrean Layanan Sekolah",
+        "description": "Tim mengembangkan aplikasi layanan sekolah dengan antrean, pencarian data, dan basis data yang konsisten."
+      },
+      "questions": [
       {
         "external_id": "SE-A-01",
         "order_number": 1,
@@ -141,7 +149,8 @@
         "correct_answer": "A",
         "weight": 10.0
       }
-    ]
+      ]
+    }
   }
 }</code></pre>
         </div>

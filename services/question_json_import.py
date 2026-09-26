@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import time
 import uuid
 from pathlib import Path
@@ -99,6 +100,10 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
         "error_count": 0,
     }
 
+    if mode not in ("ADD", "UPDATE"):
+        result["global_errors"].append("Mode impor harus ADD atau UPDATE.")
+        return result
+
     if not file_path.is_file():
         result["global_errors"].append("File JSON sementara tidak ditemukan di server.")
         return result
@@ -136,14 +141,14 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
 
     # Normalisasi struktur sets dari JSON
     # Mendukung format: {"sets": {"A": [...], "B": [...]}} atau {"A": [...], "B": [...]} atau {"paket": {...}}
-    raw_sets = data.get("sets") or data.get("paket")
+    raw_sets = data.get("sets", data.get("paket"))
     if raw_sets is None:
         # Cek apakah kunci root langsung berupa huruf set: "A", "B", "C", "D"
         detected_sets = {}
         for k, v in data.items():
             k_upper = k.strip().upper()
-            if k_upper in ("A", "B", "C", "D") and isinstance(v, list):
-                detected_sets[k_upper] = v
+            if k_upper in ("A", "B", "C", "D"):
+                detected_sets[k] = v
         if detected_sets:
             raw_sets = detected_sets
         else:
@@ -164,12 +169,17 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
 
     parsed_questions = []
     sets_summary = {}
+    is_software = station.name.strip().lower() == "software engineering"
 
     # Iterasi setiap Set yang ada dalam JSON
     for set_code_raw, q_list in raw_sets.items():
         set_code = str(set_code_raw).strip().upper()
         if set_code not in ("A", "B", "C", "D"):
             result["global_errors"].append(f"Kode paket '{set_code}' tidak valid. Hanya Set A, B, C, dan D yang didukung.")
+            continue
+
+        if set_code in sets_summary:
+            result["global_errors"].append(f"Set {set_code} duplikat setelah normalisasi kode.")
             continue
 
         db_qs = db_question_sets.get(set_code)
@@ -188,7 +198,27 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
             "total_weight": 0.0,
             "member_counts": {1: 0, 2: 0, 3: 0},
             "error_count": 0,
+            "case_study": db_qs.case_study,
+            "case_study_supplied": False,
         }
+
+        if isinstance(q_list, dict):
+            envelope = q_list
+            q_list = envelope.get("questions")
+            if "case_study" in envelope:
+                case = envelope["case_study"]
+                sets_summary[set_code]["case_study_supplied"] = True
+                if (not isinstance(case, dict)
+                        or not isinstance(case.get("title"), str)
+                        or not case["title"].strip()
+                        or not isinstance(case.get("description"), str)
+                        or not case["description"].strip()):
+                    result["global_errors"].append(f"[Set {set_code}] case_study wajib berisi title dan description berupa teks yang tidak kosong.")
+                    sets_summary[set_code]["case_study"] = None
+                else:
+                    sets_summary[set_code]["case_study"] = {
+                        "title": case["title"].strip(), "description": case["description"].strip()
+                    }
 
         # 3. Proteksi Status LOCKED
         if db_qs.status == QuestionSetStatus.LOCKED:
@@ -199,6 +229,9 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
         if not isinstance(q_list, list):
             result["global_errors"].append(f"[Set {set_code}] Isi paket soal harus berupa daftar array soal.")
             continue
+
+        if is_software and len(q_list) != 9:
+            result["global_errors"].append(f"[Set {set_code}] Software Engineering wajib memuat tepat 9 soal, masing-masing 3 soal per anggota.")
 
         # Kumpulkan soal yang sudah ada di DB untuk set ini untuk validasi mode ADD / UPDATE
         existing_order_numbers = {q.order_number: q for q in db_qs.questions}
@@ -400,11 +433,13 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 correct_clean = correct_clean.upper()
                 if correct_clean not in ("A", "B", "C", "D"):
                     row_errors.append(f"{loc_prefix}: Kunci jawaban '{correct_val}' tidak valid (harus A, B, C, atau D).")
+                if is_software and opt_e_str:
+                    row_errors.append(f"{loc_prefix}: Software Engineering hanya menggunakan opsi A–D.")
 
             # Validasi Bobot Nilai
             try:
                 weight_float = float(weight_val)
-                if weight_float <= 0:
+                if not math.isfinite(weight_float) or weight_float <= 0:
                     row_errors.append(f"{loc_prefix}: Bobot nilai ({weight_float}) harus lebih besar dari 0.")
             except (TypeError, ValueError):
                 weight_float = 1.0 if is_networking else 10.0
@@ -465,6 +500,9 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
                 "errors": row_errors,
             })
 
+        if is_software and seen_set_order_numbers != set(range(1, 10)):
+            result["global_errors"].append(f"[Set {set_code}] Nomor soal wajib lengkap 1–9 tanpa duplikat.")
+
     # Evaluasi Hasil Akhir
     total_q = len(parsed_questions)
     valid_q = sum(1 for q in parsed_questions if q["status"] == "VALID")
@@ -510,6 +548,13 @@ def execute_question_import(file_token: str, station_id: int, mode: str = "ADD")
         inserted_count = 0
         updated_count = 0
         affected_sets = set()
+
+        for summary in validation["sets_summary"].values():
+            target_set = db.session.get(QuestionSet, summary["set_id"], populate_existing=True)
+            if target_set is None or target_set.status == QuestionSetStatus.LOCKED:
+                raise ValueError(f"Set {summary['set_code']} terkunci atau tidak tersedia.")
+            if summary["case_study_supplied"]:
+                target_set.case_study = summary["case_study"]
 
         for q_data in questions:
             set_id = q_data["set_id"]

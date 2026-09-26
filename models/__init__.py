@@ -123,6 +123,7 @@ class QuestionSet(TimestampMixin, db.Model):
     station_id: Mapped[int] = mapped_column(db.ForeignKey("stations.id", ondelete="RESTRICT"), index=True, nullable=False)
     code: Mapped[str] = mapped_column(db.String(20), nullable=False)
     name: Mapped[str] = mapped_column(db.String(100), nullable=False)
+    case_study: Mapped[dict | None] = mapped_column(db.JSON, nullable=True)
     status: Mapped[QuestionSetStatus] = mapped_column(db.Enum(QuestionSetStatus), default=QuestionSetStatus.DRAFT, nullable=False)
     station: Mapped["Station"] = relationship(back_populates="question_sets")
     questions: Mapped[list["Question"]] = relationship(back_populates="question_set", order_by="Question.order_number")
@@ -235,6 +236,7 @@ class Submission(TimestampMixin, db.Model):
     submission_type: Mapped[str] = mapped_column(db.String(50), default="quiz", nullable=False)
     status: Mapped[SubmissionStatus] = mapped_column(db.Enum(SubmissionStatus), default=SubmissionStatus.IN_PROGRESS, nullable=False)
     current_member: Mapped[int] = mapped_column(default=1, nullable=False)
+    case_study_seen: Mapped[bool] = mapped_column(default=False, nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 

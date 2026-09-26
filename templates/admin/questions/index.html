@@ -96,6 +96,22 @@
             </div>
 
             <div class="set-card-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
+              <div style="border-top: 2px solid #000; padding-top: 16px; margin-bottom: 8px;">
+                <span class="mono-label">STUDY CASE</span>
+                {% if qs.case_study %}
+                  <h4 style="margin: 10px 0; line-height: 1.4; overflow-wrap: anywhere;">{{ qs.case_study.title }}</h4>
+                  <p style="white-space: pre-wrap; line-height: 1.6; font-size: 0.88rem; max-height: 160px; overflow-y: auto; overflow-wrap: anywhere;">{{ qs.case_study.description }}</p>
+                {% else %}
+                  <p style="margin-top: 10px;">Study case belum ada.</p>
+                {% endif %}
+              </div>
+              {% if qs.status.value != 'LOCKED' and qs.id not in running_set_ids %}
+                <a href="{{ url_for('admin.question_set_case_study', set_id=qs.id) }}" class="btn btn-outline btn-sm btn-block" style="justify-content: center;">
+                  {{ 'UBAH STUDY CASE' if qs.case_study else '+ TAMBAH STUDY CASE' }}
+                </a>
+              {% else %}
+                <button type="button" class="btn btn-outline btn-sm btn-block" disabled title="Set terkunci atau digunakan sesi berjalan">STUDY CASE TERKUNCI</button>
+              {% endif %}
               <a href="{{ url_for('admin.question_create', set_id=qs.id) }}" class="btn btn-primary btn-sm btn-block" style="text-align: center; justify-content: center;" title="Tambah Soal ke Set {{ qs.code }}">
                 <span>+ TAMBAH SOAL</span>
               </a>
