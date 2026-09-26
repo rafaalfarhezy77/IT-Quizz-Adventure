@@ -155,4 +155,8 @@ def validate_networking_question(q):
             errors.append("Kunci harus Benar atau Salah.")
     elif not q.correct_answer or not isinstance(q.accepted_answers, list) or any(not isinstance(a, str) or not a.strip() for a in q.accepted_answers):
         errors.append("Kunci utama dan daftar varian teks wajib valid.")
+    if stage in (2, 3) and any(getattr(q, "option_" + letter, None) for letter in "abcde"):
+        errors.append("Benar/Salah dan isian singkat tidak memakai opsi A–E.")
+    if (q.order_number in (18, 19) or stage == 3) and not str(getattr(q, "case_study", "") or "").strip():
+        errors.append("Studi kasus wajib diisi untuk Tahap 2 nomor 8/9 dan seluruh soal Tahap 3.")
     return errors

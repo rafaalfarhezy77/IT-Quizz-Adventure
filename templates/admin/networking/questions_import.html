@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% block title %}Import JSON Networking{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="heading-text"><div class="eyebrow">NETWORKING // IMPORT TIGA TAHAP</div><h1>Import Soal Networking</h1><p class="welcome-text">Satu tim: 3 peserta bekerja bersama di satu laptop. Tidak ada pembagian soal atau giliran anggota.</p></div><div class="heading-actions"><a class="btn btn-secondary" href="{{ url_for('admin.questions_sample_json', station='networking') }}">UNDUH JSON NETWORKING LENGKAP</a><a class="btn btn-secondary" href="{{ url_for('admin.questions_index', station_id=selected_station.id) }}">KEMBALI</a></div></div>
+<div class="import-grid">
+<section class="nb-panel import-upload-card"><div class="card-stripe"></div><h2>Upload Bank Tiga Tahap</h2>
+<form method="post" enctype="multipart/form-data" novalidate>{{ form.hidden_tag() }}
+<div class="form-group">{{ form.station_id.label }}{{ form.station_id(class="nb-select", onchange="window.location.href='?station_id='+this.value") }}{% for error in form.station_id.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+<div class="form-group">{{ form.mode.label }}{{ form.mode(class="nb-select") }}{% for error in form.mode.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+<p><b>ADD:</b> menambahkan 25 soal lengkap ke set kosong. <b>UPDATE:</b> memperbarui berdasarkan external_id; data seed lama tanpa ID dicocokkan dengan nomor urut pada set yang sama. Import tidak menghapus jawaban/hasil peserta.</p>
+<div class="upload-dropzone">{{ form.file.label }}{{ form.file(class="file-input-field") }}{% for error in form.file.errors %}<span class="field-error">{{ error }}</span>{% endfor %}</div>
+<div class="form-actions-bar">{{ form.submit(class="btn btn-primary") }}</div></form></section>
+<section class="nb-panel import-rules-card"><h2>Format Khusus Networking</h2>
+<table class="nb-table"><thead><tr><th>Tahap</th><th>Tipe</th><th>Jumlah</th><th>Poin</th><th>Waktu</th></tr></thead><tbody><tr><td>1 · Signal Check</td><td>Pilihan ganda A–E</td><td>10</td><td>3/soal · 30</td><td>10 menit</td></tr><tr><td>2 · True or Trap</td><td>Benar/Salah</td><td>10</td><td>4/soal · 40</td><td>5 menit</td></tr><tr><td>3 · Case Signal</td><td>Isian singkat</td><td>5</td><td>6/soal · 30</td><td>15 menit</td></tr></tbody></table>
+<ul class="rules-list"><li><code>sets</code> memuat satu atau beberapa Set A–D. Set dipakai sesuai kelompok.</li><li>Set berisi <code>stages</code> dengan kunci <code>"1"</code>, <code>"2"</code>, <code>"3"</code> berisi 10, 10, dan 5 soal.</li><li>Nomor global: 1–10, 11–20, 21–25. Jika nomor, tipe, atau bobot dihilangkan, struktur tahap menetapkan nilainya. Nilai yang disertakan harus sesuai tahap.</li><li>Tahap 1: <code>options</code> A–E dan <code>correct_answer</code> A–E.</li><li>Tahap 2: kunci <code>Benar</code>/<code>Salah</code>; studi kasus mini wajib pada nomor 8/9 (nomor global 18/19).</li><li>Tahap 3: setiap soal mempunyai <code>case_study</code>, kunci utama <code>correct_answer</code>, dan varian <code>accepted_answers</code>. Normalisasi hanya huruf besar/kecil dan spasi.</li><li>Tidak memakai <code>member</code> atau satu studi kasus per set. Format array 25 soal lama tetap diterima bila memenuhi aturan Networking.</li><li>Skor ketepatan 100; bonus global terpisah; stamp minimal 4/5 benar Tahap 3. Verifikasi sekitar 5 menit.</li><li>LOCKED atau sesi RUNNING menolak perubahan. Satu kesalahan membatalkan seluruh transaksi.</li></ul>
+<div class="csv-example-box"><div class="example-title">Cuplikan struktur; unduh contoh untuk 25 soal lengkap per set.</div><pre><code>{
+  "pos": "Networking",
+  "sets": {
+    "A": {"stages": {
+      "1": [{"external_id": "net-1", "text": "Pertanyaan PG",
+             "options": {"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."},
+             "correct_answer": "A"}],
+      "2": [{"external_id": "net-11", "text": "Pernyataan",
+             "correct_answer": "Salah"}],
+      "3": [{"external_id": "net-21", "case_study": "Skenario",
+             "text": "Jenis jaringan yang digunakan?",
+             "correct_answer": "PAN", "accepted_answers": ["Personal Area Network"]}]
+    }}
+  }
+}</code></pre></div></section></div>
+{% endblock %}

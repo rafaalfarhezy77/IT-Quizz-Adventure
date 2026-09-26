@@ -268,7 +268,7 @@
 
   <div class="net-hero-card">
     <p class="fw-bold">Tiga peserta berdiskusi bersama melalui satu laptop; tidak ada pergantian anggota. Operator memilih atau mengetik jawaban. Jangan mencari jawaban di internet atau memakai AI. Jika ada kendala, panggil panitia; timer tetap berjalan.</p>
-    <p>Signal Check: 10 soal × 3 poin (10 menit). True or Trap: 10 soal × 4 poin (5 menit). Case Signal: 5 soal × 6 poin (15 menit). Verifikasi sekitar 5 menit. Durasi mengikuti konfigurasi panitia. Jawaban dapat diubah sebelum tahap dikumpulkan atau waktu habis.</p>
+    <p>Signal Check: 10 soal × 3 poin (10 menit). True or Trap: 10 soal × 4 poin (5 menit). Case Signal: 5 soal × 6 poin (15 menit). Verifikasi sekitar 5 menit. Durasi mengikuti konfigurasi panitia. Tahap 1/2: klik jawaban untuk mengirim dan mengunci, lalu lanjut otomatis. Tahap 3: ketik isian dan kirim sebelum waktu habis.</p>
     <p>Ketepatan maksimal 100 poin; bonus kecepatan dihitung terpisah. Stamp hanya jika minimal 4 dari 5 jawaban Case Signal benar.</p>
     <div>Hasil tahap selesai: Signal Check {{ net_sub.stage_1_score }}/30 · True or Trap {{ net_sub.stage_2_score }}/40 · Case Signal {{ net_sub.stage_3_score }}/30.</div>
     {% if current_stage < 4 %}<div id="questionProgress" class="fw-bold" aria-live="polite"></div>{% else %}<div>Skor sementara {{ net_sub.provisional_score }}/100. Menunggu verifikasi panitia.</div>{% endif %}
@@ -314,7 +314,7 @@
     <!-- Guidance Banner -->
     <div class="alert alert-info border-3 border-dark fw-bold mb-4 shadow-sm" style="box-shadow: 3px 3px 0px #111;">
       {% if current_stage == 1 %}
-        💡 <strong>Tahap 1: Signal Check</strong> — 10 Soal Pilihan Ganda (A–E). Diskusikan bersama tim di laptop ini, lalu pilih jawaban terbaik. Jawaban tersimpan otomatis.
+        💡 <strong>Tahap 1: Signal Check</strong> — 10 Soal Pilihan Ganda (A–E). Diskusikan bersama tim di laptop ini, lalu pilih jawaban terbaik. Jawaban langsung terkunci setelah dikirim; soal berikutnya muncul otomatis.
       {% elif current_stage == 2 %}
         💡 <strong>Tahap 2: True or Trap</strong> — 10 Soal Benar/Salah. Cermati pernyataan atau studi kasus mini sebelum memutuskan Benar atau Salah!
       {% elif current_stage == 3 %}
@@ -322,16 +322,17 @@
       {% endif %}
     </div>
 
+    <div class="net-hero-card fw-bold" id="activeQuestionStatus" aria-live="polite"></div>
     <!-- Questions Form -->
     <form id="stageSubmitForm" method="POST" action="{{ url_for('participant.networking_submit_stage') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="stage_num" value="{{ current_stage }}">
 
       {% for q in questions %}
-      <div class="net-q-card" id="q-card-{{ q.id }}">
+      <div class="net-q-card" id="q-card-{{ q.id }}" data-answered="{{ 'true' if answers_map.get(q.id) else 'false' }}" {% if q.id != active_question_id %}hidden{% endif %}>
         <div class="d-flex justify-content-between align-items-center mb-3">
           <span class="badge bg-dark text-white fs-6 px-3 py-2" style="border: 2px solid #111;">
-            Soal #{{ q.order_number }}
+            Soal {{ loop.index }}/{{ questions|length }} · Tahap {{ current_stage }}
           </span>
           {% if q.category %}
           <span class="badge bg-light text-dark border border-dark fw-bold">
@@ -408,6 +409,9 @@
       </div>
       {% endfor %}
 
+      {% if current_stage == 3 %}
+      <div class="net-hero-card d-flex gap-3"><button class="action-btn" type="button" id="previousCaseBtn" onclick="navigateCase(-1)">Kasus Sebelumnya</button><button class="action-btn bg-warning" type="button" id="nextCaseBtn" onclick="navigateCase(1)">Simpan & Kasus Berikutnya</button></div>
+      {% endif %}
       <!-- Stage Submit Footer -->
       <div class="net-hero-card d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div>
@@ -421,6 +425,7 @@
           <button type="submit"
                   id="submitStageBtn"
                   class="action-btn bg-warning text-dark"
+                  {% if current_stage in [1,2] %}hidden{% endif %}
                   onclick="return confirmSubmitStage(event)">
             {% if current_stage == 1 %}
               Selesaikan Tahap 1 & Lanjut ke Tahap 2 ➔
@@ -519,16 +524,23 @@
   }
 
   // Option selection (Tahap 1 & 2)
-  function selectOption(btnElement, questionId, answerVal) {
+  async function selectOption(btnElement, questionId, answerVal) {
     if (isTimerLocked || isSubmitting) return;
 
-    // Highlight selected button
-    const container = btnElement.parentElement;
-    container.querySelectorAll("button").forEach(b => b.classList.remove("selected"));
-    btnElement.classList.add("selected");
-
-    // Save immediately
-    sendAnswerToServer(questionId, answerVal);
+    const card = btnElement.closest('.net-q-card');
+    if (card.dataset.answered === 'true') return;
+    const buttons = [...card.querySelectorAll('button[data-qid]')];
+    buttons.forEach(button => button.disabled = true);
+    try {
+      await sendAnswerToServer(questionId, answerVal);
+      btnElement.classList.add('selected');
+      card.dataset.answered = 'true';
+      updateProgress();
+      showActiveQuestion();
+    } catch (error) {
+      buttons.forEach(button => button.disabled = false);
+      alert('Jawaban belum tersimpan. Silakan coba lagi.');
+    }
   }
 
   // Debounced input (Tahap 3)
@@ -605,7 +617,36 @@
     const el = document.getElementById('questionProgress');
     if (el) el.textContent = `Progres jawaban: ${count}/${cards.length}`;
   }
+  const questionCards = [...document.querySelectorAll('.net-q-card[id]')];
+  let activeCaseIndex = Math.max(0, questionCards.findIndex(card => !card.hidden));
+  function showActiveQuestion() {
+    if (!questionCards.length) return;
+    let index = currentStageNum === 3 ? activeCaseIndex : questionCards.findIndex(card => card.dataset.answered !== 'true');
+    const done = index < 0;
+    questionCards.forEach((card, i) => {
+      card.hidden = done || i !== index;
+      if (currentStageNum < 3 && card.dataset.answered === 'true') card.querySelectorAll('button').forEach(button => button.disabled = true);
+    });
+    const status = document.getElementById('activeQuestionStatus');
+    if (status) status.textContent = done ? 'Tahap selesai. Seluruh jawaban terkunci.' : `Soal ${index+1}/${questionCards.length} · ${currentStageNum===1?'Signal Check':currentStageNum===2?'True or Trap':'Case Signal'}`;
+    if (currentStageNum < 3 && SUBMIT_BTN) SUBMIT_BTN.hidden = !done;
+    const previous = document.getElementById('previousCaseBtn'), next = document.getElementById('nextCaseBtn');
+    if (previous) previous.disabled = index <= 0;
+    if (next) next.disabled = index >= questionCards.length-1;
+  }
+  async function navigateCase(direction) {
+    if (isSubmitting || isTimerLocked) return;
+    const card = questionCards[activeCaseIndex], input = card.querySelector('.short-text-input');
+    if (direction > 0 && !input.value.trim()) {alert('Isi jawaban hasil diskusi terlebih dahulu.');return;}
+    clearTimeout(inputDebounceTimers[input.dataset.qid]);
+    try {
+      await sendAnswerToServer(input.dataset.qid,input.value);
+      activeCaseIndex = Math.max(0,Math.min(questionCards.length-1,activeCaseIndex+direction));
+      showActiveQuestion();
+    } catch(error) {alert('Jawaban belum tersimpan. Periksa koneksi dan coba lagi.');}
+  }
   updateProgress();
+  showActiveQuestion();
   if (SUBMIT_FORM) SUBMIT_FORM.addEventListener('submit', async event => {
     event.preventDefault();
     isSubmitting = true;
@@ -638,6 +679,7 @@
       e.preventDefault();
       return false;
     }
+    if (currentStageNum < 3 && questionCards.some(card => card.dataset.answered !== 'true')) {e.preventDefault();return false;}
     const stageNum = currentStageNum;
     let confirmMsg = "Apakah Anda yakin ingin menyelesaikan Tahap " + stageNum + "?\nSetelah dikumpulkan, jawaban pada tahap ini tidak dapat diubah kembali.";
     if (stageNum === 3) {

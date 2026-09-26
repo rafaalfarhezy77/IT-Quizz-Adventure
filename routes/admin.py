@@ -583,6 +583,9 @@ def question_set_case_study(set_id: int):
         abort(404)
     if g.active_station and question_set.station_id != g.active_station.id:
         abort(403)
+    if question_set.station.name.lower() == "networking":
+        flash("Networking memakai studi kasus per soal. Edit soal True or Trap atau Case Signal pada set ini.", "info")
+        return redirect(url_for("admin.question_set_detail", set_id=set_id))
     editable, reason = is_question_set_editable(question_set)
     if not editable:
         flash(reason, "error")
@@ -709,7 +712,7 @@ def question_create(set_id: int):
                 flash("Terjadi kesalahan basis data saat menyimpan soal.", "error")
 
     return render_template(
-        "admin/questions/form.html",
+        "admin/networking/question_form.html" if isinstance(form, NetworkingQuestionForm) else "admin/questions/form.html",
         form=form,
         question_set=question_set,
         is_edit=False,
@@ -764,7 +767,7 @@ def question_edit(question_id: int):
                 flash("Terjadi kesalahan basis data saat memperbarui soal.", "error")
 
     return render_template(
-        "admin/questions/form.html",
+        "admin/networking/question_form.html" if isinstance(form, NetworkingQuestionForm) else "admin/questions/form.html",
         form=form,
         question_set=question_set,
         question=question,
@@ -1044,6 +1047,10 @@ def questions_import():
             for s in active_stations
         ]
 
+    selected_station = g.active_station or next((s for s in active_stations if s.id == (form.station_id.data if request.method == "POST" else request.args.get("station_id", type=int))), active_stations[0] if active_stations else None)
+    is_networking = selected_station is not None and selected_station.name.lower() == "networking"
+    if request.method == "GET" and selected_station:
+        form.station_id.data = selected_station.id
     if form.validate_on_submit():
         file = form.file.data
         station_id = form.station_id.data
@@ -1052,7 +1059,7 @@ def questions_import():
 
         if not filename or not filename.lower().endswith(".json"):
             flash("Format berkas tidak valid. Silakan unggah berkas dengan ekstensi .json.", "error")
-            return redirect(url_for("admin.questions_import"))
+            return redirect(url_for("admin.questions_import", station_id=selected_station.id if selected_station else None))
 
         file_token, temp_path = save_temp_json(file)
         validation = parse_and_validate_question_json(temp_path, station_id, mode)
@@ -1061,7 +1068,7 @@ def questions_import():
             cleanup_temp_json(file_token)
             err = " ".join(validation["global_errors"]) if validation["global_errors"] else "Gagal memproses file JSON."
             flash(err, "error")
-            return redirect(url_for("admin.questions_import"))
+            return redirect(url_for("admin.questions_import", station_id=selected_station.id if selected_station else None))
 
         confirm_form = QuestionImportConfirmForm(
             file_token=file_token,
@@ -1070,7 +1077,7 @@ def questions_import():
         )
 
         return render_template(
-            "admin/questions/import_preview.html",
+            "admin/networking/questions_import_preview.html" if is_networking else "admin/questions/import_preview.html",
             file_token=file_token,
             filename=filename,
             station_id=station_id,
@@ -1080,7 +1087,8 @@ def questions_import():
         )
 
     return render_template(
-        "admin/questions/import.html",
+        "admin/networking/questions_import.html" if is_networking else "admin/questions/import.html",
+        selected_station=selected_station,
         form=form,
         stations=active_stations,
     )
@@ -1103,6 +1111,8 @@ def questions_import_confirm():
         flash("ID Pos tidak valid.", "error")
         return redirect(url_for("admin.questions_import"))
 
+    if g.active_station and station_id != g.active_station.id:
+        abort(403)
     mode = form.mode.data or "ADD"
     success, stats, err_msg = execute_question_import(file_token, station_id, mode)
 
@@ -1128,14 +1138,14 @@ def questions_import_cancel():
     if file_token:
         cleanup_temp_json(file_token)
     flash("Proses import bank soal dibatalkan.", "info")
-    return redirect(url_for("admin.questions_index"))
+    return redirect(url_for("admin.questions_index", station_id=request.args.get("station_id", type=int)))
 
 
 @admin_bp.get("/questions/sample.json")
 @admin_required
 def questions_sample_json():
     """Unduh berkas contoh bank_soal.json resmi."""
-    filename = "bank_soal_networking.json" if request.args.get("station") == "networking" else "bank_soal.json"
+    filename = "bank_soal_networking.json" if request.args.get("station") == "networking" or (g.active_station and g.active_station.name.lower() == "networking") else "bank_soal.json"
     sample_path = Path(__file__).resolve().parent.parent / filename
     if not sample_path.is_file():
         sample_path = Path(filename)

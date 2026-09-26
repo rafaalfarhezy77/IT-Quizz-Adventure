@@ -285,6 +285,8 @@ def save_networking_answer(
         clean_ans = str(raw_answer or "").strip().upper()
         if clean_ans not in ("A", "B", "C", "D", "E"):
             return False, "Pilihan jawaban harus salah satu dari A, B, C, D, atau E.", None
+        if not getattr(question, "option_" + clean_ans.lower(), None):
+            return False, "Opsi jawaban tidak tersedia.", None
         selected_answer = clean_ans
         text_answer = clean_ans
         is_correct = (clean_ans == question.correct_answer.strip().upper())
@@ -326,6 +328,17 @@ def save_networking_answer(
             Answer.question_id == question.id,
         )
     )
+
+    if q_type in ("multiple_choice", "true_false"):
+        if ans:
+            if ans.selected_answer == selected_answer:
+                return True, None, ans.review_status
+            return False, "Jawaban sudah dikirim dan terkunci. Tidak dapat diganti.", None
+        stage_questions = get_stage_questions(sub.session, stage_num)
+        answered = {a.question_id for a in sub.answers if a.selected_answer}
+        next_question = next((q for q in stage_questions if q.id not in answered), None)
+        if next_question and next_question.id != question.id:
+            return False, "Jawab soal yang sedang aktif sebelum melanjutkan.", None
 
     if ans:
         ans.selected_answer = selected_answer

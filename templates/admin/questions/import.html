@@ -12,7 +12,6 @@
     <a href="{{ url_for('admin.questions_sample_json') }}" class="btn btn-secondary btn-sm" download="bank_soal.json">
       <span>📥 UNDUH CONTOH bank_soal.json</span>
     </a>
-    <a href="{{ url_for('admin.questions_sample_json', station='networking') }}" class="btn btn-secondary btn-sm">UNDUH BANK NETWORKING (25 SOAL × SET A–D)</a>
     <a href="{{ url_for('admin.questions_index') }}" class="btn btn-secondary btn-sm">
       <span>← KEMBALI</span>
     </a>
@@ -52,7 +51,7 @@
         <!-- PILIHAN POS TARGET -->
         <div class="form-group mb-20">
           <label for="station_select" class="form-label">POS PERLOMBAAN TARGET:</label>
-          {{ form.station_id(id="station_select", class="nb-select nb-select-lg") }}
+          {{ form.station_id(id="station_select", class="nb-select nb-select-lg", onchange="window.location.href='?station_id='+this.value") }}
           {% for error in form.station_id.errors %}
             <span class="field-error">⚠ {{ error }}</span>
           {% endfor %}

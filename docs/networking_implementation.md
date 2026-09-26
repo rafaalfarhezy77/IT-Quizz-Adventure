@@ -11,11 +11,11 @@ Tidak ada tabel baru. Model yang sudah ada cukup untuk tipe, skenario, kunci uta
 ## Cara mencoba
 
 1. Jalankan website memakai launcher yang ada. Instalasi baru: jalankan `venv\Scripts\python.exe seed.py`; seed mengisi set Networking kosong saja.
-2. Login panitia dan pilih Networking. Pada Bank Soal → Import JSON, unduh bank Networking atau unggah `bank_soal_networking.json`. Pilih ADD untuk set kosong atau UPDATE untuk set lama. Preview memperlihatkan tahap, skenario, kunci, varian, opsi E, dan bobot.
+2. Login panitia dan pilih Networking. Pada Bank Soal → Import JSON, unduh bank Networking atau unggah `bank_soal_networking.json`. Pilih ADD untuk set kosong atau UPDATE untuk set lama. Halaman import khusus Networking memakai JSON `sets → stages → 1/2/3`. Preview memperlihatkan ringkasan 10/10/5 soal dan 30/40/30 poin, skenario, kunci, varian, serta opsi E. Tidak ada pembagian giliran anggota.
 3. UPDATE memakai external_id `net-1` sampai `net-25` per set. Khusus data seed Networking lama tanpa external_id, UPDATE mengadopsi soal bernomor sama yang belum mempunyai external_id. LOCKED atau sesi RUNNING menolak import; data/hasil lomba lama tidak diperbarui otomatis oleh seed.
 4. Tandai Set A–D READY. Validasi mewajibkan nomor 1–25, tahap dan tipe sesuai nomor, bobot 3/4/6, opsi A–E untuk tahap 1, kunci Benar/Salah untuk tahap 2, serta kunci utama dan daftar varian teks untuk tahap 3.
 5. Buka Lobby Networking, pilih kelompok, rotasi, dan set dengan kode kelompok yang sama. Buka lobby lalu Mulai Sesi. Set terkunci; empat tim mendapat submission dan timer sendiri.
-6. Peserta mengikuti login, pilihan pos/kelompok/tim, konfirmasi, aturan, dan ruang tunggu yang sudah ada. Tiga peserta mengerjakan bersama pada satu laptop tim. Operator menyelesaikan Signal Check → True or Trap → Case Signal → menunggu verifikasi.
+6. Peserta mengikuti login, pilihan pos/kelompok/tim, konfirmasi, aturan, dan ruang tunggu yang sudah ada. Tiga peserta mengerjakan bersama pada satu laptop tim. Operator menyelesaikan Signal Check → True or Trap → Case Signal → menunggu verifikasi. Soal tampil satu per satu; pilihan Tahap 1/2 langsung terkunci di server dan otomatis lanjut ke soal berikutnya. Tahap 3 memakai navigasi kasus dan isian yang dapat diedit sebelum pengumpulan.
 7. Di monitor panitia, gunakan Tambah Waktu atau Allow Reconnect sesuai mekanisme yang ada (wajib alasan dan audit). Di Verifikasi, periksa isian yang tidak cocok, terima/tolak bila perlu, lalu finalisasi sesi. Tim yang belum mengumpulkan tahap 3 tidak dapat difinalisasi dan sesi tidak ditutup selama masih ada submission Networking belum final.
 8. Peserta otomatis menuju hasil: skor tiap tahap 30/40/30, ketepatan maksimal 100, bonus kecepatan terpisah, skor final, dan stamp. Hasil final masuk leaderboard yang sudah ada.
 
@@ -32,14 +32,14 @@ Stamp hanya berdasarkan minimal 4/5 benar pada tahap 3 setelah verifikasi, terpi
 - Markdown `.agents/Panduan Pos 3 Networking.md` menjadi sumber, menggantikan bank lama berbasis DOCX. Teks dan kunci dipertahankan; anotasi `(B)/(S)` dipindahkan ke kunci agar tidak terlihat oleh peserta. Skenario mini nomor 8/9 dipisahkan dari pernyataan tanpa mengubah kalimatnya.
 - Satu bank berisi 25 soal yang sama direplikasi untuk Set A–D, total 100 butir import. Panduan tidak menyediakan empat bank berbeda; panitia dapat menyunting masing-masing set sebelum dikunci.
 - Durasi mengikuti instruksi pengguna 10/5/15+5 menit, bobot 3/4/6, dan empat tim per kelompok mengikuti arsitektur website.
-- Panduan bertentangan tentang jawaban langsung terkunci vs boleh diubah sebelum waktu habis. Dipilih pola website: jawaban dapat diubah selama tahap aktif, terkunci saat submit/timeout. Semua soal tahap tersedia supaya tim dapat mendahulukan soal mudah. Jika wajib satu soal per layar dan kunci sekali klik, itu masih perlu keputusan pengguna.
+- Audit lanjutan memperbaiki ketidaksesuaian implementasi pertama: ikuti petunjuk tahap yang spesifik. Tahap 1/2 menampilkan satu soal aktif, mengunci pilihan setelah dikirim, dan lanjut otomatis. Pengiriman ulang jawaban identik bersifat idempoten; mengganti jawaban atau melompati urutan ditolak server. Tahap 3 menampilkan satu studi kasus per layar dengan navigasi dan penyimpanan isian sebelum submit.
 - Referensi kode game/QuizWhizzer diganti dengan login dan lobby native website; leaderboard resmi dipublikasikan setelah verifikasi, sesuai pola yang sudah berjalan.
 
 ## Pengujian
 
 `venv\Scripts\python.exe -m unittest verify_networking_module -q`
 
-Menguji 26 kasus: alur HTTP empat tim sampai hasil, tabrakan ID, isolasi set, import ADD/UPDATE data lama, LOCKED, READY, 25 soal dan bobot, lima opsi, Benar/Salah, varian dan kunci utama, penolakan normalisasi longgar, stamp 4/5 dan 3/5, timer/refresh/autosubmit, tahapan terkunci, bonus global, finalisasi idempoten, editor, preview, lobby/monitor/verifikasi panitia, serta leaderboard.
+Menguji 30 kasus: alur HTTP empat tim sampai hasil, tabrakan ID, isolasi set, import ADD/UPDATE data lama, LOCKED, READY, 25 soal dan bobot, lima opsi, Benar/Salah, varian dan kunci utama, penolakan normalisasi longgar, stamp 4/5 dan 3/5, timer/refresh/autosubmit, tahapan terkunci, bonus global, finalisasi idempoten, editor, preview, lobby/monitor/verifikasi panitia, serta leaderboard.
 
 `venv\Scripts\python.exe -m unittest discover -p 'verify_*.py' -q`
 
@@ -57,4 +57,17 @@ Dua kegagalan lama di `verify_json_import`: `test_add_mode_and_atomic_rollback` 
 
 Pengujian JavaScript: `node verify_networking_client.js` lulus untuk urutan autosave per soal, flush isian terakhir sebelum submit, tombol konfirmasi, dan timer berdasarkan waktu nyata saat tab tertunda. Pemeriksaan `node --check`, kompilasi Python, dan `git diff --check` juga lulus. Pengujian HTTP bukan pemeriksaan visual browser.
 
-Hasil regresi: 180 pengujian Python dijalankan, 178 lulus dan dua kegagalan lama Software Engineering di atas. Sebanyak 26 pengujian khusus Networking lulus.
+Hasil regresi: 184 pengujian Python dijalankan, 182 lulus dan dua kegagalan lama Software Engineering di atas. Sebanyak 30 pengujian khusus Networking lulus.
+
+
+## Audit lanjutan pengelolaan soal
+
+Temuan pengguna benar: meskipun backend telah mendukung tipe soal Networking, halaman import/preview/editor pertama masih memuat petunjuk Software Engineering dan distribusi anggota. Perbaikan memakai template khusus `templates/admin/networking/questions_import.html`, `questions_import_preview.html`, dan `question_form.html`, serta normalisasi struktur khusus `services/networking_question_import.py`. Engine transaksi, autentikasi, set A–D, dan LOCKED tetap memakai arsitektur yang ada.
+
+Format utama sekarang dikelompokkan per tahap; format array lama tetap kompatibel. Skenario Tahap 3 pada bank asli dipisahkan ke `case_study` dan pertanyaan ke `text` tanpa mengubah kalimat atau kunci. Perbandingan terhadap bank sebelumnya membuktikan seluruh 100 teks, opsi, kunci, dan varian Set A–D tetap sama. JSON lama dengan skenario `(Tema: ...)` menyatu dalam text juga dinormalisasi secara kompatibel.
+
+Pengujian tambahan memeriksa halaman GET import aktif/global, upload/preview/konfirmasi HTTP, tidak adanya distribusi anggota pada Networking, tetap adanya aturan anggota pada Software Engineering, format tiga tahap dan array lama, penolakan member/studi kasus hilang/pos salah, penguncian pilihan, pengiriman ulang identik, urutan soal, dan satu soal peserta yang terlihat. Tes JavaScript juga memeriksa perpindahan soal sesudah simpan serta larangan mengganti pilihan yang terkunci.
+
+Lihat `docs/networking_json_import.md` untuk format dan langkah import terbaru.
+
+Pengujian editor: `node verify_networking_editor.js` lulus untuk bidang sesuai tahap, kunci A–E/Benar-Salah/isian, bobot 3/4/6, rentang nomor, serta preservasi kunci lama True/False.

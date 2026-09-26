@@ -590,6 +590,7 @@ def quiz():
             timer_info=timer_info,
             questions=questions,
             answers_map=answers_map,
+            active_question_id=next((q.id for q in questions if not answers_map.get(q.id)), questions[0].id if questions else None),
             ctx=ctx,
         )
 
@@ -809,6 +810,12 @@ def networking_submit_stage():
         return redirect(url_for("participant.waiting"))
 
     stage_num = request.form.get("stage_num", type=int) or net_sub.current_stage
+    if stage_num in (1, 2) and net_sub.current_stage == stage_num:
+        from services.networking_service import get_stage_questions, get_stage_timer_info
+        answered = {a.question_id for a in submission.answers if a.selected_answer}
+        if not get_stage_timer_info(net_sub, stage_num)["is_expired"] and any(q.id not in answered for q in get_stage_questions(session_obj, stage_num)):
+            flash("Selesaikan seluruh soal tahap ini sebelum melanjutkan.", "danger")
+            return redirect(url_for("participant.quiz"))
     ok, err, next_stage = submit_stage(submission.id, stage_num)
 
     if ok:

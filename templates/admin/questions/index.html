@@ -10,7 +10,7 @@
     <p class="welcome-text">Kelola bank soal kuis (Set A–D) untuk pos perlombaan IT Quest Adventure.</p>
   </div>
   <div class="heading-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-    <a href="{{ url_for('admin.questions_import') }}" class="btn btn-primary">
+    <a href="{{ url_for('admin.questions_import', station_id=selected_station_id) }}" class="btn btn-primary">
       <span>📥 IMPORT JSON</span>
     </a>
     <!-- Filter Pos / Station -->
@@ -39,9 +39,9 @@
     <a href="{{ url_for('admin.questions_index', station_id=selected_station_id if selected_station_id else None) }}"
        class="subnav-item active">
       <span class="subnav-badge">01</span>
-      <span>📝 Daftar Bank Soal (Kuis PG)</span>
+      <span>📝 Daftar Bank Soal</span>
     </a>
-    <a href="{{ url_for('admin.questions_import') }}"
+    <a href="{{ url_for('admin.questions_import', station_id=selected_station_id) }}"
        class="subnav-item">
       <span class="subnav-badge">02</span>
       <span>📥 Import JSON Soal</span>
@@ -96,6 +96,10 @@
             </div>
 
             <div class="set-card-actions" style="display: flex; flex-direction: column; gap: 8px; margin-top: 1rem;">
+              {% if st.name|lower == "networking" %}
+              <p>Kerja bersama 3 peserta · 25 soal · Signal Check 10 PG, True or Trap 10 B/S, Case Signal 5 isian. Studi kasus diatur per soal.</p>
+              <a href="{{ url_for('admin.questions_import', station_id=st.id) }}" class="btn btn-outline btn-sm">IMPORT TIGA TAHAP NETWORKING</a>
+              {% else %}
               <div style="border-top: 2px solid #000; padding-top: 16px; margin-bottom: 8px;">
                 <span class="mono-label">STUDY CASE</span>
                 {% if qs.case_study %}
@@ -111,6 +115,7 @@
                 </a>
               {% else %}
                 <button type="button" class="btn btn-outline btn-sm btn-block" disabled title="Set terkunci atau digunakan sesi berjalan">STUDY CASE TERKUNCI</button>
+              {% endif %}
               {% endif %}
               <a href="{{ url_for('admin.question_create', set_id=qs.id) }}" class="btn btn-primary btn-sm btn-block" style="text-align: center; justify-content: center;" title="Tambah Soal ke Set {{ qs.code }}">
                 <span>+ TAMBAH SOAL</span>

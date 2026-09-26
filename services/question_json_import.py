@@ -133,6 +133,11 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
         result["global_errors"].append(f"Pos target (ID: {station_id}) tidak ditemukan atau tidak aktif.")
         return result
 
+    if station.name.lower() == "networking":
+        declared_station = data.get("pos", data.get("station"))
+        if declared_station is not None and str(declared_station).strip().lower() != "networking":
+            result["global_errors"].append("Berkas ini bukan bank Networking. Gunakan JSON tiga tahap Networking.")
+            return result
     result["station"] = {
         "id": station.id,
         "name": station.name,
@@ -197,11 +202,17 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
             "total_questions": 0,
             "total_weight": 0.0,
             "member_counts": {1: 0, 2: 0, 3: 0},
+            "stage_counts": {1: 0, 2: 0, 3: 0},
+            "stage_weights": {1: 0.0, 2: 0.0, 3: 0.0},
             "error_count": 0,
             "case_study": db_qs.case_study,
             "case_study_supplied": False,
         }
 
+        if station.name.lower() == "networking":
+            from services.networking_question_import import flatten_networking_set
+            q_list, structure_errors = flatten_networking_set(q_list)
+            result["global_errors"].extend(f"[Set {set_code}] {error}" for error in structure_errors)
         if isinstance(q_list, dict):
             envelope = q_list
             q_list = envelope.get("questions")
@@ -338,6 +349,8 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
             member_num = None
 
             if is_networking:
+                if member_val is not None:
+                    row_errors.append(f"{loc_prefix}: Networking dikerjakan bersama; field member/giliran anggota tidak digunakan.")
                 # Tentukan stage
                 if stage_val is not None:
                     try:
@@ -476,12 +489,15 @@ def parse_and_validate_question_json(file_path: Path, station_id: int, mode: str
             if is_networking:
                 from types import SimpleNamespace
                 from services.question_service import validate_networking_question
-                row_errors.extend(validate_networking_question(SimpleNamespace(order_number=order_number, stage=stage_num, question_type=question_type, text=text_str, weight=weight_float, option_a=opt_a_str, option_b=opt_b_str, option_c=opt_c_str, option_d=opt_d_str, option_e=opt_e_str, correct_answer=correct_clean, accepted_answers=accepted_answers_list)))
+                row_errors.extend(validate_networking_question(SimpleNamespace(order_number=order_number, stage=stage_num, question_type=question_type, text=text_str, weight=weight_float, option_a=opt_a_str, option_b=opt_b_str, option_c=opt_c_str, option_d=opt_d_str, option_e=opt_e_str, correct_answer=correct_clean, accepted_answers=accepted_answers_list, case_study=case_study_val)))
             is_row_valid = (len(row_errors) == 0)
             status_row = "VALID" if is_row_valid else "ERROR"
 
             if is_row_valid:
                 sets_summary[set_code]["total_weight"] += weight_float
+                if is_networking and stage_num in (1, 2, 3):
+                    sets_summary[set_code]["stage_counts"][stage_num] += 1
+                    sets_summary[set_code]["stage_weights"][stage_num] += weight_float
                 if member_num in (1, 2, 3):
                     sets_summary[set_code]["member_counts"][member_num] += 1
             else:

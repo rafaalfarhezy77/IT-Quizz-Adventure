@@ -156,7 +156,9 @@ def seed_database():
         import json
         from pathlib import Path
         bank = json.loads((Path(__file__).parent / "bank_soal_networking.json").read_text(encoding="utf-8"))
-        networking_questions_data = [dict(order=q["order_number"], stage=q["stage"], type=q["question_type"], cat=q.get("category"), case=q.get("case_study"), text=q["text"], a=q.get("options", {}).get("A"), b=q.get("options", {}).get("B"), c=q.get("options", {}).get("C"), d=q.get("options", {}).get("D"), e=q.get("options", {}).get("E"), ans=q["correct_answer"], acc=q.get("accepted_answers"), weight=q["weight"], external_id=q["external_id"]) for q in bank["sets"]["A"]]
+        from services.networking_question_import import flatten_networking_set
+        networking_rows, _ = flatten_networking_set(bank["sets"]["A"])
+        networking_questions_data = [dict(order=q["order_number"], stage=q["stage"], type=q["question_type"], cat=q.get("category"), case=q.get("case_study"), text=q["text"], a=q.get("options", {}).get("A"), b=q.get("options", {}).get("B"), c=q.get("options", {}).get("C"), d=q.get("options", {}).get("D"), e=q.get("options", {}).get("E"), ans=q["correct_answer"], acc=q.get("accepted_answers"), weight=q["weight"], external_id=q["external_id"]) for q in networking_rows]
         for set_code in ("A", "B", "C", "D"):
             qs_net = db.session.scalar(
                 db.select(QuestionSet).where(

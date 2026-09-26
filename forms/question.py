@@ -118,7 +118,7 @@ class NetworkingQuestionForm(QuestionForm):
     option_d = StringField("Pilihan D")
     option_e = StringField("Pilihan E")
     correct_answer = StringField("Kunci jawaban utama", validators=[DataRequired()])
-    stage = IntegerField("Tahap", validators=[DataRequired(), NumberRange(min=1, max=3)])
+    stage = SelectField("Tahap", coerce=int, choices=[(1, "1 — Signal Check (PG A–E)"), (2, "2 — True or Trap (Benar/Salah)"), (3, "3 — Case Signal (Isian Singkat)")], validators=[DataRequired()])
     question_type = SelectField("Tipe soal", choices=[("multiple_choice", "Pilihan Ganda"), ("true_false", "Benar/Salah"), ("short_text", "Isian Singkat")])
     case_study = TextAreaField("Studi kasus")
     accepted_answers_text = TextAreaField("Varian jawaban (satu per baris)")
@@ -127,6 +127,9 @@ class NetworkingQuestionForm(QuestionForm):
         question.stage = self.stage.data
         question.question_type = self.question_type.data
         question.option_e = self.option_e.data or None
+        if self.stage.data != 1:
+            for letter in "abcde":
+                setattr(question, "option_" + letter, None)
         question.case_study = self.case_study.data or None
         question.accepted_answers = [a.strip() for a in (self.accepted_answers_text.data or "").splitlines() if a.strip()]
 

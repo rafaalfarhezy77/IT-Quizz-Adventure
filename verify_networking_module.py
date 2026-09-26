@@ -318,6 +318,8 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertIsNotNone(q_e)
             self.assertEqual(q_e.option_e, "Menyimpan file statis")
 
+            first_question = get_stage_questions(sub.session, 1)[0]
+            self.assertTrue(save_networking_answer(sub.id, first_question.id, first_question.correct_answer)[0])
             ok, err, status = save_networking_answer(net_sub.submission_id, q_e.id, "E")
             self.assertTrue(ok)
 
@@ -358,14 +360,14 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertTrue(ans.is_correct)
 
             ok_w, err_w, status_w = save_networking_answer(net_sub.submission_id, q_tf.id, "Salah")
-            self.assertTrue(ok_w)
+            self.assertFalse(ok_w)
             ans_w = db.session.scalar(
                 db.select(Answer).where(
                     Answer.submission_id == net_sub.submission_id,
                     Answer.question_id == q_tf.id,
                 )
             )
-            self.assertFalse(ans_w.is_correct)
+            self.assertTrue(ans_w.is_correct)
 
     def test_07_short_text_variations_normalization(self):
         """7. Variasi jawaban isian dikenali setelah normalisasi."""
@@ -655,7 +657,8 @@ class NetworkingModuleTestCase(unittest.TestCase):
         ok, result, error = execute_question_import(token, self.st_net_id)
         self.assertTrue(ok, error)
         self.assertEqual(result["inserted"], 100)
-        return json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))["sets"]["A"]
+        from services.networking_question_import import flatten_networking_set
+        return flatten_networking_set(json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))["sets"]["A"])[0]
 
     def test_19_source_bank_ready_locked_and_exact_weights(self):
         from pathlib import Path
@@ -742,9 +745,9 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertEqual(result["updated"], 50)
             self.assertEqual(result["inserted"], 50)
             data = json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))
-            data["sets"]["A"][20]["accepted_answers"] = [None, 123]
-            data["sets"]["A"][0]["weight"] = 100
-            data["sets"]["A"][10]["question_type"] = "multiple_choice"
+            data["sets"]["A"]["stages"]["3"][0]["accepted_answers"] = [None, 123]
+            data["sets"]["A"]["stages"]["1"][0]["weight"] = 100
+            data["sets"]["A"]["stages"]["2"][0]["question_type"] = "multiple_choice"
             path.write_text(json.dumps(data), encoding="utf-8")
             self.assertFalse(parse_and_validate_question_json(path, self.st_net_id, "UPDATE")["is_valid"])
             path.unlink()
@@ -828,6 +831,110 @@ class NetworkingModuleTestCase(unittest.TestCase):
             self.assertEqual(subs[0].networking_submission.verification_status,"FINALIZED")
             self.assertEqual(subs[0].score.time_bonus,frozen)
             self.assertEqual(admin.get("/admin/questions/sample.json?station=networking").json["pos"],"Networking")
+
+    def test_27_networking_import_ui_upload_preview_confirm(self):
+        import io, re
+        from pathlib import Path
+        with self.app.app_context():
+            client=self.app.test_client()
+            with client.session_transaction() as cookie:
+                cookie.update(admin_id=self.admin_id,admin_station_id=self.st_net_id)
+            page=client.get("/admin/questions/import")
+            text=page.get_data(as_text=True)
+            self.assertEqual(page.status_code,200)
+            self.assertIn("Import Soal Networking",text)
+            self.assertIn("Isian singkat",text)
+            self.assertNotIn("Pembagian Anggota Tim",text)
+            self.assertNotIn("Soal 1–3: Anggota 1",text)
+            sample=client.get("/admin/questions/sample.json")
+            self.assertEqual(sample.json["pos"],"Networking")
+            self.assertEqual(set(sample.json["sets"]["A"]["stages"]),{"1","2","3"})
+            preview=client.post("/admin/questions/import",data={"station_id":self.st_net_id,"mode":"UPDATE","file":(io.BytesIO(Path("bank_soal_networking.json").read_bytes()),"networking.json")},content_type="multipart/form-data")
+            text=preview.get_data(as_text=True)
+            self.assertEqual(preview.status_code,200)
+            self.assertIn("Preview Import Networking",text)
+            self.assertIn("True or Trap",text)
+            self.assertIn("Personal Area Network",text)
+            self.assertNotIn("Distribusi Giliran Anggota",text)
+            token=re.search(r'name="file_token"[^>]*value="([a-z0-9]+)"',text).group(1)
+            response=client.post("/admin/questions/import/confirm",data={"file_token":token,"station_id":self.st_net_id,"mode":"UPDATE"})
+            self.assertEqual(response.status_code,302)
+            qs=db.session.get(QuestionSet,self.qs_net_a_id)
+            self.assertEqual(len(qs.questions),25)
+            self.assertEqual(sum(q.weight for q in qs.questions),100)
+            self.assertTrue(all(q.member_number is None for q in qs.questions))
+            self.assertEqual(len([q for q in qs.questions if q.question_type=="true_false"]),10)
+            self.assertEqual(len([q for q in qs.questions if q.question_type=="short_text"]),5)
+            index=client.get("/admin/questions")
+            self.assertNotIn("+ TAMBAH STUDY CASE",index.get_data(as_text=True))
+
+    def test_28_global_admin_selects_matching_import_and_editor(self):
+        with self.app.app_context():
+            self._load_source_bank()
+            client=self.app.test_client()
+            with client.session_transaction() as cookie:cookie.update(admin_id=self.admin_id,admin_station_id=0)
+            net=client.get(f"/admin/questions/import?station_id={self.st_net_id}").get_data(as_text=True)
+            software=client.get(f"/admin/questions/import?station_id={self.st_se_id}").get_data(as_text=True)
+            self.assertIn("Import Soal Networking",net)
+            self.assertNotIn("Pembagian Anggota Tim",net)
+            self.assertIn("Pembagian Anggota Tim",software)
+            for stage,order in [(1,1),(2,11),(3,21)]:
+                q=db.session.scalar(db.select(Question).where(Question.question_set_id==self.qs_net_a_id,Question.order_number==order))
+                page=client.get(f"/admin/questions/{q.id}/edit")
+                self.assertEqual(page.status_code,200)
+                self.assertIn('id="networking-question-form"',page.get_data(as_text=True))
+                self.assertIn('id="networking-key-choice"',page.get_data(as_text=True))
+
+    def test_29_networking_grouped_and_legacy_formats_reject_software_assumptions(self):
+        from pathlib import Path
+        import tempfile
+        from services.networking_question_import import flatten_networking_set
+        from services.question_json_import import parse_and_validate_question_json
+        with self.app.app_context(), tempfile.TemporaryDirectory() as directory:
+            data=json.loads(Path("bank_soal_networking.json").read_text(encoding="utf-8"))
+            path=Path(directory)/"bank.json"
+            def check(value):
+                path.write_text(json.dumps(value),encoding="utf-8")
+                return parse_and_validate_question_json(path,self.st_net_id,"UPDATE")
+            self.assertTrue(check(data)["is_valid"])
+            legacy={"pos":"Networking","sets":{code:flatten_networking_set(value)[0] for code,value in data["sets"].items()}}
+            self.assertTrue(check(legacy)["is_valid"])
+            data["sets"]["A"]["stages"]["2"][0]["member"]=1
+            invalid=check(data)
+            self.assertFalse(invalid["is_valid"])
+            self.assertTrue(any("member/giliran" in error for q in invalid["questions"] for error in q["errors"]))
+            del data["sets"]["A"]["stages"]["2"][0]["member"]
+            del data["sets"]["A"]["stages"]["2"][7]["case_study"]
+            self.assertFalse(check(data)["is_valid"])
+            data["pos"]="Software Engineering"
+            self.assertFalse(check(data)["success"])
+
+    def test_30_choices_are_sequential_immutable_and_retry_safe(self):
+        with self.app.app_context():
+            facilitator_control_action(self.session_a_id,"START_SESSION",self.admin_id,"Mulai test soal berurutan")
+            sub,net,_=get_or_create_networking_submission(self.session_a_id,self.teams_a_ids[0])
+            first,second=get_stage_questions(sub.session,1)[:2]
+            self.assertFalse(save_networking_answer(sub.id,second.id,"A")[0])
+            self.assertTrue(save_networking_answer(sub.id,first.id,"A")[0])
+            self.assertTrue(save_networking_answer(sub.id,first.id,"A")[0])
+            self.assertFalse(save_networking_answer(sub.id,first.id,"B")[0])
+            self.assertTrue(save_networking_answer(sub.id,second.id,"E")[0])
+            answer=db.session.scalar(db.select(Answer).where(Answer.submission_id==sub.id,Answer.question_id==first.id))
+            self.assertEqual(answer.selected_answer,"A")
+            client=self.app.test_client()
+            with client.session_transaction() as cookie:
+                cookie.update(participant_authorized=True,participant_station_id=self.st_net_id,participant_group_id=self.grp_a_id,participant_team_id=self.teams_a_ids[0],participant_confirmed=True,participant_rules_accepted=True)
+            text=client.get("/participant/quiz").get_data(as_text=True)
+            import re
+            cards=re.findall(r'<div class="net-q-card" id="q-card-([0-9]+)"[^>]*>',text)
+            self.assertEqual(len(cards),10)
+            third=get_stage_questions(sub.session,1)[2]
+            # Inspect attributes directly: only the next unanswered card is visible.
+            tags=re.findall(r'<div class="net-q-card" id="q-card-([0-9]+)"([^>]*)>',text)
+            self.assertEqual([int(qid) for qid,attrs in tags if "hidden" not in attrs],[third.id])
+            self.assertEqual(client.post("/participant/networking/submit-stage",data={"stage_num":1}).status_code,302)
+            db.session.refresh(net)
+            self.assertEqual(net.current_stage,1)
 
 
 if __name__ == "__main__":

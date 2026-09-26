@@ -39,6 +39,7 @@
             </div>
           </div>
 
+          {% if question_set.station.name|lower == "networking" %}<p>Tahap {{ q.stage }} · {{ {"multiple_choice":"Signal Check — PG A–E", "true_false":"True or Trap — Benar/Salah", "short_text":"Case Signal — Isian Singkat"}.get(q.question_type,q.question_type) }}</p>{% endif %}
           <div class="preview-card-body">
             <div class="question-content-box">
               {% if q.case_study %}<p class="preview-question-text">Studi kasus: {{ q.case_study }}</p>{% endif %}
