@@ -49,9 +49,9 @@
 <!-- Active Station / Station Selection Hub Banner -->
 {% if active_station %}
   <section class="nb-card {{ 'card-cyan' if active_station.name.lower() == 'hardware' else ('card-green' if active_station.name.lower() == 'networking' else ('card-yellow' if active_station.mode.value == 'member_rotation' else 'card-white')) }}" 
-           style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; flex-wrap: wrap; gap: 1rem;">
-    <div>
-      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+           style="margin-bottom: 1.5rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 0; padding: 1.5rem 1.75rem; column-gap: 2rem;">
+    <div style="min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.625rem;">
         <span class="nb-badge badge-black" style="font-size: 0.72rem;">POS LOMBA AKTIF</span>
         <span class="nb-badge {{ 'badge-neon' if active_station.name.lower() in ('hardware', 'networking') else 'badge-white' }}" style="font-size: 0.72rem;">
           {% if active_station.name.lower() == 'hardware' %}
@@ -65,7 +65,7 @@
           {% endif %}
         </span>
       </div>
-      <h2 style="font-size: 1.8rem; margin: 0.25rem 0; text-transform: uppercase;">
+      <h2 style="font-size: 1.8rem; margin: 0 0 0.5rem; text-transform: uppercase;">
         Pos {{ active_station.name }}
       </h2>
       <p class="mono-sub" style="margin: 0; color: #333; font-size: 0.88rem;">
@@ -80,7 +80,7 @@
         {% endif %}
       </p>
     </div>
-    <div style="display: flex; gap: 0.5rem;">
+    <div style="display: flex; align-items: center; justify-self: end; gap: 0.75rem; white-space: nowrap;">
       <a href="{{ url_for('admin.station_select') }}" class="btn btn-outline btn-sm" style="background: #fff; font-weight: 800;">
         <span>⇄ Pilih Pos Lain</span>
       </a>

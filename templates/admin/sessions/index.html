@@ -141,11 +141,11 @@
       </table>
     </div>
   {% else %}
-    <div class="empty-state-box nb-card">
+    <div class="empty-state-box nb-card" style="align-items: center; justify-content: center; gap: 0; padding: 3rem 2rem;">
       <div class="empty-icon">⏱️</div>
-      <h3>Belum Ada Sesi Perlombaan</h3>
-      <p>Buat sesi baru untuk mengaktifkan kombinasi pos, kelompok, dan bank soal.</p>
-      <div class="empty-state-actions">
+      <h3 style="margin: 0 0 0.75rem;">Belum Ada Sesi Perlombaan</h3>
+      <p style="margin: 0;">Buat sesi baru untuk mengaktifkan kombinasi pos, kelompok, dan bank soal.</p>
+      <div class="empty-state-actions" style="display: flex; justify-content: center; margin-top: 1.5rem;">
         <a href="{{ url_for('admin.sessions_create') }}" class="btn btn-primary">
           <span>+ BUAT SESI PERDANA</span>
         </a>

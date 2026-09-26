@@ -109,10 +109,28 @@
 </section>
 
 <!-- TABEL DAFTAR TIM -->
+<section class="nb-panel" style="padding: 20px; margin-bottom: 20px;">
+  <form id="permanent-delete-form" method="post" action="{{ url_for('admin.teams_delete_permanent') }}">
+    {{ empty_form.hidden_tag() }}
+    <strong>HAPUS TIM PERMANEN</strong>
+    <p style="margin: 10px 0 16px;">Peringatan: tim terpilih beserta jawaban, nilai, riwayat Hardware/Networking, dan audit penilaiannya akan dihapus dari seluruh pos. Tidak dapat dipulihkan. Sesi, kelompok, dan bank soal tetap tersedia.</p>
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 260px auto; gap: 16px; align-items: end;">
+      <label>Alasan penghapusan (wajib)
+        <input class="nb-input" name="reason" required maxlength="500" placeholder="Contoh: membersihkan data dummy" style="display: block; width: 100%; margin-top: 8px;">
+      </label>
+      <label>Ketik HAPUS PERMANEN
+        <input class="nb-input" name="confirmation" required pattern="HAPUS PERMANEN" autocomplete="off" style="display: block; width: 100%; margin-top: 8px;">
+      </label>
+      <button id="delete-selected" class="btn btn-outline-danger" type="submit" disabled>HAPUS TERPILIH (0)</button>
+    </div>
+    <p style="margin-top: 12px;">Centang tim di tabel. Pilih semua hanya berlaku untuk tim yang tampil sesuai filter.</p>
+  </form>
+</section>
 <div class="table-responsive nb-panel table-panel">
   <table class="nb-table" aria-label="Daftar Tim Peserta">
     <thead>
       <tr>
+        <th style="width: 44px;"><input id="select-all-teams" type="checkbox" aria-label="Pilih semua tim yang tampil"></th>
         <th style="width: 90px;">Kode Tim</th>
         <th>Nama Tim</th>
         <th>Asal Sekolah</th>
@@ -126,6 +144,7 @@
       {% for team in teams %}
         {% set team_activity = team_station_activity.get(team.id, {}) if team_station_activity else {} %}
         <tr class="{{ 'row-inactive' if not team.is_active }}">
+          <td><input class="team-delete-checkbox" type="checkbox" name="team_ids" value="{{ team.id }}" form="permanent-delete-form" aria-label="Pilih tim {{ team.team_code }}"></td>
           <td>
             <span class="team-code-badge">{{ team.team_code }}</span>
           </td>
@@ -187,6 +206,7 @@
           </td>
           <td style="text-align: right;">
             <div class="table-actions">
+              <button type="button" class="btn-table-delete permanent-delete-one" data-team-id="{{ team.id }}">HAPUS PERMANEN</button>
               <a href="{{ url_for('admin.team_edit', team_id=team.id) }}" class="btn-table-edit" title="Edit Tim">
                 EDIT
               </a>
@@ -215,7 +235,7 @@
         </tr>
       {% else %}
         <tr>
-          <td colspan="7" class="table-empty-message">
+          <td colspan="8" class="table-empty-message">
             <div class="empty-state-box">
               <span class="empty-icon">👥</span>
               <p>Belum ada data tim yang cocok dengan filter yang dipilih.</p>
@@ -230,4 +250,33 @@
     </tbody>
   </table>
 </div>
+<script>
+(() => {
+  const form = document.getElementById('permanent-delete-form');
+  const boxes = [...document.querySelectorAll('.team-delete-checkbox')];
+  const all = document.getElementById('select-all-teams');
+  const submit = document.getElementById('delete-selected');
+  function update() {
+    const count = boxes.filter(box => box.checked).length;
+    submit.disabled = count === 0;
+    submit.textContent = `HAPUS TERPILIH (${count})`;
+    all.checked = boxes.length > 0 && count === boxes.length;
+    all.indeterminate = count > 0 && count < boxes.length;
+  }
+  all.addEventListener('change', () => { boxes.forEach(box => box.checked = all.checked); update(); });
+  boxes.forEach(box => box.addEventListener('change', update));
+  document.querySelectorAll('.permanent-delete-one').forEach(button => {
+    button.addEventListener('click', () => {
+      boxes.forEach(box => box.checked = box.value === button.dataset.teamId);
+      update();
+      form.elements.reason.focus();
+    });
+  });
+  form.addEventListener('submit', event => {
+    const count = boxes.filter(box => box.checked).length;
+    if (!count || !window.confirm(`Hapus permanen ${count} tim beserta seluruh jawaban, nilai, dan riwayat di semua pos? Tindakan ini tidak dapat dibatalkan.\nAlasan: ${form.elements.reason.value}`)) event.preventDefault();
+  });
+  update();
+})();
+</script>
 {% endblock %}

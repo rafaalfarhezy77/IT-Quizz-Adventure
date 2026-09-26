@@ -133,7 +133,7 @@
           <span class="nav-indicator">▸</span> 👥 Tim Peserta (Global / Semua Pos)
         </a>
         <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.sessions') }}" href="{{ url_for('admin.sessions_index', station_id=g.active_station.id if g.active_station else None) }}">
-          <span class="nav-indicator">▸</span> ⏱️ Sesi {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Perlombaan' }}
+          <span class="nav-indicator">▸</span> ⏱️ Sesi Pos
         </a>
         <a class="nav-link {{ 'active' if request.endpoint and request.endpoint.startswith('admin.results') }}" href="{{ url_for('admin.results_index', station_id=g.active_station.id if g.active_station else None) }}">
           <span class="nav-indicator">▸</span> 🏆 Hasil & Leaderboard
@@ -176,13 +176,33 @@
 {% block scripts %}{% endblock %}
 <script>
   (function() {
-    if (window.location.search && window.location.search.indexOf('scroll_sidebar=') !== -1) {
-      var match = window.location.search.match(/scroll_sidebar=(\d+)/);
-      var top = document.querySelector('.sidebar-top');
-      if (top && match) {
-        top.scrollTop = parseInt(match[1], 10);
-      }
+    var sidebar = document.querySelector('.sidebar-top');
+    if (!sidebar) return;
+
+    var storageKey = 'admin.sidebar.scrollTop';
+    var match = window.location.search.match(/[?&]scroll_sidebar=(\d+)/);
+    var savedPosition = null;
+    try {
+      savedPosition = sessionStorage.getItem(storageKey);
+    } catch (error) {}
+
+    var position = Number(match ? match[1] : savedPosition);
+    if (Number.isFinite(position) && position >= 0) {
+      var previousBehavior = sidebar.style.scrollBehavior;
+      sidebar.style.scrollBehavior = 'auto';
+      sidebar.scrollTop = position;
+      sidebar.style.scrollBehavior = previousBehavior;
     }
+
+    function savePosition() {
+      try {
+        sessionStorage.setItem(storageKey, String(sidebar.scrollTop));
+      } catch (error) {}
+    }
+
+    sidebar.addEventListener('scroll', savePosition, { passive: true });
+    sidebar.addEventListener('click', savePosition);
+    window.addEventListener('pagehide', savePosition);
   })();
 </script>
 </body>

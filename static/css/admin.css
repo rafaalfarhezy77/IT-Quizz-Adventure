@@ -1905,6 +1905,54 @@ p {
   border: 1.5px dashed var(--nb-danger);
 }
 
+.session-form-card {
+  padding: 32px;
+  min-height: 0;
+}
+
+.session-form-card .form-grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+
+.session-form-card .nb-form-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.session-form-card .nb-label {
+  display: block;
+  margin: 0;
+}
+
+.session-form-card .nb-input {
+  width: 100%;
+  margin: 0;
+}
+
+.session-form-card .field-helper-text {
+  display: block;
+  margin: 0;
+}
+
+.session-form-card .form-actions-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.session-form-card .form-actions-cluster .btn {
+  margin: 0;
+}
+
 .empty-state-box {
   text-align: center;
   padding: 40px 20px;

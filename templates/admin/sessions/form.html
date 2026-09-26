@@ -19,7 +19,7 @@
     </div>
   </div>
 
-  <div class="nb-card form-card">
+  <div class="nb-card form-card session-form-card">
     <form method="post" action="{{ url_for('admin.sessions_edit', session_id=session.id) if is_edit else url_for('admin.sessions_create') }}" novalidate>
       {{ form.hidden_tag() }}
 
