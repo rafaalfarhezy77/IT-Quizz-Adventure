@@ -168,6 +168,8 @@ def create_package(
     duration_minutes: int = 30,
     status: PackageStatus = PackageStatus.DRAFT,
     question_set_id: int | None = None,
+    *,
+    commit: bool = True,
 ) -> ChallengePackage:
     """Membuat paket tantangan baru."""
     station = db.session.get(Station, station_id)
@@ -207,7 +209,10 @@ def create_package(
         question_set_id=question_set_id,
     )
     db.session.add(package)
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return package
 
 
@@ -222,6 +227,8 @@ def update_package(
     scoring_config: dict[str, Any] | None = None,
     duration_minutes: int = 30,
     status: PackageStatus | None = None,
+    *,
+    commit: bool = True,
 ) -> ChallengePackage:
     """Memperbarui paket tantangan."""
     editable, reason = is_package_editable(package)
@@ -260,7 +267,10 @@ def update_package(
     if status is not None:
         package.status = status
 
-    db.session.commit()
+    if commit:
+        db.session.commit()
+    else:
+        db.session.flush()
     return package
 
 
@@ -426,5 +436,4 @@ def sync_quiz_packages_for_station(station_id: int) -> int:
             raise
 
     return created_count
-
 

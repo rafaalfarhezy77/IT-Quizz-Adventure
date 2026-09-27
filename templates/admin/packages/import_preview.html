@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% block title %}Pratinjau Import Hardware{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="heading-text"><div class="eyebrow">POS HARDWARE // VALIDASI JSON</div><h1>Pratinjau Import Hardware</h1><p class="welcome-text">Berkas: {{ filename }} · Mode {{ validation.mode }} · {{ validation.rows|length }} paket</p></div></div>
+<section class="nb-panel" style="padding: 24px; margin-bottom: 24px;">
+  <strong>{{ 'VALID: seluruh paket siap diimpor.' if validation.is_valid else 'IMPOR DIBLOKIR: perbaiki seluruh kesalahan sebelum melanjutkan.' }}</strong>
+  {% if validation.errors %}<ul style="margin-top: 16px; padding-left: 20px;">{% for error in validation.errors %}<li class="text-danger">{{ error }}</li>{% endfor %}</ul>{% endif %}
+</section>
+{% for row in validation.rows %}
+<section class="nb-panel" style="padding: 28px; margin-bottom: 24px;">
+  <div style="display: flex; justify-content: space-between; gap: 24px; margin-bottom: 20px;"><h2 style="font-size: 1.3rem;">{{ row.data.get('package_code') or ('Paket #' ~ row.index) }} · {{ row.data.get('title', '') }}</h2><span class="nb-badge">{{ row.action }} · {{ row.status }}</span></div>
+  {% if row.errors %}<ul style="padding-left: 20px; margin-bottom: 20px; line-height: 1.7;">{% for error in row.errors %}<li class="text-danger">{{ error }}</li>{% endfor %}</ul>{% endif %}
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px;">
+    <div><h3 style="margin-bottom: 12px;">Studi Kasus</h3><p style="white-space: pre-wrap; line-height: 1.7; overflow-wrap: anywhere;">{{ row.data.get('description', '') }}</p><h3 style="margin: 20px 0 12px;">Petunjuk</h3><p style="white-space: pre-wrap; line-height: 1.7; overflow-wrap: anywhere;">{{ row.data.get('instructions', '') }}</p><p style="margin-top: 20px; overflow-wrap: anywhere;">{{ row.data.get('external_tool_url', '') }} · {{ row.data.get('duration_minutes', '') }} menit</p></div>
+    <div><h3 style="margin-bottom: 12px;">Batasan &amp; Penilaian</h3><dl style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 16px; overflow-wrap: anywhere;">{% for config in ['rules_config', 'scoring_config'] %}{% for key, value in row.data.get(config, {}).items() %}{% if key not in ['budget_max', 'weight_cpu', 'weight_gpu'] %}<dt>{{ key }}</dt><dd>{{ value if value is not none else '—' }}</dd>{% endif %}{% endfor %}{% endfor %}</dl></div>
+  </div>
+</section>
+{% endfor %}
+<div style="display: flex; gap: 16px; margin: 28px 0;">
+  <form method="post" action="{{ url_for('admin.packages_import_confirm') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="file_token" value="{{ file_token }}"><button class="btn btn-primary" type="submit" {{ 'disabled' if not validation.is_valid }}>KONFIRMASI IMPOR</button></form>
+  <form method="post" action="{{ url_for('admin.packages_import_cancel') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="file_token" value="{{ file_token }}"><button class="btn btn-outline" type="submit">BATALKAN</button></form>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@
 Forms for Package and Group Mapping Management in Mythic 3.0.
 """
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField, FileRequired
 from wtforms import (
     BooleanField,
     DecimalField,
@@ -18,6 +19,12 @@ from wtforms.validators import DataRequired, Length, NumberRange, Optional, URL
 class PackageActionForm(FlaskForm):
     """Form kosong bertoken CSRF untuk aksi status, duplikasi, dan hapus paket."""
     pass
+
+
+class HardwarePackageImportForm(FlaskForm):
+    file = FileField("File JSON Hardware", validators=[FileRequired(), FileAllowed(["json"], "Gunakan file .json.")])
+    mode = SelectField("Mode impor", choices=[("ADD", "Tambah paket baru (ADD)"), ("UPDATE", "Perbarui paket existing (UPDATE)")], validators=[DataRequired()])
+    submit = SubmitField("PRATINJAU IMPOR")
 
 
 class HardwarePackageForm(FlaskForm):
@@ -180,4 +187,3 @@ class QuizPackageForm(FlaskForm):
         default="DRAFT",
     )
     submit = SubmitField("SIMPAN PAKET KUIS")
-

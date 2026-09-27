@@ -1,0 +1,38 @@
+{
+  "station": "Hardware",
+  "packages": [
+    {
+      "package_code": "Paket 01",
+      "title": "Workstation Pengolahan Data",
+      "description": "Klien membutuhkan PC untuk pengolahan data dan pekerjaan grafis dengan budget maksimal USD 1500.",
+      "instructions": "Rakit melalui BuildCores, salin tautan build, lalu unggah screenshot dan alasan pemilihan komponen.",
+      "external_tool_url": "https://www.buildcores.com/",
+      "duration_minutes": 30,
+      "rules_config": {
+        "max_budget": 1500,
+        "currency": "USD",
+        "region": "United States",
+        "min_cpu_score": 1000,
+        "min_gpu_score": 2000,
+        "min_ram_gb": 16,
+        "min_storage_gb": 512,
+        "min_psu_watt": 550,
+        "required_components": "Dedicated GPU, NVMe SSD",
+        "forbidden_components": "PSU tanpa merek",
+        "used_parts_allowed": false,
+        "custom_price_allowed": false,
+        "discount_allowed": true,
+        "extra_notes": "Harga dan spesifikasi diverifikasi oleh panitia."
+      },
+      "scoring_config": {
+        "weight_compatibility": 20,
+        "weight_budget": 15,
+        "weight_cpu_target": 15,
+        "weight_gpu_target": 20,
+        "weight_completeness": 10,
+        "weight_efficiency": 15,
+        "weight_time_bonus": 5
+      }
+    }
+  ]
+}

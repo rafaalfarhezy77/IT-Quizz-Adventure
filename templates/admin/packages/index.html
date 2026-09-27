@@ -13,6 +13,7 @@
   </div>
   <div class="heading-actions">
     {% if selected_station %}
+      <a href="{{ url_for('admin.packages_import') }}" class="btn btn-primary"><span>IMPORT JSON</span></a>
       <a href="{{ url_for('admin.packages_mapping', station_id=selected_station.id) }}" class="btn btn-outline">
         <span>🗺️ Pemetaan Kelompok A–D</span>
       </a>

@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% block title %}Import JSON Hardware{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div class="heading-text"><div class="eyebrow">POS HARDWARE // JSON IMPORT</div><h1>Import Paket Hardware</h1><p class="welcome-text">Unggah studi kasus, batasan build PC, dan bobot penilaian. Seluruh paket disimpan dalam satu transaksi.</p></div>
+  <div class="heading-actions"><a class="btn btn-outline" href="{{ url_for('admin.packages_sample_json') }}">UNDUH CONTOH JSON</a><a class="btn btn-outline" href="{{ url_for('admin.packages_index') }}">KEMBALI</a></div>
+</div>
+<div style="display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 32px; align-items: start;">
+  <section class="nb-panel" style="padding: 28px;">
+    <h2 style="font-size: 1.3rem; margin-bottom: 24px;">Unggah Berkas</h2>
+    <form method="post" enctype="multipart/form-data">
+      {{ form.hidden_tag() }}
+      <div style="margin-bottom: 24px;">{{ form.file.label(style="display: block; margin-bottom: 10px;") }}{{ form.file(class="nb-input", accept=".json", style="width: 100%;") }}{% for error in form.file.errors %}<p class="text-danger">{{ error }}</p>{% endfor %}</div>
+      <div style="margin-bottom: 24px;">{{ form.mode.label(style="display: block; margin-bottom: 10px;") }}{{ form.mode(class="nb-input", style="width: 100%;") }}{% for error in form.mode.errors %}<p class="text-danger">{{ error }}</p>{% endfor %}</div>
+      {{ form.submit(class="btn btn-primary", style="width: 100%;") }}
+    </form>
+  </section>
+  <section class="nb-panel" style="padding: 28px;">
+    <h2 style="font-size: 1.3rem; margin-bottom: 24px;">Ketentuan Impor</h2>
+    <ul style="padding-left: 20px; display: grid; gap: 16px; line-height: 1.7;">
+      <li>File JSON maksimal 5 MB, dengan <code>station: "Hardware"</code> dan array <code>packages</code>.</li>
+      <li><strong>ADD:</strong> kode paket wajib baru. Paket dibuat sebagai DRAFT.</li>
+      <li><strong>UPDATE:</strong> kode wajib sudah tersedia. Seluruh isi paket diganti, status existing dipertahankan.</li>
+      <li>Kode tidak membedakan kapitalisasi. Kode duplikat atau kecocokan ambigu ditolak.</li>
+      <li>Isi judul, deskripsi studi kasus, petunjuk, URL HTTP/HTTPS, durasi 1–180 menit, batasan build, dan tujuh bobot dengan total 100%.</li>
+      <li>Paket LOCKED atau terikat sesi WAITING/RUNNING tidak dapat diperbarui.</li>
+      <li>Satu kesalahan membatalkan seluruh file. Pratinjau berlaku 30 menit dan kondisi database diperiksa ulang saat konfirmasi.</li>
+      <li>Aktivasi dan pemetaan Kelompok A–D dilakukan melalui menu Hardware setelah impor. Hasil dan snapshot submission lama tetap tersedia.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}
