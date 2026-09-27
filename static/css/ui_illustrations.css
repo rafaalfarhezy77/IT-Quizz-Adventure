@@ -1,0 +1,38 @@
+/* Scoped, scalable illustrations: the landing page does not load this sheet. */
+.ui-illustration {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  flex: 0 0 auto;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.btn .ui-illustration,
+.nav-link .ui-illustration {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.card-icon .ui-illustration,
+.pos-icon .ui-illustration,
+.empty-icon .ui-illustration,
+.hand-icon .ui-illustration,
+.dropzone-icon .ui-illustration,
+.placeholder-mark .ui-illustration {
+  width: 1em;
+  height: 1em;
+  vertical-align: middle;
+}
+
+body:not(.landing-body) .step-chip.step-done::before {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.25em;
+  vertical-align: -0.15em;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 4 4L19 6' fill='none' stroke='black' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
