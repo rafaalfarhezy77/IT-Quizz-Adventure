@@ -93,7 +93,7 @@
       const name = station.options[station.selectedIndex]?.textContent.split(' (')[0].trim() || '';
       const hardware = name.toLowerCase() === 'hardware';
       for (const option of material.options) {
-        option.hidden = option.value === '0' ? !hardware : !option.textContent.startsWith(name + ' —');
+        option.hidden = option.value === '0' ? !hardware : hardware || option.dataset.stationId !== station.value;
       }
       if (material.selectedOptions[0]?.hidden) {
         material.value = hardware ? '0' : (Array.from(material.options).find(o => !o.hidden)?.value || '0');

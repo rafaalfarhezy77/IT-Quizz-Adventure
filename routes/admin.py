@@ -1,4 +1,5 @@
 from pathlib import Path
+import time
 
 from flask import (
     Blueprint,
@@ -29,6 +30,7 @@ from forms.question import (
 )
 from forms.hardware import HardwareReviewForm
 from forms.package import (
+    HardwarePackageImportForm,
     HardwarePackageForm,
     PackageActionForm,
     PackageMappingForm,
@@ -1510,7 +1512,8 @@ def _populate_session_form_choices(form, station_id=None):
                 .order_by(QuestionSet.code)
             ).all()
             form.question_set_id.choices = [
-                (qs.id, f"Set {qs.code} ({qs.name})") for qs in ready_sets
+                (qs.id, f"Set {qs.code} ({qs.name})", {"data-station-id": str(qs.station_id)})
+                for qs in ready_sets
             ]
             if not form.question_set_id.choices:
                 form.question_set_id.choices = [(0, "-- Belum ada bank soal READY pada pos ini --")]
@@ -1529,7 +1532,8 @@ def _populate_session_form_choices(form, station_id=None):
             .order_by(Station.name, QuestionSet.code)
         ).all()
         form.question_set_id.choices = [(0, "Tanpa bank soal — khusus Hardware (paket studi kasus)")] + [
-            (qs.id, f"{qs.station.name} — Set {qs.code} ({qs.name})") for qs in ready_sets
+            (qs.id, f"{qs.station.name} — Set {qs.code} ({qs.name})", {"data-station-id": str(qs.station_id)})
+            for qs in ready_sets
         ]
 
     groups = db.session.scalars(db.select(Group).order_by(Group.code)).all()
@@ -1635,8 +1639,9 @@ def sessions_edit(session_id: int):
         current_choice = (
             session_obj.question_set_id,
             f"{session_obj.station.name} — Set {session_obj.question_set.code} ({session_obj.question_set.name})",
+            {"data-station-id": str(session_obj.question_set.station_id)},
         )
-        if current_choice not in form.question_set_id.choices:
+        if not any(choice[0] == session_obj.question_set_id for choice in form.question_set_id.choices):
             form.question_set_id.choices.append(current_choice)
 
     if form.validate_on_submit():
@@ -1905,6 +1910,88 @@ def results_export_csv():
 # ==============================================================================
 # MANAJEMEN PAKET SOAL / STUDI KASUS (FITUR 1 & 2)
 # ==============================================================================
+
+def _hardware_import_target():
+    if g.active_station and g.active_station.name.strip().lower() != "hardware":
+        abort(403)
+    station = g.active_station or db.session.scalar(db.select(Station).where(func.lower(Station.name) == "hardware", Station.is_active.is_(True)))
+    if not station or not station.is_active:
+        abort(404)
+    return station
+
+
+def _clear_hardware_import():
+    pending = session.pop("hardware_import", None)
+    if pending:
+        cleanup_temp_json(pending.get("token", ""))
+
+
+@admin_bp.route("/packages/import", methods=["GET", "POST"])
+@admin_required
+def packages_import():
+    from services.hardware_json_import import parse_hardware_json
+    station = _hardware_import_target()
+    form = HardwarePackageImportForm()
+    if form.validate_on_submit():
+        _clear_hardware_import()
+        token, path = save_temp_json(form.file.data)
+        validation = parse_hardware_json(path, station.id, form.mode.data)
+        session["hardware_import"] = {"token": token, "station_id": station.id, "mode": form.mode.data,
+                                       "admin_id": g.current_admin.id, "expires_at": time.time() + 1800}
+        return render_template("admin/packages/import_preview.html", validation=validation, file_token=token,
+                               filename=form.file.data.filename, station=station)
+    return render_template("admin/packages/import.html", form=form, station=station)
+
+
+def _hardware_import_context():
+    station = _hardware_import_target()
+    form = PackageActionForm()
+    if not form.validate_on_submit():
+        abort(400)
+    pending = session.get("hardware_import") or {}
+    if (not pending or pending.get("token") != request.form.get("file_token")
+            or pending.get("admin_id") != g.current_admin.id or pending.get("station_id") != station.id
+            or pending.get("expires_at", 0) < time.time()):
+        _clear_hardware_import()
+        flash("Pratinjau impor tidak valid atau sudah kedaluwarsa. Silakan unggah ulang.", "error")
+        return None
+    return pending
+
+
+@admin_bp.post("/packages/import/confirm")
+@admin_required
+def packages_import_confirm():
+    from services.hardware_json_import import execute_hardware_import
+    from services.question_json_import import get_temp_file_path
+    pending = _hardware_import_context()
+    if pending:
+        path = get_temp_file_path(pending["token"])
+        if path:
+            success, count, error = execute_hardware_import(path, pending["station_id"], pending["mode"])
+            flash(f"Impor berhasil: {count} paket {'ditambahkan sebagai DRAFT' if pending['mode'] == 'ADD' else 'diperbarui dengan status tetap'}. Lanjutkan aktivasi dan pemetaan kelompok melalui menu Hardware." if success else error,
+                  "success" if success else "error")
+        else:
+            flash("File sementara tidak ditemukan. Silakan unggah ulang.", "error")
+        _clear_hardware_import()
+    return redirect(url_for("admin.packages_index"))
+
+
+@admin_bp.post("/packages/import/cancel")
+@admin_required
+def packages_import_cancel():
+    if _hardware_import_context():
+        _clear_hardware_import()
+        flash("Impor Hardware dibatalkan.", "info")
+    return redirect(url_for("admin.packages_import"))
+
+
+@admin_bp.get("/packages/sample.json")
+@admin_required
+def packages_sample_json():
+    _hardware_import_target()
+    from flask import send_file
+    return send_file(Path(__file__).resolve().parent.parent / "bank_soal_hardware.json", as_attachment=True,
+                     download_name="bank_soal_hardware.json", mimetype="application/json")
 
 @admin_bp.get("/packages")
 @admin_required
