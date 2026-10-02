@@ -251,6 +251,8 @@ def start_session(session_obj: CompetitionSession) -> tuple[bool, str]:
     Includes double-start protection.
     """
     # Double-start protection
+    from services.access_service import lock_access_settings
+    lock_access_settings()
     if session_obj.status == SessionStatus.RUNNING:
         return False, "Sesi sudah berjalan. Waktu mulai tidak diubah."
 

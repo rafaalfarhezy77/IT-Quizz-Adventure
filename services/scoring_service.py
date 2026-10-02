@@ -3,6 +3,7 @@ from flask import current_app
 
 from models import Question, Score, Submission, SubmissionStatus, db
 from services.session_service import get_remaining_seconds, get_server_now
+from services.score_math import answer_points, time_bonus as compute_time_bonus
 
 
 def calculate_scores(
@@ -33,8 +34,7 @@ def calculate_scores(
     for q in questions:
         ans = answers_dict.get(q.id)
         if ans and ans.selected_answer:
-            is_correct = ans.selected_answer.strip().upper() == q.correct_answer.strip().upper()
-            points = float(q.weight) if is_correct else 0.0
+            is_correct, points = answer_points(ans.selected_answer, q.correct_answer, q.weight)
             ans.is_correct = is_correct
             ans.points_awarded = points
             raw_score += points
@@ -53,7 +53,7 @@ def calculate_scores(
             time_bonus = 0.0
         else:
             bonus_per_second = float(current_app.config.get("TIME_BONUS_PER_SECOND", 1.0))
-            time_bonus = round(remaining * bonus_per_second, 2)
+            time_bonus = compute_time_bonus(remaining, bonus_per_second)
 
     final_score = round(raw_score + time_bonus, 2)
 

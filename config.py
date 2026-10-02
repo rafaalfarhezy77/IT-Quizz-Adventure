@@ -30,3 +30,11 @@ class Config:
     MEMBER_ROTATION_COUNT = int(os.environ.get("MEMBER_ROTATION_COUNT", "3"))
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", str(BASE_DIR / "instance" / "uploads"))
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max request payload
+    DEMO_ENABLED = os.environ.get("DEMO_ENABLED", "0") == "1"
+    DEMO_DATABASE_PATH = os.environ.get("DEMO_DATABASE_PATH", str(BASE_DIR / "instance" / "demo.db"))
+    DEMO_DURATION_SECONDS = 240
+    DEMO_TTL_SECONDS = 86400
+    DEMO_STARTS_PER_HOUR = 12
+    DEMO_IP_STARTS_PER_HOUR = 60
+    DEMO_MAX_ATTEMPTS = 5000
+    DEMO_MAX_REQUEST_BYTES = 8192

@@ -84,6 +84,22 @@ class Admin(TimestampMixin, db.Model):
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
 
 
+class WebsiteAccess(db.Model):
+    __tablename__ = "website_access"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mode: Mapped[str] = mapped_column(db.String(20), default="NORMAL", nullable=False)
+    lock_version: Mapped[int] = mapped_column(default=0, nullable=False)
+
+
+class WebsiteAccessAudit(db.Model):
+    __tablename__ = "website_access_audits"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    admin_id: Mapped[int] = mapped_column(db.ForeignKey("admins.id"), nullable=False)
+    previous_mode: Mapped[str] = mapped_column(db.String(20), nullable=False)
+    new_mode: Mapped[str] = mapped_column(db.String(20), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
+
+
 class Station(TimestampMixin, db.Model):
     __tablename__ = "stations"
     id: Mapped[int] = mapped_column(primary_key=True)

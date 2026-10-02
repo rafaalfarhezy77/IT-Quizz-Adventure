@@ -118,7 +118,7 @@ from services.session_service import (
     start_session,
     update_session,
 )
-from utils.auth import admin_required
+from utils.auth import admin_required, clear_auth_session
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -137,7 +137,7 @@ def load_current_admin():
         return None
     admin = db.session.get(Admin, admin_id)
     if admin is None or not admin.is_active:
-        session.clear()
+        clear_auth_session()
         flash("Sesi admin tidak valid. Silakan login kembali.", "warning")
         return redirect(url_for("admin.login"))
     g.current_admin = admin
@@ -157,6 +157,7 @@ def load_current_admin():
         "admin.clear_station",
         "admin.login",
         "admin.logout",
+        "admin.access_settings",
     }
     if not current_app.testing and "admin_station_id" not in session and request.endpoint and request.endpoint.startswith("admin."):
         if request.endpoint not in allowed_endpoints:
@@ -175,7 +176,7 @@ def login():
         username = form.username.data.strip()
         admin = db.session.scalar(db.select(Admin).where(Admin.username == username))
         if admin and admin.is_active and check_password_hash(admin.password_hash, form.password.data):
-            session.clear()
+            clear_auth_session()
             session["admin_id"] = admin.id
             flash("Login berhasil. Silakan pilih pos lomba yang akan dikelola.", "success")
             return redirect(url_for("admin.station_select"))
@@ -186,9 +187,29 @@ def login():
 @admin_bp.post("/logout")
 @admin_required
 def logout():
-    session.clear()
+    clear_auth_session()
     flash("Anda telah logout.", "success")
     return redirect(url_for("admin.login"))
+
+
+@admin_bp.route("/access-settings", methods=["GET", "POST"])
+@admin_required
+def access_settings():
+    from services.access_service import public_mode, set_public_mode
+    from services.demo_service import initialize, statistics
+    from models import WebsiteAccessAudit
+    initialize()
+    status = 200
+    if request.method == "POST":
+        try:
+            set_public_mode(request.form.get("mode"), g.current_admin.id)
+            flash("Pengaturan akses website berhasil diperbarui.", "success")
+            return redirect(url_for("admin.access_settings"))
+        except ValueError as error:
+            flash(str(error), "error")
+            status = 409
+    audits = db.session.scalars(db.select(WebsiteAccessAudit).order_by(WebsiteAccessAudit.id.desc()).limit(20)).all()
+    return render_template("admin/access_settings.html", mode=public_mode(), stats=statistics(), audits=audits), status
 
 
 @admin_bp.get("/station-select")

@@ -731,6 +731,8 @@ def facilitator_control_action(
     if stage_num not in (1, 2, 3):
         return False, "Tahap harus 1, 2, atau 3."
     if action == "START_SESSION":
+        from services.access_service import lock_access_settings
+        lock_access_settings()
         if session_obj.status == SessionStatus.RUNNING:
             return True, "Sesi sudah berjalan."
 

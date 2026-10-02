@@ -32,6 +32,35 @@ def create_app(config_class=Config):
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
+    # Apply demo request limits before CSRF parses form bodies.
+    @app.before_request
+    def demo_boundaries():
+        from flask import abort, request, jsonify
+        from services.access_service import public_mode
+        from utils.auth import resolve_current_admin
+        from utils.participant_session import clear_participant_session
+        mode = public_mode()
+        admin = resolve_current_admin()
+        allowed = request.endpoint in ("index", "static", "admin.login", "api.health", "participant.health") or request.blueprint == "demo"
+        if mode == "DEMO_ONLY" and not admin and not allowed and request.endpoint:
+            clear_participant_session()
+            if request.blueprint == "api" or request.method != "GET" or request.is_json:
+                return jsonify(error="competition_access_locked", message="Akses lomba belum dibuka selama masa demo."), 403
+            return render_template("demo/locked.html", demo_mode=True), 403
+        if request.path.startswith("/demo/"):
+            request.max_content_length = app.config["DEMO_MAX_REQUEST_BYTES"]
+        if request.blueprint in ("participant", "api"):
+            values = [request.args, request.form]
+            if request.is_json:
+                payload = request.get_json(silent=True)
+                if isinstance(payload, dict):
+                    values.append(payload)
+            for value in values:
+                if value.get("mode") == "demo" or any(
+                    str(value.get(key, "")).startswith("demo_")
+                    for key in ("session_id", "submission_id", "attempt_id", "identifier", "team_id")
+                ):
+                    abort(403)
     csrf.init_app(app)
 
     # Pastikan folder instance dan uploads tersedia
@@ -49,6 +78,38 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(participant_bp)
     app.register_blueprint(api_bp)
+    from routes.demo import demo_bp
+    app.register_blueprint(demo_bp)
+    from services.demo_service import initialize
+    with app.app_context():
+        from services.access_service import demo_enabled
+        if demo_enabled():
+            initialize()
+
+    @app.context_processor
+    def access_context():
+        from services.access_service import public_mode, demo_enabled
+        from utils.auth import resolve_current_admin
+        return {"public_access_mode": public_mode(), "demo_available": demo_enabled(),
+                "access_admin": resolve_current_admin()}
+
+    @app.errorhandler(400)
+    @app.errorhandler(413)
+    def demo_request_error(error):
+        from flask import request, jsonify
+        if request.blueprint == "demo":
+            message = "Request terlalu besar." if error.code == 413 else "Request atau token keamanan tidak valid. Muat ulang halaman lalu coba lagi."
+            if request.is_json:
+                return jsonify(success=False, error=message), error.code
+            return render_template("demo/page.html", demo_mode=True, page="error", message=message), error.code
+        return error
+
+    @app.cli.command("cleanup-demo")
+    def cleanup_demo():
+        """Delete expired practice attempts from the separate demo store."""
+        from services.demo_service import cleanup, initialize
+        initialize()
+        print(f"Deleted {cleanup()} expired demo attempts.")
 
     from flask import send_from_directory
 
