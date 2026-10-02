@@ -1,5 +1,14 @@
 # IT Quest Adventure — Mythic 3.0
 
+Demo Software Engineering, Cyber Security, Networking, dan Hardware tersedia melalui
+`DEMO_ENABLED=1`. Admin dapat mengaktifkan **Masa Demo** melalui **Pengaturan Akses
+Website** untuk membatasi akses umum ke demo; admin aktif tetap dapat membuka alur
+lomba. Pengaturan tersimpan tanpa restart dan perubahan dicatat.
+Lihat [panduan demo](docs/demo.md) untuk konfigurasi, alur latihan, isolasi data,
+pembersihan sesi, dan pengujian.
+Panduan peserta dengan screenshot tersedia dalam [PDF](docs/panduan_demo.pdf)
+dan [HTML](docs/panduan_demo.html).
+
 > **Platform Kompetisi Cerdas Cermat IT Berbasis Stasiun Pos (Station-Based Quiz Platform)**  
 > Dirancang khusus untuk perlombaan luring berbasis jaringan lokal (*Offline LAN*) dengan performa tinggi, desain Neo-Brutalist yang modern, serta sistem anti-kecurangan yang andal.
 
