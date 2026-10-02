@@ -10,8 +10,14 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/module_layout.css') }}">
+  <link rel="preload" href="{{ url_for('static', filename='images/logo-uns.png') }}" as="image">
 </head>
 <body class="landing-body">
+  <div id="splash-screen" class="splash-screen" aria-hidden="true">
+    <div class="splash-content">
+      <img src="{{ url_for('static', filename='images/logo-uns.png') }}" alt="Universitas Sebelas Maret" class="splash-logo" width="340" height="128">
+    </div>
+  </div>
   <div class="landing-container">
     <!-- Top Meta Strip -->
     <header class="landing-header">
@@ -133,5 +139,29 @@
       </div>
     </footer>
   </div>
+  <script>
+    (function () {
+      const splash = document.getElementById('splash-screen');
+      if (!splash) return;
+      let seen = false;
+      try { seen = sessionStorage.getItem('itquest_landing_splash_seen'); } catch (_) {}
+      if (seen) {
+        splash.style.display = 'none';
+        splash.remove();
+        return;
+      }
+      try { sessionStorage.setItem('itquest_landing_splash_seen', '1'); } catch (_) {}
+      function dismiss() {
+        if (!splash.parentElement || splash.classList.contains('fade-out')) return;
+        splash.classList.add('fade-out');
+        setTimeout(function () {
+          splash.style.display = 'none';
+          splash.remove();
+        }, 800);
+      }
+      splash.addEventListener('click', dismiss);
+      setTimeout(dismiss, 1100);
+    })();
+  </script>
 </body>
 </html>
