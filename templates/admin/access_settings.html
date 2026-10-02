@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block title %}Pengaturan Akses Website{% endblock %}
+{% block content %}
+<h1>Pengaturan Akses Website</h1>
+<section class="nb-panel" style="padding:24px;margin:24px 0">
+  <span class="nb-badge badge-neon">{{ 'MASA DEMO' if mode == 'DEMO_ONLY' else 'NORMAL' }}</span>
+  <p>Normal membuka alur lomba seperti biasa. Masa Demo membatasi pengunjung umum pada demo dan panduan. Admin aktif tetap dapat mengakses seluruh alur.</p>
+  <p>Selesaikan atau batalkan sesi lomba RUNNING sebelum mengaktifkan Masa Demo. Perubahan berlaku tanpa restart dan dicatat.</p>
+  <form method="post" onsubmit="return confirm('Terapkan perubahan akses website untuk seluruh pengunjung?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="public-mode">Mode akses</label>
+    <select id="public-mode" name="mode" class="nb-input">
+      <option value="NORMAL" {{ 'selected' if mode == 'NORMAL' }}>Normal</option>
+      <option value="DEMO_ONLY" {{ 'selected' if mode == 'DEMO_ONLY' }}>Masa Demo</option>
+    </select>
+    <button class="btn btn-primary" type="submit">Simpan Pengaturan Akses</button>
+  </form>
+  <p>Masa Demo mengaktifkan latihan otomatis. Dalam mode Normal, ketersediaan latihan mengikuti DEMO_ENABLED pada server.</p>
+</section>
+<h2>Percobaan Demo</h2>
+<div class="table-wrap"><table class="nb-table"><thead><tr><th>Pos</th><th>Aktif</th><th>Selesai</th></tr></thead><tbody>
+{% for row in stats %}<tr><td>{{ row.name }}</td><td>{{ row.active }}</td><td>{{ row.finished }}</td></tr>{% endfor %}
+</tbody></table></div>
+<h2 style="margin-top:24px">Riwayat Perubahan Akses</h2>
+<div class="table-wrap"><table class="nb-table"><thead><tr><th>Waktu UTC</th><th>Admin ID</th><th>Sebelum</th><th>Sesudah</th></tr></thead><tbody>
+{% for audit in audits %}<tr><td>{{ audit.changed_at }}</td><td>{{ audit.admin_id }}</td><td>{{ audit.previous_mode }}</td><td>{{ audit.new_mode }}</td></tr>{% else %}<tr><td colspan="4">Belum ada perubahan.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

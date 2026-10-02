@@ -1,0 +1,58 @@
+{% extends "participant/base.html" %}
+{% block title %}Mode Demo · {{ pack.name }}{% endblock %}
+{% block content %}
+<div class="quiz-container">
+  <header class="quiz-top-sticky nb-panel">
+    <h1 style="font-size:1.5rem">Mode Demo · {{ pack.name }}</h1>
+    {% if pack.method == 'networking' %}<p>Tahap {{ a.state.stage }} / 3 · {{ pack.stage_names[a.state.stage - 1] }}</p>{% else %}<p>Simulasi Hardware · Data latihan sintetis</p>{% endif %}
+    <div id="session-timer" class="nb-timer" data-deadline="{{ deadline }}" data-server-now="{{ demo_now }}" data-sync-url="{{ links.status }}" data-redirect-url="{{ links.quiz }}"><span class="timer-digits">--:--</span></div>
+    <p id="module-save-status" role="status">Tersimpan</p>
+  </header>
+  <form id="demo-module-form" method="post" action="{{ links.advance if pack.method == 'networking' and a.state.stage < 3 else links.submit }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="member" value="{{ a.member }}">
+    <input type="hidden" name="revision" value="{{ a.revision }}">
+    {% if pack.method == 'networking' %}
+    <input type="hidden" name="stage" value="{{ a.state.stage }}">
+    <p>Tahap 1/2: jawab berurutan; jawaban langsung dikunci setelah tersimpan. Tahap 3: jawaban dapat diedit sebelum selesai. Penilaian otomatis khusus latihan, hasil diberikan setelah seluruh tahap selesai.</p>
+    {% for q in questions %}
+    <article class="nb-card demo-panel net-question" data-question-id="{{ q.id }}">
+      <h2>{{ loop.index }}. {{ q.text }}</h2>
+      {% if q.kind == 'short_text' %}
+      <label for="question-{{ q.id }}">Jawaban singkat</label>
+      <input class="nb-input" id="question-{{ q.id }}" type="text" maxlength="255" name="question_{{ q.id }}" value="{{ a.answers.get(q.id|string, '') }}">
+      {% else %}
+      {% for code, label in q.options.items() %}
+      <label class="option-card" style="margin-bottom:12px">
+        <input type="radio" name="question_{{ q.id }}" value="{{ code }}" {{ 'checked' if a.answers.get(q.id|string) == code }} {{ 'disabled' if q.id|string in a.answers }}>
+        <span>{{ code }} · {{ label }}</span>
+      </label>
+      {% endfor %}
+      {% endif %}
+    </article>
+    {% endfor %}
+    {% else %}
+    <section class="nb-panel demo-panel">
+      <p>Budget latihan USD 1500 · Target CPU 1000 · GPU 2000. PSU minimal memenuhi daya CPU + GPU + cadangan 100 W. Cocokkan socket CPU/motherboard dan jenis RAM.</p>
+      <p>Harga dan performa adalah data sintetis; sistem lomba resmi memakai BuildCores dan verifikasi panitia.</p>
+      {% for category, options in pack.catalogue.items() %}
+      <label for="component-{{ category }}">{{ category|upper }}</label>
+      <select class="nb-input" id="component-{{ category }}" name="component_{{ category }}" required>
+        <option value="">Pilih {{ category|upper }}</option>
+        {% for item in options %}<option value="{{ item.id }}" {{ 'selected' if a.state.get('components', {}).get(category) == item.id }}>{{ item.name }} · USD {{ item.price }}{% if item.get('score') %} · Performa {{ item.score }}{% endif %}{% if item.get('socket') %} · Socket {{ item.socket }}{% endif %}{% if item.get('ram_type') %} · {{ item.ram_type }}{% endif %}{% if item.get('capacity') %} · {{ item.capacity }} GB{% endif %}{% if item.get('watts') %} · {{ item.watts }} W{% endif %}</option>{% endfor %}
+      </select>
+      {% endfor %}
+      <p id="hardware-total" role="status"></p>
+      <label for="rationale">Alasan memilih rakitan (tidak dinilai otomatis)</label>
+      <textarea id="rationale" name="rationale" class="nb-input" maxlength="1000" required>{{ a.state.get('rationale', '') }}</textarea>
+    </section>
+    {% endif %}
+    <button class="btn btn-primary" id="module-submit" type="submit">{{ 'Selesaikan Tahap ' ~ a.state.stage if pack.method == 'networking' and a.state.stage < 3 else 'Kirim Semua Jawaban' }}</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>window.DEMO_MODULE_CONFIG = {{ {'method': pack.method, 'answerUrl': links.answer, 'csrfToken': csrf_token(), 'revision': a.revision, 'member': a.member, 'stage': a.state.get('stage'), 'answers': a.answers, 'catalogue': pack.get('catalogue', {})}|tojson }};</script>
+<script src="{{ url_for('static', filename='js/demo_timer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/demo_module.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+.demo-panel { padding: clamp(16px, 4vw, 32px); margin-bottom: 20px; }
+.demo-panel h1, .demo-panel h2, .demo-panel p { margin-bottom: 18px; }
+.demo-panel p { line-height: 1.7; }
+.demo-stations { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 18px; margin: 24px 0; }
+.demo-panel strong { display: block; font-size: 1.6rem; }
+.demo-panel .btn { max-width: 100%; white-space: normal; }
+.demo-mode .net-question[hidden] { display: none !important; }
+.demo-mode .nb-input { width: 100%; max-width: 100%; margin: 8px 0 18px; }
+.demo-mode .option-card:has(input:focus-visible) { outline: 3px solid #124b9a; }
+.demo-panel.nb-card { min-height: auto; justify-content: flex-start; }
+.demo-panel h2 { font-size: 1rem; text-transform: none; }
+.demo-mode .quiz-main-layout { grid-template-columns: 260px minmax(0, 1fr); }
+.demo-mode .quiz-main-layout > * { min-width: 0; }
+.demo-mode .option-card { flex-direction: row; justify-content: flex-start; min-height: 64px; }
+.demo-mode .option-content { min-width: 0; overflow-wrap: anywhere; }
+.demo-mode .action-left, .demo-mode .modal-actions { flex-wrap: wrap; }
+.demo-mode .quiz-action-bar .btn, .demo-mode .modal-actions .btn { white-space: normal; max-width: 100%; }
+.demo-mode .nav-sidebar-header, .demo-mode .question-header { gap: 12px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .demo-mode .quiz-main-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .demo-mode .participant-main { padding: 20px 16px; }
+  .demo-mode .question-card, .demo-mode .quiz-action-bar { padding: 16px; }
+  .demo-mode .nb-modal-backdrop { padding: 12px; }
+  .demo-mode .nb-modal-card { padding: 18px; max-height: 90vh; overflow-y: auto; }
+  .demo-mode .modal-stats-grid { gap: 6px; }
+  .demo-mode .stat-lbl { overflow-wrap: anywhere; }
+}

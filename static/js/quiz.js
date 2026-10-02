@@ -106,6 +106,20 @@
     }
 
     const savedAnswersMap = {};
+    let demoSaveQueue = Promise.resolve();
+    function snapshotDemoAnswers(form) {
+      if (!config.demo || !form) return;
+      form.querySelector('[name="revision"]').value = config.revision;
+      form.querySelectorAll('[data-demo-answer]').forEach(function (el) { el.remove(); });
+      document.querySelectorAll('.option-radio-input:checked').forEach(function (radio) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = radio.name;
+        input.value = radio.value;
+        input.dataset.demoAnswer = 'true';
+        form.appendChild(input);
+      });
+    }
     document.querySelectorAll('.option-radio-input:checked').forEach(function (r) {
       const qId = parseInt(r.getAttribute('data-question-id'), 10);
       if (!isNaN(qId)) savedAnswersMap[qId] = r.value;
@@ -143,7 +157,12 @@
       }
       savedAnswersMap[questionId] = selectedAnswer;
 
-      saveAnswerToServer(questionId, selectedAnswer);
+      if (config.demo) {
+        config.busy = true;
+        demoSaveQueue = demoSaveQueue.then(function () { return saveAnswerToServer(questionId, selectedAnswer); });
+      } else {
+        saveAnswerToServer(questionId, selectedAnswer);
+      }
     }
 
     async function saveAnswerToServer(questionId, selectedAnswer) {
@@ -157,7 +176,11 @@
             'X-CSRFToken': config.csrfToken,
             'Accept': 'application/json',
           },
-          body: JSON.stringify({
+          body: JSON.stringify(config.demo ? {
+            member: config.currentMember,
+            revision: config.revision,
+            answers: { [String(questionId)]: selectedAnswer },
+          } : {
             question_id: questionId,
             selected_answer: selectedAnswer,
           }),
@@ -166,14 +189,20 @@
         const resData = await response.json();
 
         if (response.ok && resData.success) {
+          if (config.demo) config.revision = resData.revision;
           setSaveStatus('saved', 'Tersimpan');
         } else {
+          if (config.demo && response.status === 409) config.conflict = true;
+          if (config.demo) delete savedAnswersMap[questionId];
           console.error('[QuizAutosave] Gagal:', resData.error);
           setSaveStatus('error', resData.error || 'Gagal menyimpan');
         }
       } catch (err) {
+        if (config.demo) delete savedAnswersMap[questionId];
         console.error('[QuizAutosave] Network error:', err);
         setSaveStatus('error', 'Koneksi terputus');
+      } finally {
+        if (config.demo) config.busy = false;
       }
     }
 
@@ -183,16 +212,22 @@
         handleOptionSelect(this);
       });
     });
+    if (config.demo) {
+      window.addEventListener('online', function () {
+        document.querySelectorAll('.option-radio-input:checked').forEach(handleOptionSelect);
+      });
+    }
 
     // =========================================================================
     // 3. Final Submit Modal & Idempotent Submission
     // =========================================================================
     if (btnTriggerFinalSubmit && modalSubmit) {
       btnTriggerFinalSubmit.addEventListener('click', function () {
-        const answered = updateAnswerStats();
-        const unanswered = Math.max(0, totalQuestions - answered);
+        const answered = updateAnswerStats() + (config.demo ? config.previousAnswered : 0);
+        const displayedTotal = config.demo ? config.allQuestions : totalQuestions;
+        const unanswered = Math.max(0, displayedTotal - answered);
 
-        if (modalTotalVal) modalTotalVal.textContent = totalQuestions;
+        if (modalTotalVal) modalTotalVal.textContent = displayedTotal;
         if (modalAnsweredVal) modalAnsweredVal.textContent = answered;
         if (modalUnansweredVal) modalUnansweredVal.textContent = unanswered;
 
@@ -211,9 +246,16 @@
     }
 
     if (formFinalSubmit && btnModalConfirmSubmit) {
-      formFinalSubmit.addEventListener('submit', function () {
+      formFinalSubmit.addEventListener('submit', async function (event) {
+        if (config.demo) {
+          event.preventDefault();
+          await demoSaveQueue;
+          if (config.conflict) { location.reload(); return; }
+        }
+        snapshotDemoAnswers(formFinalSubmit);
         btnModalConfirmSubmit.disabled = true;
         btnModalConfirmSubmit.innerHTML = '<span>MEMPROSES PENILAIAN...</span>';
+        if (config.demo) formFinalSubmit.submit();
       });
     }
 
@@ -233,9 +275,14 @@
     }
 
     if (btnMemberConfirm && formMemberSubmit) {
-      btnMemberConfirm.addEventListener('click', function () {
+      btnMemberConfirm.addEventListener('click', async function () {
         this.disabled = true;
         this.innerHTML = '<span>MENYIMPAN BAGIAN...</span>';
+        if (config.demo) {
+          await demoSaveQueue;
+          if (config.conflict) { location.reload(); return; }
+        }
+        snapshotDemoAnswers(formMemberSubmit);
         formMemberSubmit.submit();
       });
     }

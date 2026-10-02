@@ -47,7 +47,16 @@
       {% endwith %}
     </div>
 
+    {% if demo_available %}
+    <section class="nb-panel" style="padding: 24px; margin-bottom: 24px;">
+      <span class="nb-badge badge-neon">Mode Demo</span>
+      <p style="margin: 16px 0;">Coba alur kuis menggunakan soal latihan khusus. Nilai demo tidak dihitung dalam lomba.</p>
+      <a class="btn btn-primary" href="{{ url_for('demo.select') }}">Coba Demo</a>
+      <a class="btn btn-outline" href="{{ url_for('demo.guide', format='html') }}">Panduan Demo</a>
+    </section>
+    {% endif %}
     <!-- Role Selection Grid -->
+    {% if public_access_mode != 'DEMO_ONLY' or access_admin %}
     <main class="role-grid">
       <!-- Peserta Card -->
       <article class="role-card role-card-participant">
@@ -103,6 +112,10 @@
         </div>
       </article>
     </main>
+    {% else %}
+    <p>Masa Demo · Akses lomba resmi belum dibuka.</p>
+    <p><a href="{{ url_for('admin.login') }}">Login Admin</a></p>
+    {% endif %}
 
     <!-- Bottom Specs Footer -->
     <footer class="landing-footer">

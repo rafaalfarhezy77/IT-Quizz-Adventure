@@ -75,6 +75,7 @@
 
       <div class="nav-header-label" style="margin-top: 1rem;">MENU OPERASIONAL</div>
       <nav>
+        <a class="nav-link {{ 'active' if request.endpoint == 'admin.access_settings' }}" href="{{ url_for('admin.access_settings') }}">Pengaturan Akses Website</a>
         <!-- 1. Dashboard -->
         <a class="nav-link {{ 'active' if request.endpoint == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">
           <span class="nav-indicator">▸</span> Dashboard {{ ('Pos ' ~ g.active_station.name) if g.active_station else 'Utama' }}
@@ -162,6 +163,10 @@
   </aside>
 {% endif %}
 <main class="{{ 'main-content' if g.current_admin else 'login-main' }}">
+  {% if g.current_admin %}<div class="nb-alert" role="status">
+    Akses publik: {{ 'Masa Demo' if public_access_mode == 'DEMO_ONLY' else 'Normal' }} ·
+    <a href="{{ url_for('admin.access_settings') }}">Pengaturan Akses Website</a>
+  </div>{% endif %}
   <div class="flash-stack" aria-live="polite">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}

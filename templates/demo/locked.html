@@ -1,0 +1,11 @@
+{% extends "participant/base.html" %}
+{% block title %}Masa Demo{% endblock %}
+{% block content %}
+<section class="nb-panel demo-panel">
+  <span class="nb-badge badge-neon">MASA DEMO</span>
+  <h1>Akses lomba belum dibuka selama masa demo</h1>
+  <p>Silakan mencoba soal latihan. Akses lomba resmi akan dibuka oleh admin.</p>
+  <a class="btn btn-primary" href="{{ url_for('demo.select') }}">Coba Demo</a>
+  <a class="btn btn-outline" href="{{ url_for('admin.login') }}">Login Admin</a>
+</section>
+{% endblock %}

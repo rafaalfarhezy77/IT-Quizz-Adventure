@@ -1,6 +1,6 @@
 {% extends "participant/base.html" %}
 
-{% block title %}Kuis Lomba · {{ station.name }}{% endblock %}
+{% block title %}{{ 'Mode Demo' if demo_mode else 'Kuis Lomba' }} · {{ station.name }}{% endblock %}
 
 {% block content %}
 <div class="quiz-container">
@@ -11,7 +11,7 @@
         <div class="quiz-pos-badge">
           <span class="pos-icon">⚡</span>
           <span class="pos-name">{{ station.name }}</span>
-          <span class="group-tag">KELOMPOK {{ group.code }}</span>
+          <span class="group-tag">{{ 'Mode Demo' if demo_mode else 'KELOMPOK ' ~ group.code }}</span>
           {% if is_member_rotation %}
             <span class="nb-badge badge-neon">ANGGOTA {{ current_member }} / {{ total_members }}</span>
           {% else %}
@@ -19,7 +19,7 @@
           {% endif %}
         </div>
         <div class="quiz-status-eyebrow" style="font-size: 0.75rem; font-weight: 700; color: var(--accent-neon); letter-spacing: 0.05em; margin-top: 2px;">
-          SESI PERLOMBAAN SEDANG BERLANGSUNG
+          {{ 'MODE DEMO · NILAI LATIHAN' if demo_mode else 'SESI PERLOMBAAN SEDANG BERLANGSUNG' }}
         </div>
         <div class="quiz-team-info">
           <span class="team-code">{{ team.team_code }}</span>
@@ -35,8 +35,9 @@
              data-status="RUNNING"
              data-remaining="{{ remaining_seconds }}"
              data-duration="{{ competition_session.duration_seconds }}"
-             data-sync-url="{{ url_for('api.participant_session_status') }}"
-             data-redirect-url="{{ url_for('participant.result') }}">
+             {% if demo_mode %}data-deadline="{{ demo_attempt.deadline }}" data-server-now="{{ demo_now }}"{% endif %}
+             data-sync-url="{{ demo_urls.status if demo_mode else url_for('api.participant_session_status') }}"
+             data-redirect-url="{{ demo_urls.result if demo_mode else url_for('participant.result') }}">
           <span class="timer-digits">
             {{ "%02d:%02d" | format((remaining_seconds // 60), (remaining_seconds % 60)) }}
           </span>
@@ -56,7 +57,7 @@
   <!-- Main Quiz Area -->
   {% if has_case_study %}
   <div style="margin: 16px 0;">
-    <a href="{{ url_for('participant.case_study') }}" class="btn btn-outline">BUKA STUDI KASUS</a>
+    <a href="{{ demo_urls.case_study if demo_mode else url_for('participant.case_study') }}" class="btn btn-outline">BUKA STUDI KASUS</a>
   </div>
   {% endif %}
   <div class="quiz-main-layout">
@@ -146,8 +147,9 @@
           <div class="action-right">
             {% if is_member_rotation and current_member < total_members %}
               <!-- Submit Bagian Anggota -->
-              <form method="post" action="{{ url_for('participant.member_submit') }}" id="form-member-submit">
+              <form method="post" action="{{ demo_urls.advance if demo_mode else url_for('participant.member_submit') }}" id="form-member-submit">
                 {{ member_form.hidden_tag() }}
+                {% if demo_mode %}<input type="hidden" name="member" value="{{ current_member }}"><input type="hidden" name="revision" value="{{ demo_attempt.revision }}">{% endif %}
                 <button type="button" id="btn-trigger-member-submit" class="btn btn-primary btn-submit-step">
                   <span>SELESAIKAN BAGIAN ANGGOTA {{ current_member }}</span>
                   <span class="btn-arrow">➔</span>
@@ -208,8 +210,9 @@
         ← KEMBALI PERIKSA SOAL
       </button>
 
-      <form method="post" action="{{ url_for('participant.quiz_submit') }}" id="form-final-submit" style="display: inline;">
+      <form method="post" action="{{ demo_urls.submit if demo_mode else url_for('participant.quiz_submit') }}" id="form-final-submit" style="display: inline;">
         {{ submit_form.hidden_tag() }}
+        {% if demo_mode %}<input type="hidden" name="member" value="{{ current_member }}"><input type="hidden" name="revision" value="{{ demo_attempt.revision }}">{% endif %}
         <button type="submit" id="btn-modal-confirm-submit" class="btn btn-primary">
           <span>YA, SAYA YAKIN KIRIM ➔</span>
         </button>
@@ -245,6 +248,13 @@
 {% endblock %}
 
 {% block scripts %}
+{% if demo_mode %}
+<script>
+window.QUIZ_CONFIG = {{ {'demo': true, 'answerApiUrl': demo_urls.answer, 'csrfToken': csrf_token(), 'currentMember': current_member, 'totalQuestions': questions|length, 'revision': demo_attempt.revision, 'allQuestions': demo_attempt.pack.questions|length, 'previousAnswered': demo_attempt.answers|length - answers_map|length}|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/demo_timer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+{% else %}
 <script>
   window.QUIZ_CONFIG = {
     answerApiUrl: "{{ url_for('api.participant_save_answer') }}",
@@ -257,4 +267,5 @@
 </script>
 <script src="{{ url_for('static', filename='js/session_timer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+{% endif %}
 {% endblock %}

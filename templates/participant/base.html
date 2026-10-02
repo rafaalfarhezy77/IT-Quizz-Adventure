@@ -12,20 +12,21 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/module_layout.css') }}">
+  {% if demo_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/demo.css') }}">{% endif %}
   {% block extra_head %}{% endblock %}
 </head>
-<body class="participant-body">
+<body class="participant-body{{ ' demo-mode' if demo_mode else '' }}">
   <header class="participant-topbar">
     <div class="topbar-inner">
       <div class="participant-brand-wrap">
         <a href="{{ url_for('index') }}" class="participant-brand">
           <span class="badge-brand">IT QUEST</span>
-          <span class="badge-portal">PORTAL PESERTA</span>
+          <span class="badge-portal">{{ 'Mode Demo' if demo_mode else 'PORTAL PESERTA' }}</span>
         </a>
       </div>
 
       <!-- Stage Tracker / Stepper (Visible if authorized) -->
-      {% if session.get('participant_authorized') %}
+      {% if session.get('participant_authorized') and not demo_mode %}
       <nav class="flow-stepper" aria-label="Progress Alur Peserta">
         {% set current_step = request.endpoint %}
         <span class="step-chip {{ 'step-current' if current_step == 'participant.station_select' else ('step-done' if session.get('participant_station_id') else '') }}">
@@ -55,7 +56,9 @@
       {% endif %}
 
       <div class="participant-topbar-actions">
-        {% if session.get('participant_authorized') %}
+        {% if demo_mode %}
+        <a href="{{ url_for('demo.select') }}" class="btn btn-outline btn-sm">PILIHAN POS DEMO</a>
+        {% elif session.get('participant_authorized') %}
         <form method="post" action="{{ url_for('participant.reset') }}" class="form-inline-reset">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="btn btn-outline btn-reset-flow" onclick="return confirm('Apakah Anda yakin ingin mereset pilihan dan keluar?');">

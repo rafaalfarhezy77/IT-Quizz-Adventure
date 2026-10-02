@@ -1,0 +1,110 @@
+{% extends "participant/base.html" %}
+{% block title %}Mode Demo{% endblock %}
+{% block content %}
+<div class="quiz-container">
+  <section class="nb-panel demo-panel">
+    <span class="nb-badge badge-neon">Mode Demo · Soal latihan</span>
+    {% if page == 'select' %}
+    <h1>Pilih Pos Demo</h1>
+    <p>Coba konsep pengerjaan peserta tanpa login, kode kelompok, tim resmi, atau panitia. Nilai latihan tidak dihitung dalam lomba.</p>
+    <div class="demo-stations">
+      {% for slug, pos in stations.items() %}
+      <article class="nb-card demo-panel"><h2>{{ pos.name }}</h2>
+        <a class="btn btn-primary" href="{{ url_for('demo.rules', slug=slug) }}">COBA DEMO</a>
+      </article>
+      {% endfor %}
+    </div>
+    {% if attempts %}<h2>Lanjutkan Percobaan</h2>
+    {% for attempt in attempts %}<p><a class="btn btn-outline" href="{{ url_for('demo.quiz', identifier=attempt.id) }}">Lanjutkan {{ attempt.pack.name }}</a></p>{% endfor %}{% endif %}
+    <p><a class="btn btn-outline" href="{{ url_for('demo.guide', format='html') }}">Panduan Demo</a>
+       <a class="btn btn-outline" href="{{ url_for('demo.guide', format='pdf') }}">Unduh Panduan PDF</a></p>
+    {% elif page == 'rules' %}
+    <h1>Aturan {{ pack.name }}</h1>
+    {% if slug == 'software' %}
+    <p>Baca studi kasus, lalu jawab sembilan soal pilihan ganda A–D. Tiga giliran anggota masing-masing berisi tiga soal. Satu orang dapat mensimulasikan satu tim.</p>
+    {% elif slug == 'cyber' %}
+    <p>Jawab enam soal pilihan ganda A–D mengenai perlindungan akun, phishing, dan data pribadi. Satu orang dapat mensimulasikan kerja sama satu tim.</p>
+    {% elif slug == 'networking' %}
+    <p>Tiga tahap: Signal Check (3 pilihan ganda A–E, 90 detik, 30 poin), True or Trap (4 benar/salah, 60 detik, 40 poin), Case Signal (5 isian singkat, 150 detik, 30 poin).</p>
+    <p>Jawab berurutan pada tahap 1 dan 2; pilihan langsung dikunci setelah tersimpan. Tahap berikutnya dimulai setelah Anda mengonfirmasi transisi. Batas keseluruhan tetap 5 menit.</p>
+    <p>Isian dinilai otomatis menggunakan variasi jawaban latihan. Empat dari lima jawaban tahap 3 yang benar memperoleh Stempel Latihan. Penalti demo 0. Pada lomba resmi, fasilitator melakukan verifikasi.</p>
+    {% else %}
+    <p>Simulasi Hardware: pilih CPU, motherboard, GPU, RAM, storage, dan PSU dari katalog internal. Data harga/performa sintetis. Tulis alasan singkat untuk rakitan Anda.</p>
+    <p>Budget USD 1500, target CPU 1000 dan GPU 2000. Server menilai kompatibilitas socket/RAM, kecukupan daya, budget, target performa, kelengkapan, dan efisiensi. Alasan disimpan tanpa penilaian otomatis.</p>
+    <p>Bobot kompatibilitas 20, budget 15, CPU 15, GPU 20, kelengkapan 10, efisiensi 15; bonus waktu maksimal 5 berdasarkan proporsi waktu tersisa. Skor akhir maksimal 100. Lomba resmi menggunakan BuildCores, bukti screenshot, dan verifikasi panitia.</p>
+    {% endif %}
+    <p>Durasi {{ duration // 60 }} menit, termasuk membaca dan transisi pengerjaan. Timer dimulai setelah menekan “Mulai Demo”; refresh tidak mengulang waktu.</p>
+    {% if slug != 'hardware' %}<p>{{ 'Tahap 1/2: 10 poin per soal; tahap 3: 6 poin per soal.' if slug == 'networking' else 'Jawaban benar bernilai 10 poin.' }} Salah atau kosong 0. Skor akhir = poin jawaban + sisa detik × {{ bonus_rate }}. Saat waktu habis, bonus waktu 0 dan jawaban tersimpan dinilai.</p>{% endif %}
+    <p>Jawaban disimpan otomatis. Selesaikan setiap giliran untuk mengunci bagiannya. Periksa indikator penyimpanan jika koneksi terputus. Sesi dan hasil tersedia selama 24 jam.</p>
+    <p><a href="{{ url_for('demo.guide', format='html') }}">Baca Panduan Demo</a></p>
+    <form method="post" action="{{ url_for('demo.start', slug=slug) }}" onsubmit="return confirm('Mulai percobaan baru? Percobaan lain tetap tersimpan.');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit">Mulai Demo</button>
+    </form>
+    {% elif page in ['case', 'transition'] %}
+    <div id="session-timer" class="nb-timer" data-deadline="{{ a.deadline }}" data-server-now="{{ demo_now }}" data-sync-url="{{ links.status }}" data-redirect-url="{{ links.result }}"><span class="timer-digits">--:--</span></div>
+    {% if page == 'case' %}
+    <h1>{{ a.pack.case.title }}</h1><p style="white-space: pre-wrap">{{ a.pack.case.description }}</p>
+    <p>Waktu membaca termasuk dalam timer. Studi kasus dapat dibuka kembali selama pengerjaan.</p>
+    <form method="post" action="{{ links.case_study }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary">{{ 'Kembali ke Soal' if a.seen else 'Mulai Kerjakan Soal' }}</button>
+    </form>
+    {% else %}
+    {% if a.pack.method == 'networking' %}
+    <h1>Lanjut ke Tahap {{ a.state.awaiting_stage }}</h1><p>Tahap sebelumnya sudah dikunci. Batas waktu keseluruhan tetap berjalan.</p>
+    <form method="post" action="{{ links.begin_stage }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="member" value="{{ a.member }}">
+      <input type="hidden" name="revision" value="{{ a.revision }}">
+      <button class="btn btn-primary">Mulai Tahap {{ a.state.awaiting_stage }}</button>
+    </form>
+    {% else %}
+    <h1>Giliran Anggota {{ a.member }}</h1><p>Bagian sebelumnya sudah dikunci. Sekarang simulasikan anggota berikutnya. Waktu terus berjalan.</p>
+    <a class="btn btn-primary" href="{{ links.quiz }}">Lanjutkan Anggota {{ a.member }}</a>
+    {% endif %}
+    {% endif %}
+    {% elif page == 'result' %}
+    <h1>Hasil Mode Demo · {{ a.pack.name }}</h1>
+    <p>Status: {{ 'Waktu habis' if a.status == 'TIMED_OUT' else 'Selesai dikirim' }}{% if a.pack.method != 'hardware' %} · {{ a.answers.values()|select|list|length }}/{{ a.pack.questions|length }} terjawab{% endif %}</p>
+    <div class="demo-stations">
+      <div class="nb-card demo-panel">Skor jawaban <strong>{{ a.result.raw_score }}</strong></div>
+      <div class="nb-card demo-panel">Bonus waktu <strong>{{ a.result.time_bonus }}</strong></div>
+      <div class="nb-card demo-panel">Skor akhir <strong>{{ a.result.final_score }}</strong></div>
+    </div>
+    <p>Nilai demo tidak dihitung dalam lomba dan tidak masuk leaderboard, rekap, atau ekspor resmi. Versi latihan: {{ a.pack.version }}.</p>
+    {% if a.pack.method == 'networking' %}
+    <p>Tahap 1: {{ a.result.stage_scores['1'] }} / 30 · Tahap 2: {{ a.result.stage_scores['2'] }} / 40 · Tahap 3: {{ a.result.stage_scores['3'] }} / 30</p>
+    <p>{{ 'Stempel Latihan diperoleh' if a.result.has_stamp else 'Stempel Latihan belum diperoleh' }} · {{ a.result.correct_stage3 }} / 5 benar pada tahap 3. Penalti 0. Ini penilaian latihan otomatis; lomba resmi menggunakan fasilitator.</p>
+    {% elif a.pack.method == 'hardware' %}
+    <h2>Simulasi Hardware · Rincian Rakitan</h2>
+    <p>Total harga USD {{ a.result.total_price }} / 1500 · Estimasi kebutuhan daya latihan {{ a.result.power_required }} W</p>
+    {% for category, item in a.result['items'].items() %}<p>{{ category|upper }}: {{ item.get('name', 'Belum dipilih') }}</p>{% endfor %}
+    {% for check, passed in a.result.checks.items() %}<p>{{ check|upper }}: {{ 'Sesuai' if passed else 'Belum sesuai' }}</p>{% endfor %}
+    {% for component, detail in a.result.breakdown.items() if detail is mapping %}<p>{{ component }}: {{ detail.achieved }} / {{ detail.weight }} poin</p>{% endfor %}
+    <p>Alasan Anda: {{ a.state.get('rationale', 'Belum diisi') }}. Alasan tidak dinilai otomatis.</p>
+    <h2>Contoh konfigurasi yang memenuhi target</h2>
+    {% for category, item in a.result.example.items() %}<p>{{ category|upper }}: {{ item.name }} · USD {{ item.price }}</p>{% endfor %}
+    <p>Pilih socket CPU dan motherboard yang sama, RAM sesuai motherboard, serta PSU yang memenuhi kebutuhan daya. Harga dan performa adalah data latihan. Hasil ini bukan verifikasi panitia.</p>
+    {% endif %}
+    {% for q in a.pack.questions %}
+    <article class="nb-card demo-panel">
+      <h2>{{ loop.index }}. {{ q.text }}</h2>
+      {% set selected = a.answers.get(q.id|string) %}
+      <p>Jawaban Anda: {{ selected or 'Belum dijawab' }}{% if selected and selected in q.options %} · {{ q.options[selected] }}{% endif %}</p>
+      <p>Jawaban benar: {{ q.correct_answer }}{% if q.correct_answer in q.options %} · {{ q.options[q.correct_answer] }}{% endif %}</p>
+      <p>{{ q.explanation }}</p>
+    </article>
+    {% endfor %}
+    <form method="post" action="{{ url_for('demo.start', slug=a.pack.slug) }}" onsubmit="return confirm('Buat percobaan demo baru?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary">Coba Lagi</button>
+    </form>
+    {% else %}<h1>Mode Demo tidak tersedia</h1><p role="alert">{{ message }}</p>
+    <a class="btn btn-primary" href="{{ url_for('demo.rules') }}">Mulai Ulang</a>
+    {% endif %}
+    <p><a class="btn btn-outline" href="{{ url_for('demo.select') }}">Kembali ke Pilihan Pos</a></p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}{% if page in ['case', 'transition'] %}<script src="{{ url_for('static', filename='js/demo_timer.js') }}"></script>{% endif %}{% endblock %}
