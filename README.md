@@ -22,9 +22,11 @@ dan [HTML](docs/panduan_demo.html).
 - [Struktur Direktori](#-struktur-direktori)
 - [Keamanan & Variabel Lingkungan](#-keamanan--variabel-lingkungan)
 - [Panduan Instalasi & Menjalankan](#-panduan-instalasi--menjalankan)
+  - [Cara Praktis: Docker Compose (Server Kampus)](#0-cara-praktis-docker-compose-server-kampus)
   - [Cara Cepat (1-Click Launcher Windows)](#1-cara-cepat-1-click-launcher-windows)
   - [Cara Manual (Terminal / PowerShell)](#2-cara-manual-terminal--powershell)
 - [Panduan Deployment Jaringan Lokal (LAN)](#-panduan-deployment-jaringan-lokal-lan)
+- [Panduan Deployment Docker Server Kampus](docs/docker_deployment_guide.md)
 - [Alur Kerja Kompetisi](#-alur-kerja-kompetisi)
 - [Checklist Keamanan Menjelang Lomba](#-checklist-keamanan-menjelang-lomba)
 
@@ -161,6 +163,30 @@ Gunakan environment variables atau file `.env` sebelum menjalankan aplikasi.
 - Windows 10/11 (atau Linux/macOS)
 - Python versi **3.10** atau lebih baru
 - Hak akses port `5000` pada firewall lokal
+
+---
+
+### 0. Cara Praktis: Docker Compose (Server Kampus / Produksi)
+
+Jika server kampus sudah terpasang Docker & Docker Compose:
+
+```bash
+# 1. Salin konfigurasi environment
+cp .env.example .env
+
+# 2. Sesuaikan konfigurasi (SECRET_KEY, password admin, dll)
+nano .env
+
+# 3. Jalankan container di background
+docker compose up -d --build
+```
+
+Container akan otomatis:
+* Memasang dependencies dan WSGI Gunicorn (4 worker, 2 thread).
+* Memeriksa database di `./instance/competition.db` (otomatis seed jika database baru).
+* Berjalan di port `5000` dengan healthcheck aktif.
+
+📖 Baca panduan lengkap: [Panduan Deployment Docker Server Kampus](docs/docker_deployment_guide.md).
 
 ---
 

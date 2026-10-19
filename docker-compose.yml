@@ -1,0 +1,33 @@
+services:
+  quiz-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: it-quizz-adventure
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - FLASK_APP=app.py
+      - PORT=5000
+      - GUNICORN_WORKERS=4
+      - GUNICORN_THREADS=2
+      - GUNICORN_TIMEOUT=120
+    ports:
+      # Format: HOST_PORT:CONTAINER_PORT (default 5000:5000)
+      - "${HOST_PORT:-5000}:5000"
+    volumes:
+      # Persistent storage: data SQLite (competition.db) & file uploads tetap aman di server host
+      - ./instance:/app/instance
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - quiz-net
+
+networks:
+  quiz-net:
+    driver: bridge

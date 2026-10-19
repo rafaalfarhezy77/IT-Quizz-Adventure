@@ -1,0 +1,59 @@
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Build & packaging artifacts
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Git and Version Control
+.git/
+.gitignore
+.github/
+
+# IDE & Editor Configuration
+.agents/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.pytest_cache/
+
+# Local database files in instance/ (must be mounted via host volume, not baked into image)
+instance/*.db
+instance/*.db-wal
+instance/*.db-shm
+instance/uploads/*
+
+# Development scripts & scratch
+scratch/
+*.bat
+launcher.ps1
+verify_*.py
+verify_*.js
+verify_*.cjs
+
+# Local environment variables
+.env
