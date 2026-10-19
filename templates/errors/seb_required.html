@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Safe Exam Browser Diperlukan · IT Quest Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
+</head>
+<body class="participant-body">
+  <div class="participant-center-container" style="max-width: 680px; margin: 3rem auto; padding: 1.5rem;">
+    <div class="nb-card" style="border: 3px solid #000000; background: #121212; padding: 2.5rem 2rem; box-shadow: 8px 8px 0px #000000;">
+      
+      <!-- Top Eyebrow -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <span class="nb-badge badge-warning" style="font-size: 0.75rem;">// PROTOKOL KEAMANAN UJIAN ONLINE</span>
+        <span class="nb-badge badge-dark">SEB LOCKDOWN</span>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <div style="font-size: 3.5rem; line-height: 1; margin-bottom: 0.75rem;">🛡️</div>
+        <h1 style="font-size: 1.85rem; font-weight: 900; color: #FFFFFF; margin: 0 0 0.5rem 0; letter-spacing: -0.02em;">
+          SAFE EXAM BROWSER <span class="text-neon-block">DIPERLUKAN</span>
+        </h1>
+        <p style="color: var(--text-muted, #a0aec0); font-size: 0.95rem; line-height: 1.6; max-width: 540px; margin: 0 auto;">
+          Ujian online ini mewajibkan penggunaan <strong>Safe Exam Browser (SEB)</strong> untuk mencegah kecurangan dan menjaga integritas hasil lomba. Halaman ujian tidak dapat diakses melalui browser biasa.
+        </p>
+      </div>
+
+      <!-- Action Box -->
+      <div class="nb-card" style="background: #1a1a1a; border: 2px solid #333; padding: 1.5rem; margin-bottom: 1.75rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #55FF55; margin-bottom: 1rem; text-transform: uppercase;">
+          // PILIH METODE MEMBUKA UJIAN:
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <!-- 1-Click SEB Protocol Launcher -->
+          {% set config_url = request.url_root.rstrip('/') + url_for('seb.config_file') %}
+          {% set seb_proto = 'sebs://' + config_url[8:] if config_url.startswith('https://') else 'seb://' + config_url[7:] %}
+          <a href="{{ seb_proto }}" class="btn btn-primary btn-lg" style="text-align: center; justify-content: center; font-size: 1rem;">
+            <span>🚀 BUKA LANGSUNG DI SEB (1-KLIK)</span>
+            <span class="btn-arrow">➔</span>
+          </a>
+
+          <!-- Download .seb File -->
+          <a href="{{ url_for('seb.download') }}" class="btn btn-outline" style="text-align: center; justify-content: center; font-weight: 700; background: #fff; color: #000;">
+            <span>📥 UNDUH FILE KONFIGURASI (.seb)</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Instructions Step-by-Step -->
+      <div style="background: rgba(255,255,255,0.03); border: 1px dashed #444; border-radius: 4px; padding: 1.25rem; margin-bottom: 1.75rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #fff; margin-bottom: 0.75rem;">
+          LANGKAH PENGERJAAN:
+        </div>
+        <ol style="margin: 0; padding-left: 1.25rem; color: #ccc; font-size: 0.88rem; line-height: 1.7;">
+          <li>Pastikan aplikasi <strong>Safe Exam Browser</strong> telah terpasang di komputer/laptop Anda.</li>
+          <li>Klik <strong>"Buka Langsung di SEB"</strong> di atas, atau unduh file <strong>.seb</strong> lalu klik dua kali untuk membukanya.</li>
+          <li>Layar akan terkunci otomatis dalam mode ujian aman. Masukkan kode akses kuis dan mulai perlombaan.</li>
+        </ol>
+      </div>
+
+      <!-- Helper Links -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; pt: 1rem; border-top: 1px solid #222;">
+        <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noopener noreferrer" style="color: #63b3ed; font-size: 0.85rem; font-family: var(--font-mono); text-decoration: underline;">
+          ➔ Belum punya SEB? Download Resmi di Sini
+        </a>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-xs">
+          <span>KEMBALI KE BERANDA</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panduan Safe Exam Browser · IT Quest Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700;800&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/participant.css') }}">
+</head>
+<body class="participant-body">
+  <div class="participant-center-container" style="max-width: 820px; margin: 3rem auto; padding: 1.5rem;">
+    <div class="nb-card" style="border: 3px solid #000000; background: #121212; padding: 2.5rem 2rem; box-shadow: 8px 8px 0px #000000;">
+      
+      <!-- Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span class="nb-badge badge-neon">ONLINE EXAM</span>
+          <span class="nb-badge badge-dark">SEB LOCKDOWN</span>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-outline btn-xs">← KEMBALI KE BERANDA</a>
+      </div>
+
+      <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.2rem; font-weight: 900; color: #FFFFFF; margin: 0 0 0.5rem 0;">
+          PANDUAN <span class="text-neon-block">SAFE EXAM BROWSER</span>
+        </h1>
+        <p style="color: var(--text-muted, #a0aec0); font-size: 1rem; line-height: 1.6; margin: 0;">
+          Sistem ujian online IT Quest Adventure menggunakan Safe Exam Browser (SEB) untuk mengunci lingkungan komputer peserta demi memastikan integritas, keadilan, dan keamanan selama perlombaan berlangsung.
+        </p>
+      </div>
+
+      <!-- Live Diagnostics Banner -->
+      <div class="nb-card" style="background: #181818; border: 2px solid #2d3748; padding: 1.25rem; margin-bottom: 2rem;">
+        <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #55FF55; margin-bottom: 0.75rem;">
+          // STATUS SISTEM KEAMANAN:
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+          <div>
+            <div style="font-size: 0.75rem; color: #718096; font-family: var(--font-mono);">KEBIJAKAN SEB:</div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: {{ '#55FF55' if enforced else '#ECC94B' }};">
+              {{ '🔒 DIWAJIBKAN (ENFORCED)' if enforced else '⚡ OPSIONAL / FLEKSIBEL' }}
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #718096; font-family: var(--font-mono);">STATUS BROWSER ANDA:</div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: {{ '#55FF55' if in_seb else '#ED8936' }};">
+              {{ '✅ Safe Exam Browser Terdeteksi' if in_seb else '🌐 Browser Biasa (Bukan SEB)' }}
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; color: #718096; font-family: var(--font-mono);">START URL RESMI:</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #CBD5E0; word-break: break-all;">
+              {{ start_url }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2.5rem;">
+        <a href="{{ seb_link }}" class="btn btn-primary btn-lg" style="flex: 1 1 280px; text-align: center; justify-content: center;">
+          <span>🚀 BUKA LANGSUNG DI SEB (1-KLIK)</span>
+          <span class="btn-arrow">➔</span>
+        </a>
+        <a href="{{ url_for('seb.download') }}" class="btn btn-outline btn-lg" style="flex: 1 1 240px; text-align: center; justify-content: center; background: #fff; color: #000; font-weight: 800;">
+          <span>📥 UNDUH FILE .SEB</span>
+        </a>
+      </div>
+
+      <!-- Step by step instructions -->
+      <section style="margin-bottom: 2.5rem;">
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: #fff; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.25rem;">
+          LANGKAH MUDAH MEMULAI UJIAN
+        </h2>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="nb-card" style="background: #161616; border-left: 5px solid #00F0FF; padding: 1.25rem;">
+            <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #00F0FF; margin-bottom: 0.25rem;">
+              LANGKAH 1 — INSTALL APLIKASI SEB
+            </div>
+            <div style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.5;">
+              Unduh dan pasang Safe Exam Browser versi 3.x dari situs resmi:
+              <br>
+              <a href="https://safeexambrowser.org/download_en.html" target="_blank" rel="noopener noreferrer" style="color: #63b3ed; font-weight: 700; text-decoration: underline;">
+                ➔ Kunjungi Halaman Download Safe Exam Browser (Windows / macOS)
+              </a>
+            </div>
+          </div>
+
+          <div class="nb-card" style="background: #161616; border-left: 5px solid #55FF55; padding: 1.25rem;">
+            <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #55FF55; margin-bottom: 0.25rem;">
+              LANGKAH 2 — BUKA KONFIGURASI UJIAN
+            </div>
+            <div style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.5;">
+              Gunakan salah satu dari dua cara berikut:
+              <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
+                <li><strong>Cara 1 (Otomatis):</strong> Klik tombol hijau <em>"Buka Langsung di SEB"</em> di halaman ini.</li>
+                <li><strong>Cara 2 (Manual):</strong> Unduh file <code>IT_Quizz_Adventure.seb</code>, lalu klik dua kali file yang telah diunduh di komputer Anda.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="nb-card" style="background: #161616; border-left: 5px solid #FFCC00; padding: 1.25rem;">
+            <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #FFCC00; margin-bottom: 0.25rem;">
+              LANGKAH 3 — PENGERJAAN & KELUAR
+            </div>
+            <div style="color: #e2e8f0; font-size: 0.92rem; line-height: 1.5;">
+              Layar komputer Anda akan otomatis terkunci. Masukkan kode akses kuis yang diberikan panitia, pilih pos dan tim, lalu kerjakan ujian hingga selesai. Saat sesi selesai, Anda dapat menutup SEB melalui tombol keluar di taskbar SEB.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Security Features Summary -->
+      <section style="background: rgba(255,255,255,0.02); border: 1px solid #2d3748; padding: 1.25rem; border-radius: 4px;">
+        <div style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 800; color: #a0aec0; margin-bottom: 0.5rem;">
+          FITUR PENGAMANAN SEB AKTIF:
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.82rem; color: #cbd5e0;">
+          <div>✔ Memblokir Alt+Tab & Tombol Windows</div>
+          <div>✔ Menonaktifkan DevTools / Inspect Element</div>
+          <div>✔ Memblokir Screenshot & Screen Recording</div>
+          <div>✔ Menutup Aplikasi Pihak Ketiga & Chat</div>
+          <div>✔ Memblokir Klik Kanan & Pencarian Eksternal</div>
+          <div>✔ Mode Layar Penuh Kiosk Anti-Keluar</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</body>
+</html>

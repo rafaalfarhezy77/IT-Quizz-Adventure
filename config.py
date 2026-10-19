@@ -38,3 +38,7 @@ class Config:
     DEMO_IP_STARTS_PER_HOUR = 60
     DEMO_MAX_ATTEMPTS = 5000
     DEMO_MAX_REQUEST_BYTES = 8192
+    SEB_ENFORCED = os.environ.get("SEB_ENFORCED", "0") == "1"
+    SEB_QUIT_PASSWORD = os.environ.get("SEB_QUIT_PASSWORD", "itquest2026")
+    SEB_ADMIN_PASSWORD = os.environ.get("SEB_ADMIN_PASSWORD", "")
+    SEB_ALLOW_RELOAD = os.environ.get("SEB_ALLOW_RELOAD", "1") == "1"

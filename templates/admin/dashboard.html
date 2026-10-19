@@ -18,9 +18,37 @@
     <a href="{{ url_for('admin.station_select') }}" class="btn btn-outline btn-sm" style="background: #fff; font-weight: 800;">
       <span>⇄ GANTI POS LOMBA</span>
     </a>
-    <span class="event-badge"><span class="pulse-light"></span>LOCAL SERVER · ONLINE</span>
+    <span class="event-badge"><span class="pulse-light"></span>ONLINE EXAM · SEB {{ 'ENFORCED' if seb_enforced else 'READY' }}</span>
   </div>
 </div>
+
+<section class="nb-card" style="border: 2px solid #000; background: #fff; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; box-shadow: 4px 4px 0 #000; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+      <span class="nb-badge {{ 'badge-neon' if seb_enforced else 'badge-warning' }}" style="font-size: 0.72rem;">
+        {{ '🔒 SEB DIWAJIBKAN' if seb_enforced else '⚡ SEB OPSIONAL' }}
+      </span>
+      <strong style="font-size: 1rem; color: #111;">Safe Exam Browser (SEB) Online Lockdown</strong>
+    </div>
+    <p style="margin: 0; font-size: 0.85rem; color: #555;">
+      Distribusikan file konfigurasi <code>.seb</code> kepada peserta untuk mengunci layar laptop selama kuis online.
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+    <a href="{{ url_for('seb.download') }}" class="btn btn-outline btn-sm" style="font-weight: 700;">
+      <span>📥 Unduh File .seb</span>
+    </a>
+    <a href="{{ url_for('seb.instruction') }}" target="_blank" class="btn btn-outline btn-sm" style="font-weight: 700;">
+      <span>📖 Panduan Peserta</span>
+    </a>
+    <form method="post" action="{{ url_for('seb.toggle_enforcement') }}" style="display: inline-block; margin: 0;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn {{ 'btn-secondary' if seb_enforced else 'btn-primary' }} btn-sm" style="font-weight: 700;">
+        <span>{{ 'Nonaktifkan Wajib SEB' if seb_enforced else 'Aktifkan Wajib SEB' }}</span>
+      </button>
+    </form>
+  </div>
+</section>
 
 <section class="nb-card session-guidance" aria-labelledby="focus-sessions-heading">
   <h2 id="focus-sessions-heading">Sesi yang perlu ditangani sekarang</h2>

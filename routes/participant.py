@@ -62,10 +62,10 @@ STATION_MODE_RULES = {
 }
 
 COMMON_RULES = [
-    "Dilarang membuka tab browser lain, search engine, atau aplikasi di luar sistem lomba.",
+    "Dilarang membuka tab browser lain, search engine, atau aplikasi di luar sistem ujian.",
+    "Gunakan Safe Exam Browser (SEB) resmi yang telah dikonfigurasi untuk pengerjaan ujian.",
     "Dilarang bekerja sama atau berkomunikasi dengan kelompok/tim lain selama sesi berlangsung.",
-    "Waktu pengerjaan dan status sesi dikendalikan terpusat oleh sistem dan panitia pos.",
-    "Patuhi seluruh aba-aba dan instruksi panitia di pos ini.",
+    "Waktu pengerjaan dan status sesi dikendalikan terpusat secara real-time oleh server ujian.",
 ]
 
 

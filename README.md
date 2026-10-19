@@ -10,7 +10,7 @@ Panduan peserta dengan screenshot tersedia dalam [PDF](docs/panduan_demo.pdf)
 dan [HTML](docs/panduan_demo.html).
 
 > **Platform Kompetisi Cerdas Cermat IT Berbasis Stasiun Pos (Station-Based Quiz Platform)**  
-> Dirancang khusus untuk perlombaan luring berbasis jaringan lokal (*Offline LAN*) dengan performa tinggi, desain Neo-Brutalist yang modern, serta sistem anti-kecurangan yang andal.
+> Dirancang untuk perlombaan cerdas cermat online maupun jaringan lokal dengan performa tinggi, desain Neo-Brutalist yang modern, serta integrasi proteksi Safe Exam Browser (SEB) anti-kecurangan.
 
 ---
 
@@ -44,10 +44,10 @@ Sistem ini memfasilitasi rotasi kelompok, verifikasi tim, sinkronisasi ruang tun
 - **Database & ORM**: SQLite dengan [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/).
   - Mode **WAL (*Write-Ahead Logging*)** aktif untuk konkurensi baca/tulis yang optimal.
   - Penegakan integritas data relasional via `PRAGMA foreign_keys = ON` pada setiap koneksi.
-- **Form & Proteksi**: [Flask-WTF](https://flask-wtf.readthedocs.io/) dengan perlindungan **CSRF (*Cross-Site Request Forgery*)** penuh pada seluruh interaksi form.
-- **Frontend**: Antarmuka responsif tanpa dependensi CDN eksternal (100% aset lokal untuk keandalan jaringan *offline* penuh).
+- **Frontend**: Antarmuka responsif tanpa dependensi CDN eksternal (100% aset mandiri untuk kecepatan akses maksimal).
   - **Styling**: Vanilla CSS kustom bertema **Neo-Brutalism** (kontras tinggi, tipografi teknis, border tegas).
   - **Scripting**: Vanilla JavaScript untuk *real-time countdown timer*, polling ruang tunggu, dan auto-submit.
+- **Keamanan Ujian (SEB)**: Dukungan Safe Exam Browser (`.seb`) dengan 1-klik protocol launcher (`seb://`), penegakan browser lockdown, dan proteksi anti-kecurangan penuh.
 
 ---
 

@@ -23,8 +23,9 @@
     <header class="landing-header">
       <div class="landing-chip-row">
         <span class="nb-badge badge-neon">MYTHIC 3.0</span>
-        <span class="nb-badge badge-dark">STATION QUIZ PLATFORM</span>
-        <span class="nb-badge badge-neutral">OFFLINE LAN</span>
+        <span class="nb-badge badge-dark">ONLINE EXAM</span>
+        <span class="nb-badge badge-neutral">SEB SECURED</span>
+        <a href="{{ url_for('seb.instruction') }}" class="nb-badge badge-warning" style="text-decoration: none;" title="Buka panduan & konfigurasi Safe Exam Browser">🔒 PANDUAN SEB</a>
       </div>
     </header>
 
@@ -80,13 +81,16 @@
             <li>✔ Verifikasi kode akses peserta</li>
             <li>✔ Pemilihan Pos & Kelompok (A-D)</li>
             <li>✔ Konfirmasi identitas tim & aturan pos</li>
-            <li>✔ Sinkronisasi ruang tunggu sesi</li>
+            <li>✔ Proteksi Safe Exam Browser (Anti-Cheat)</li>
           </ul>
         </div>
         <div class="role-card-footer">
           <a href="{{ url_for('participant.access') }}" class="btn btn-primary btn-role-action">
             <span>MASUK SEBAGAI PESERTA</span>
             <span class="btn-arrow">➔</span>
+          </a>
+          <a href="{{ url_for('seb.download') }}" class="btn btn-outline btn-xs" style="margin-top: 0.5rem; width: 100%; text-align: center; justify-content: center; background: #fff; color: #000; font-weight: 700;" title="Unduh konfigurasi Safe Exam Browser">
+            <span>🔒 UNDUH KONFIGURASI SEB (.seb)</span>
           </a>
         </div>
       </article>

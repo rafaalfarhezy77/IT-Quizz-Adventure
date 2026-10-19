@@ -936,6 +936,35 @@ class NetworkingModuleTestCase(unittest.TestCase):
             db.session.refresh(net)
             self.assertEqual(net.current_stage,1)
 
+    def test_26_facilitator_http_lobby_start_review_finalize(self):
+        with self.app.app_context():
+            self._load_source_bank()
+            db.session.delete(db.session.get(CompetitionSession,self.session_a_id))
+            db.session.commit()
+            admin=self.app.test_client()
+            with admin.session_transaction() as cookie:
+                cookie.update(admin_id=self.admin_id,admin_station_id=self.st_net_id)
+            response=admin.post("/admin/networking/open-lobby",data={"group_id":self.grp_a_id,"rotation":3,"set_id":self.qs_net_a_id})
+            self.assertEqual(response.status_code,302)
+            competition=db.session.scalar(db.select(CompetitionSession).where(CompetitionSession.group_id==self.grp_a_id))
+            self.assertEqual(competition.duration_seconds,2100)
+            self.assertEqual(admin.post("/admin/networking/control",data={"session_id":competition.id,"action":"START_SESSION","reason":"Mulai empat tim"}).status_code,302)
+            self.assertEqual(admin.get(f"/admin/networking/monitor/{competition.id}").status_code,200)
+            subs=db.session.scalars(db.select(Submission).where(Submission.session_id==competition.id)).all()
+            self.assertEqual(len(subs),4)
+            for sub in subs:
+                for stage in (1,2,3):
+                    self.assertTrue(submit_stage(sub.id,stage)[0])
+            frozen=subs[0].networking_submission.time_bonus
+            competition.status=SessionStatus.FINISHED
+            db.session.commit()
+            self.assertEqual(admin.get(f"/admin/networking/verify/{competition.id}").status_code,200)
+            self.assertEqual(admin.post(f"/admin/networking/finalize-session/{competition.id}").status_code,302)
+            db.session.refresh(subs[0].networking_submission)
+            self.assertEqual(subs[0].networking_submission.verification_status,"FINALIZED")
+            self.assertEqual(subs[0].score.time_bonus,frozen)
+            self.assertEqual(admin.get("/admin/questions/sample.json?station=networking").json["pos"],"Networking")
+
 
 if __name__ == "__main__":
     unittest.main()

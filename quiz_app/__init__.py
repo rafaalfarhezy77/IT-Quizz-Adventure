@@ -41,7 +41,7 @@ def create_app(config_class=Config):
         from utils.participant_session import clear_participant_session
         mode = public_mode()
         admin = resolve_current_admin()
-        allowed = request.endpoint in ("index", "static", "admin.login", "api.health", "participant.health") or request.blueprint == "demo"
+        allowed = request.endpoint in ("index", "static", "admin.login", "api.health", "participant.health") or request.blueprint in ("demo", "seb")
         if mode == "DEMO_ONLY" and not admin and not allowed and request.endpoint:
             clear_participant_session()
             if request.blueprint == "api" or request.method != "GET" or request.is_json:
@@ -61,6 +61,12 @@ def create_app(config_class=Config):
                     for key in ("session_id", "submission_id", "attempt_id", "identifier", "team_id")
                 ):
                     abort(403)
+
+        # Enforce Safe Exam Browser for participant area if active
+        from services.seb_service import is_seb_enforced, is_seb_request
+        if request.blueprint == "participant" and request.endpoint != "participant.health":
+            if is_seb_enforced() and not is_seb_request(request):
+                return render_template("errors/seb_required.html"), 403
     csrf.init_app(app)
 
     # Pastikan folder instance dan uploads tersedia
@@ -74,10 +80,12 @@ def create_app(config_class=Config):
     from routes.admin import admin_bp
     from routes.api import api_bp
     from routes.participant import participant_bp
+    from routes.seb import seb_bp
 
     app.register_blueprint(admin_bp)
     app.register_blueprint(participant_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(seb_bp)
     from routes.demo import demo_bp
     app.register_blueprint(demo_bp)
     from services.demo_service import initialize
@@ -89,9 +97,16 @@ def create_app(config_class=Config):
     @app.context_processor
     def access_context():
         from services.access_service import public_mode, demo_enabled
+        from services.seb_service import is_seb_enforced, is_seb_request
         from utils.auth import resolve_current_admin
-        return {"public_access_mode": public_mode(), "demo_available": demo_enabled(),
-                "access_admin": resolve_current_admin()}
+        from flask import request
+        return {
+            "public_access_mode": public_mode(),
+            "demo_available": demo_enabled(),
+            "access_admin": resolve_current_admin(),
+            "seb_enforced": is_seb_enforced(),
+            "in_seb": is_seb_request(request),
+        }
 
     @app.errorhandler(400)
     @app.errorhandler(413)
