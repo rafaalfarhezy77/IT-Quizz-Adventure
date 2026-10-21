@@ -84,8 +84,8 @@ PARTICIPANT_ACCESS_CODE=MYTHIC2026
 SEB_ENFORCED=0
 SEB_QUIT_PASSWORD=itquest2026
 
-# 7. Port Server Host (Opsional, default: 5000)
-HOST_PORT=5000
+# 7. Port Server Host (Opsional, default: 5011)
+HOST_PORT=5011
 ```
 
 Simpan file dengan menekan `Ctrl + O` lalu `Enter`, dan keluar dengan `Ctrl + X`.
@@ -128,13 +128,13 @@ docker compose logs -f
 
 Uji akses endpoint healthcheck:
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:5011/api/health
 # Output yang diharapkan: {"database":"ok","status":"ok"}
 ```
 
 Aplikasi sekarang sudah aktif dan dapat diakses di browser pada:
-* Peserta: `http://<IP_SERVER_KAMPUS>:5000/`
-* Panitia: `http://<IP_SERVER_KAMPUS>:5000/admin/login`
+* Peserta: `http://<IP_SERVER_KAMPUS>:5011/`
+* Panitia: `http://<IP_SERVER_KAMPUS>:5011/admin/login`
 
 ---
 
